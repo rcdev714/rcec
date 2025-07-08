@@ -222,8 +222,8 @@ export function CompanyFilter({ initialFilters }: CompanyFilterProps) {
   }, [searchParams])
 
   return (
-    <div className="flex flex-col gap-4 p-4 border rounded-lg shadow-sm dark:border-gray-700 dark:bg-gray-800">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 gap-4 mb-4">
         <div>
           <Label htmlFor="ruc" className="text-gray-700 dark:text-gray-300">RUC</Label>
           <Input
@@ -236,7 +236,9 @@ export function CompanyFilter({ initialFilters }: CompanyFilterProps) {
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
           />
         </div>
+      </div>
 
+      <div className="grid grid-cols-2 gap-4 mb-4">
         <div>
           <Label htmlFor="nombre" className="text-gray-700 dark:text-gray-300">Nombre</Label>
           <Input
@@ -262,7 +264,9 @@ export function CompanyFilter({ initialFilters }: CompanyFilterProps) {
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
           />
         </div>
+      </div>
 
+      <div className="grid grid-cols-1 gap-4 mb-4">
         <div>
           <Label htmlFor="provincia" className="text-gray-700 dark:text-gray-300">Provincia</Label>
           <Input

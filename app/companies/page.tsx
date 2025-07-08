@@ -225,14 +225,19 @@ export default async function CompaniesPage({
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      <div className="flex-1 p-4 sm:p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-200">UNIBROKERS</h1>
-          <p className="text-lg text-gray-200 py-2">Company Filtering System</p>
-          <div className="bg-white dark:bg-gray-850 rounded-lg shadow-md p-6 mb-8">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <h1 className="text-3xl font-bold mb-2 text-gray-800 dark:text-gray-200">UNIBROKERS</h1>
+      </div>
+      <div className="flex flex-1 pt-4 max-w-7xl mx-auto">
+        {/* Left column for filters */}
+        <div className="w-full md:w-1/2 lg:w-1/3 mr-8">
+          <div className="mb-8">
             <CompanyFilter initialFilters={filters} />
           </div>
+        </div>
 
+        {/* Right column for company cards and pagination */}
+        <div className="flex-1">
           {companies && companies.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {companies.map((company: Company) => (
