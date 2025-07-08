@@ -1,0 +1,87 @@
+export interface BalanceGeneral {
+  anio: number | null;
+  activo_total: number | null;
+  patrimonio_total: number | null;
+}
+
+export interface EstadoDeResultado {
+  anio: number | null;
+  ingresos_ventas_netas: number | null;
+  utilidad_integral_neta: number | null;
+  impuesto_renta: number | null;
+  utilidad_antes_impuestos: number | null;
+}
+
+export interface Company {
+  id: number;
+  expediente: string | null;
+  ruc: string | null;
+  nombre: string | null;
+  nombre_comercial: string | null;
+  tipo: string | null;
+  pro_codigo: number | null;
+  provincia: string | null;
+  canton: string | null;
+  ciudad: string | null;
+  actividad_principal: string | null;
+  estado_empresa: string | null;
+  tipo_empresa: string | null;
+  segmento_empresa: string | null;
+  fecha_constitucion: string | null;
+  anio: number | null;
+  posicion_general: number | null;
+  cia_imvalores: number | null;
+  ingresos_ventas: number | null;
+  activos: number | null;
+  patrimonio: number | null;
+  utilidad_an_imp: number | null;
+  impuesto_renta: number | null;
+  n_empleados: number | null;
+  ingresos_totales: number | null;
+  utilidad_ejercicio: number | null;
+  utilidad_neta: number | null;
+  cod_segmento: string | null;
+  ciiu_n1: string | null;
+  ciiu_n6: string | null;
+  liquidez_corriente: number | null;
+  prueba_acida: number | null;
+  end_activo: number | null;
+  end_patrimonial: number | null;
+  end_activo_fijo: number | null;
+  end_corto_plazo: number | null;
+  end_largo_plazo: number | null;
+  cobertura_interes: number | null;
+  apalancamiento: number | null;
+  apalancamiento_financiero: number | null;
+  end_patrimonial_ct: number | null;
+  end_patrimonial_nct: number | null;
+  apalancamiento_c_l_plazo: number | null;
+  rot_cartera: number | null;
+  rot_activo_fijo: number | null;
+  rot_ventas: number | null;
+  per_med_cobranza: number | null;
+  per_med_pago: number | null;
+  impac_gasto_a_v: number | null;
+  impac_carga_finan: number | null;
+  rent_neta_activo: number | null;
+  margen_bruto: number | null;
+  margen_operacional: number | null;
+  rent_neta_ventas: number | null;
+  rent_ope_patrimonio: number | null;
+  rent_ope_activo: number | null;
+  roe: number | null;
+  roa: number | null;
+  fortaleza_patrimonial: number | null;
+  gastos_financieros: number | null;
+  gastos_admin_ventas: number | null;
+  depreciaciones: number | null;
+  amortizaciones: number | null;
+  costos_ventas_prod: number | null;
+  deuda_total: number | null;
+  deuda_total_c_plazo: number | null;
+  total_gastos: number | null;
+  ciiu: string | null;
+  descripcion: string | null;
+  id_segmento: string | null;
+  segmento: string | null;
+} 
