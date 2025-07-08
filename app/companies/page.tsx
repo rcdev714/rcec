@@ -3,15 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { CompanyFilter } from "@/components/company-filter";
 import { PaginationControls } from "@/components/pagination-controls";
 import { Card } from "@/components/ui/card";
-import { Company, BalanceGeneral, EstadoDeResultado } from "@/types/company";
-
-interface CompaniesPageProps {
-  searchParams: { [key: string]: string | string[] | undefined };
-}
+import { Company } from "@/types/company";
 
 export default async function CompaniesPage({
   searchParams,
-}: CompaniesPageProps) {
+}: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const supabase = await createClient();
 
   const resolvedSearchParams = await searchParams;
