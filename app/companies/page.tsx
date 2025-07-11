@@ -1,5 +1,7 @@
 import { CompaniesUI } from "@/components/companies-ui";
 import { fetchCompanies } from "@/lib/data/companies";
+import Image from "next/image";
+import Link from "next/link";
 
 // Define the expected search parameters for the page.
 interface CompaniesPageProps {
@@ -55,7 +57,20 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-6 py-4">
+        {/* Top left logo - minimal space */}
+        <div className="mb-6">
+          <Link href="/" className="inline-block">
+            <Image
+              src="/image.png"
+              alt="UNIBROKERS Logo"
+              width={120}
+              height={36}
+              className="h-6 w-auto"
+            />
+          </Link>
+        </div>
+        
         <div className="mb-8">
           <h1 className="text-3xl font-semibold text-foreground tracking-tight">
             Empresas

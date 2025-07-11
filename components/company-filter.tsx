@@ -129,15 +129,32 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
             <Label htmlFor="anio" className="text-sm font-medium text-foreground">
               Año fiscal
             </Label>
-            <Input
-              type="number"
+            <select
               id="anio"
               name="anio"
               value={filters.anio as string}
-              onChange={handleFilterChange}
-              placeholder="2023"
-              className="bg-background border-border"
-            />
+              onChange={handleSelectChange}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">Todos los años</option>
+              <option value="2024">2024</option>
+              <option value="2023">2023</option>
+              <option value="2022">2022</option>
+              <option value="2021">2021</option>
+              <option value="2020">2020</option>
+              <option value="2019">2019</option>
+              <option value="2018">2018</option>
+              <option value="2017">2017</option>
+              <option value="2016">2016</option>
+              <option value="2015">2015</option>
+              <option value="2014">2014</option>
+              <option value="2013">2013</option>
+              <option value="2012">2012</option>
+              <option value="2011">2011</option>
+              <option value="2010">2010</option>
+              <option value="2009">2009</option>
+              <option value="2008">2008</option>
+            </select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="nEmpleadosMin" className="text-sm font-medium text-foreground">
@@ -293,7 +310,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
       <div className="flex gap-2 pt-2">
         <Button
           onClick={handleApply}
-          className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 text-sm h-9"
+          className="flex-1 bg-red-600 text-white hover:bg-red-700 text-sm h-9"
         >
           Aplicar filtros
         </Button>

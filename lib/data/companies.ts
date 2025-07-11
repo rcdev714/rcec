@@ -127,7 +127,7 @@ export async function fetchCompanies(params: SearchParams): Promise<PaginatedRes
   // This order must match our database indexes for optimal
   // performance.
   const { data, error, count } = await query
-    .order("anio", { ascending: false })
+    .order("expediente", { ascending: true })
     .order("id", { ascending: true })
     .range(offset, offset + ITEMS_PER_PAGE - 1);
 
