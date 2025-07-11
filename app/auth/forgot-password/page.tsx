@@ -1,11 +1,13 @@
 import { ForgotPasswordForm } from "@/components/forgot-password-form";
+import { AuthLayout } from "@/components/auth-layout";
 
 export default function Page() {
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-      <div className="w-full max-w-sm">
-        <ForgotPasswordForm />
-      </div>
-    </div>
+    <AuthLayout 
+      title="Recuperar contraseña" 
+      subtitle="Te enviaremos un enlace para restablecer tu contraseña"
+    >
+      <ForgotPasswordForm />
+    </AuthLayout>
   );
 }

@@ -1,4 +1,7 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { AuthLayout } from "@/components/auth-layout";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default async function Page({
   searchParams,
@@ -8,29 +11,33 @@ export default async function Page({
   const params = await searchParams;
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-      <div className="w-full max-w-sm">
-        <div className="flex flex-col gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl">
-                Sorry, something went wrong.
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {params?.error ? (
-                <p className="text-sm text-muted-foreground">
-                  Code error: {params.error}
-                </p>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  An unspecified error occurred.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
+    <AuthLayout 
+      title="Error de autenticación" 
+      subtitle="Ocurrió un problema durante el proceso"
+    >
+      <Card className="border-border/50 shadow-sm">
+        <CardContent className="pt-6 text-center">
+          <div className="mb-6">
+            {params?.error ? (
+              <p className="text-sm text-muted-foreground mb-2">
+                Detalles del error: {params.error}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground mb-2">
+                Ha ocurrido un error no especificado.
+              </p>
+            )}
+            <p className="text-sm text-muted-foreground">
+              Por favor, intenta nuevamente o contacta con soporte si el problema persiste.
+            </p>
+          </div>
+          <Button asChild className="w-full bg-primary hover:bg-primary/90">
+            <Link href="/auth/login">
+              Volver al inicio de sesión
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+    </AuthLayout>
   );
 }

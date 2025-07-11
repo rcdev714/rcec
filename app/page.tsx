@@ -1,75 +1,111 @@
 import Link from "next/link";
 import Image from "next/image";
+import { AuthButton } from "@/components/auth-button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Home() {
+  const features = [
+    {
+      title: "Búsqueda Avanzada",
+      description: "Busca empresas por RUC, nombre comercial o provincia de manera rápida y precisa."
+    },
+    {
+      title: "Filtros Financieros",
+      description: "Filtra por métricas clave como activos, patrimonio, utilidades y más indicadores financieros."
+    },
+    {
+      title: "Análisis Temporal",
+      description: "Analiza datos históricos por año fiscal y evolución del número de empleados."
+    },
+    {
+      title: "Exportación de Datos",
+      description: "Exporta resultados filtrados para realizar análisis más detallados en herramientas externas."
+    }
+  ];
+
   return (
-    <main className="min-h-screen bg-background">
-      {/* Top left logo */}
-      <div className="max-w-7xl mx-auto px-6 pt-6">
-        <Link href="/" className="inline-block">
-          <Image
-            src="/image.png"
-            alt="UNIBROKERS Logo"
-            width={200}
-            height={60}
-            className="h-10 w-auto"
-          />
-        </Link>
-      </div>
+    <div className="min-h-screen bg-background">
+      <div className="max-w-7xl mx-auto px-6 py-4">
+        {/* Header with logo and auth - consistent with companies page */}
+        <div className="mb-6 flex items-center justify-between">
+          <Link href="/" className="inline-block">
+            <Image
+              src="/image.png"
+              alt="UNIBROKERS Logo"
+              width={120}
+              height={36}
+              className="h-6 w-auto"
+            />
+          </Link>
+          <AuthButton />
+        </div>
 
-      {/* Main Content - Better distributed */}
-      <div className="max-w-6xl mx-auto px-6 py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
-          {/* Left Column - Description */}
-          <div className="space-y-8">
-            <div className="space-y-4">
-              <p className="text-2xl font-semibold text-gray-600 leading-relaxed">
-                Sistema de filtrado de base de datos avanzada de empresas.
-              </p>
-            </div>
-            
-            <Link
-              href="/companies"
-              className="inline-flex items-center px-6 py-3 bg-primary text-primary-foreground text-lg font-medium rounded-md hover:bg-primary/90 transition-colors"
-            >
-              Explorar empresas →
-            </Link>
+        {/* Hero Section */}
+        <div className="max-w-4xl mx-auto text-center py-16">
+          <div className="space-y-6 mb-12">
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground tracking-tight">
+              Sistema de Análisis
+              <span className="block text-primary">Empresarial Avanzado</span>
+            </h1>
+            <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+              Accede a una base de datos completa de empresas ecuatorianas con herramientas 
+              de filtrado y análisis financiero de última generación.
+            </p>
           </div>
+          
+          <Link
+            href="/companies"
+            className="inline-flex items-center px-8 py-4 bg-primary text-primary-foreground text-lg font-semibold rounded-lg hover:bg-primary/90 transition-colors shadow-lg"
+          >
+            Explorar Empresas →
+          </Link>
+        </div>
 
-          {/* Right Column - Features */}
-          <div className="space-y-6">
-            <h3 className="text-2xl font-medium text-foreground">
-              Qué puedes hacer
-            </h3>
-            <div className="space-y-4">
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-red-600 rounded-full mt-2 flex-shrink-0"></div>
-                <p className="text-lg text-muted-foreground">
-                  Buscar empresas por RUC, nombre o provincia
-                </p>
-              </div>
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-red-600 rounded-full mt-2 flex-shrink-0"></div>
-                <p className="text-lg text-muted-foreground">
-                  Filtrar por métricas financieras como activos, patrimonio y utilidades
-                </p>
-              </div>
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-red-600 rounded-full mt-2 flex-shrink-0"></div>
-                <p className="text-lg text-muted-foreground">
-                  Analizar datos por año fiscal y número de empleados
-                </p>
-              </div>
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-red-600 rounded-full mt-2 flex-shrink-0"></div>
-                <p className="text-lg text-muted-foreground">
-                  Exportar resultados para análisis adicional
-                </p>
-              </div>
+        {/* Features Section */}
+        <div className="max-w-6xl mx-auto py-16">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-semibold text-foreground tracking-tight mb-4">
+              Herramientas Poderosas
+            </h2>
+            <p className="text-muted-foreground text-lg">
+              Todo lo que necesitas para analizar el panorama empresarial ecuatoriano
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {features.map((feature, index) => (
+              <Card key={index} className="h-full hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <CardTitle className="text-lg">{feature.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-base leading-relaxed">
+                    {feature.description}
+                  </CardDescription>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Stats Section */}
+        <div className="max-w-4xl mx-auto py-16 border-t">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            <div className="space-y-2">
+              <div className="text-3xl font-bold text-primary">1000+</div>
+              <div className="text-muted-foreground">Empresas registradas</div>
+            </div>
+            <div className="space-y-2">
+              <div className="text-3xl font-bold text-primary">50+</div>
+              <div className="text-muted-foreground">Métricas disponibles</div>
+            </div>
+            <div className="space-y-2">
+              <div className="text-3xl font-bold text-primary">24/7</div>
+              <div className="text-muted-foreground">Acceso disponible</div>
             </div>
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

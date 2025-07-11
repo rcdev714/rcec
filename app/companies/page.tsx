@@ -1,5 +1,8 @@
 import { CompaniesUI } from "@/components/companies-ui";
 import { fetchCompanies } from "@/lib/data/companies";
+import { createClient } from "@/lib/supabase/server";
+import { AuthButton } from "@/components/auth-button";
+import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -28,6 +31,16 @@ interface CompaniesPageProps {
 }
 
 export default async function CompaniesPage({ searchParams }: CompaniesPageProps) {
+  // Check if user is authenticated
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/auth/login");
+  }
+
   const { page: pageStr, ruc, nombre, provincia, anio, nEmpleadosMin, nEmpleadosMax, ingresosVentasMin, ingresosVentasMax, activosMin, activosMax, patrimonioMin, patrimonioMax, utilidadAnImpMin, utilidadAnImpMax, utilidadNetaMin, utilidadNetaMax, nombreComercial } = await searchParams;
 
   const page = parseInt(pageStr || "1", 10);
@@ -58,8 +71,8 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-6 py-4">
-        {/* Top left logo - minimal space */}
-        <div className="mb-6">
+        {/* Header with logo and auth */}
+        <div className="mb-6 flex items-center justify-between">
           <Link href="/" className="inline-block">
             <Image
               src="/image.png"
@@ -69,6 +82,7 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
               className="h-6 w-auto"
             />
           </Link>
+          <AuthButton />
         </div>
         
         <div className="mb-8">

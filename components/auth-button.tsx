@@ -12,7 +12,9 @@ export async function AuthButton() {
 
   return user ? (
     <div className="flex items-center gap-4">
-      Hey, {user.email}!
+      <div className="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+        {user.email?.charAt(0).toUpperCase()}
+      </div>
       <LogoutButton />
     </div>
   ) : (

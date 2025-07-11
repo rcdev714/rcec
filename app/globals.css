@@ -150,4 +150,58 @@
   .border-border {
     border-color: rgb(229 231 235) !important;
   }
+  
+  /* Fix yellow text issue on auth pages */
+  .text-yellow-400,
+  .text-yellow-500,
+  .text-yellow-600 {
+    color: rgb(37 37 37) !important;
+  }
+  
+  /* Ensure all text uses proper colors */
+  a {
+    color: rgb(37 37 37) !important;
+  }
+  
+  a:hover {
+    color: rgb(107 114 126) !important;
+  }
+  
+  /* Override any conflicting link styles */
+  .underline {
+    text-decoration-color: rgb(37 37 37) !important;
+  }
+  
+  /* Fix yellow input borders - use gray/black instead */
+  input:focus,
+  input:focus-visible,
+  textarea:focus,
+  textarea:focus-visible,
+  select:focus,
+  select:focus-visible {
+    outline: none !important;
+    border-color: rgb(37 37 37) !important;
+    box-shadow: 0 0 0 1px rgb(37 37 37) !important;
+    ring-color: rgb(37 37 37) !important;
+  }
+  
+  /* Override any ring colors */
+  .focus-visible\:ring-ring:focus-visible,
+  .focus-visible\:ring-1:focus-visible {
+    ring-color: rgb(37 37 37) !important;
+    --tw-ring-color: rgb(37 37 37) !important;
+  }
+  
+  /* Ensure input borders are always gray */
+  input,
+  textarea,
+  select {
+    border-color: rgb(229 231 235) !important;
+  }
+  
+  input:hover,
+  textarea:hover,
+  select:hover {
+    border-color: rgb(107 114 126) !important;
+  }
 }
