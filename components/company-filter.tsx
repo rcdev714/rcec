@@ -1,10 +1,10 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { ChevronDown, ChevronUp } from 'lucide-react'; // Import icons
+import { useState, useEffect } from 'react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface CompanyFilterProps {
   initialFilters: { [key: string]: string | string[] | undefined };
@@ -13,9 +13,12 @@ interface CompanyFilterProps {
 }
 
 export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: CompanyFilterProps) {
+  // The filter state is now managed directly by the URL search parameters.
+  // This local state is only used to control the input fields.
   const [filters, setFilters] = useState(initialFilters);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false); // New state for toggling
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
+  // Effect to sync local state when URL search parameters change.
   useEffect(() => {
     setFilters(initialFilters);
   }, [initialFilters]);
@@ -28,10 +31,13 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
     }));
   };
 
+  // When the user clicks "Apply", call the passed-in onApplyFilters function
+  // which will update the URL and trigger a server-side re-fetch.
   const handleApply = () => {
     onApplyFilters(filters);
   };
 
+  // To clear filters, we call onApplyFilters with an empty object.
   const handleClear = () => {
     const clearedFilters = Object.fromEntries(Object.keys(filters).map(key => [key, '']));
     onApplyFilters(clearedFilters);
@@ -322,7 +328,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
           onClick={handleApply}
           className="flex-1 bg-gradient-to-r from-gray-300 to-gray-400 hover:from-gray-400 hover:to-gray-500 text-gray-900 font-bold py-2 px-4 rounded shadow-md dark:from-gray-700 dark:to-gray-800 dark:hover:from-gray-600 dark:hover:to-gray-700 dark:text-white"
         >
-          Aplicar 
+          Aplicar
         </Button>
         <Button
           onClick={handleClear}
@@ -336,6 +342,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
         <p>Total de Empresas: <span className="font-bold">{companyCount}</span></p>
       </div>
     </div>
-  )
+  );
 }
+
  
