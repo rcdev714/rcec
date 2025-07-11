@@ -1,6 +1,5 @@
 'use client';
 
-import { Fragment } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Company } from '@/types/company';
 import { CompanyFilter } from '@/components/company-filter';
@@ -56,35 +55,48 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
   };
 
   return (
-    <Fragment>
-      <div className="flex flex-1 pt-4 max-w-7xl mx-auto">
-        <div className="w-full md:w-1/4 lg:w-1/5 mr-8">
-          <div className="mb-8">
-            <CompanyFilter
-              initialFilters={initialFilters}
-              onApplyFilters={handleFiltersChange}
-              companyCount={totalCount}
-            />
-          </div>
+    <div className="flex gap-8">
+      {/* Sidebar with filters */}
+      <div className="w-80 flex-shrink-0">
+        <div className="sticky top-8">
+          <CompanyFilter
+            initialFilters={initialFilters}
+            onApplyFilters={handleFiltersChange}
+            companyCount={totalCount}
+          />
         </div>
-        <div className="flex-1">
-          {companies.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      </div>
+
+      {/* Main content area */}
+      <div className="flex-1 min-w-0">
+        {companies.length > 0 ? (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
               {companies.map((company) => (
                 <CompanyCard key={company.id} company={company} />
               ))}
             </div>
-          ) : (
-            <p className="text-center text-gray-600 dark:text-gray-400">No companies found matching your criteria.</p>
-          )}
-        </div>
+            
+            {totalPages > 1 && (
+              <div className="flex justify-center pt-8">
+                <PaginationControls
+                  currentPage={page}
+                  totalPages={totalPages}
+                />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">
+              No se encontraron empresas que coincidan con los criterios de búsqueda.
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Prueba ajustando los filtros para obtener más resultados.
+            </p>
+          </div>
+        )}
       </div>
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 flex justify-center">
-        <PaginationControls
-          currentPage={page}
-          totalPages={totalPages}
-        />
-      </div>
-    </Fragment>
+    </div>
   );
 }

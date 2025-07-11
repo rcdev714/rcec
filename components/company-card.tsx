@@ -1,7 +1,6 @@
 'use client'
 
 import { type Company } from '@/types/company'
-import { Card } from '@/components/ui/card'
 
 interface CompanyCardProps {
   company: Company
@@ -9,42 +8,59 @@ interface CompanyCardProps {
 
 export function CompanyCard({ company }: CompanyCardProps) {
   return (
-    <Card className="relative overflow-hidden rounded-lg shadow-lg dark:shadow-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 transform hover:scale-105 transition-all duration-300 ease-in-out">
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-gray-50 to-blue-100 dark:from-blue-950 dark:via-gray-950 dark:to-blue-900 opacity-10"></div>
-      <div className="relative p-6 flex flex-col justify-between h-full">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2 leading-tight">
+    <div className="bg-card border border-border rounded-lg p-6 hover:shadow-sm transition-shadow">
+      <div className="space-y-4">
+        {/* Company Name */}
+        <div className="space-y-1">
+          <h3 className="font-medium text-foreground leading-tight">
             {company.nombre_comercial || company.nombre}
-          </h2>
-          <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
-            <span className="font-semibold">RUC:</span> {company.ruc}
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            RUC: {company.ruc}
           </p>
         </div>
 
-        <div className="mt-4 space-y-1 text-base">
-          <p className="text-gray-700 dark:text-gray-300">
-            <span className="font-semibold">Activos:</span> {company.activos}
-          </p>
-          <p className="text-gray-700 dark:text-gray-300">
-            <span className="font-semibold">Patrimonio:</span> {company.patrimonio}
-          </p>
-          <p className="text-gray-700 dark:text-gray-300">
-            <span className="font-semibold">Utilidad Neta:</span> {company.utilidad_neta}
-          </p>
-          <p className="text-gray-700 dark:text-gray-300">
-            <span className="font-semibold">Total Gastos:</span> {company.total_gastos}
-          </p>
-          <p className="text-gray-700 dark:text-gray-300">
-            <span className="font-semibold">Provincia:</span> {company.provincia}
-          </p>
-          <p className="text-gray-700 dark:text-gray-300">
-            <span className="font-semibold">Número de Empleados:</span> {company.n_empleados}
-          </p>
-          <p className="text-gray-700 dark:text-gray-300">
-            <span className="font-semibold">Año Fiscal:</span> {company.anio}
-          </p>
+        {/* Financial Information */}
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Activos</p>
+              <p className="notion-text font-medium">{company.activos?.toLocaleString() || 'N/A'}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Patrimonio</p>
+              <p className="notion-text font-medium">{company.patrimonio?.toLocaleString() || 'N/A'}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Utilidad Neta</p>
+              <p className="notion-text font-medium">{company.utilidad_neta?.toLocaleString() || 'N/A'}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Total Gastos</p>
+              <p className="notion-text font-medium">{company.total_gastos?.toLocaleString() || 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Additional Details */}
+        <div className="pt-3 border-t border-border space-y-2">
+          <div className="flex justify-between items-center">
+            <p className="text-xs text-muted-foreground">Provincia</p>
+            <p className="notion-text-sm">{company.provincia}</p>
+          </div>
+          <div className="flex justify-between items-center">
+            <p className="text-xs text-muted-foreground">Empleados</p>
+            <p className="notion-text-sm">{company.n_empleados || 'N/A'}</p>
+          </div>
+          <div className="flex justify-between items-center">
+            <p className="text-xs text-muted-foreground">Año Fiscal</p>
+            <p className="notion-text-sm">{company.anio}</p>
+          </div>
         </div>
       </div>
-    </Card>
+    </div>
   )
 }

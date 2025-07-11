@@ -54,18 +54,24 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
   const totalPages = Math.ceil(totalCount / 12);
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        <h1 className="text-3xl font-bold mb-2 text-gray-800 dark:text-gray-200">
-          UNIBROKERS
-        </h1>
+    <div className="min-h-screen bg-background">
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-semibold text-foreground tracking-tight">
+            Empresas
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Explora y filtra empresas ecuatorianas por diversos criterios financieros y geográficos.
+          </p>
+        </div>
+        
+        <CompaniesUI
+          companies={companies}
+          totalCount={totalCount}
+          page={page}
+          totalPages={totalPages}
+        />
       </div>
-      <CompaniesUI
-        companies={companies}
-        totalCount={totalCount}
-        page={page}
-        totalPages={totalPages}
-      />
     </div>
   );
 }

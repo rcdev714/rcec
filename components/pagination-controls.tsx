@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback } from 'react'
 import { Button } from '@/components/ui/button'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
 
 interface PaginationControlsProps {
   currentPage: number
@@ -35,57 +36,65 @@ export function PaginationControls({
   )
 
   return (
-    <div className="flex items-center space-x-2">
+    <div className="flex items-center space-x-1">
       <Button
+        variant="outline"
+        size="sm"
         onClick={() => router.push(`?${createPageURL(1)}`)}
         disabled={currentPage === 1}
-        className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50 dark:bg-gray-600 dark:hover:bg-gray-500"
+        className="h-8 w-8 p-0"
       >
-        &lt;&lt;
+        <ChevronsLeft size={14} />
       </Button>
+      
       <Button
+        variant="outline"
+        size="sm"
         onClick={() => router.push(`?${createPageURL(currentPage - 1)}`)}
         disabled={currentPage === 1}
-        className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50 dark:bg-gray-600 dark:hover:bg-gray-500"
+        className="h-8 w-8 p-0"
       >
-        &lt;
+        <ChevronLeft size={14} />
       </Button>
 
       {startPage > 1 && (
-        <span className="text-gray-700 dark:text-gray-300">...</span>
+        <span className="px-2 text-xs text-muted-foreground">...</span>
       )}
 
       {pages.map((page) => (
         <Button
           key={page}
+          variant={currentPage === page ? "default" : "outline"}
+          size="sm"
           onClick={() => router.push(`?${createPageURL(page)}`)}
-          className={`py-2 px-4 rounded font-bold ${
-            currentPage === page
-              ? 'bg-gray-800 text-white dark:bg-gray-400 dark:text-gray-900'
-              : 'bg-gray-200 hover:bg-gray-300 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200'
-          }`}
+          className="h-8 min-w-8 text-xs"
         >
           {page}
         </Button>
       ))}
 
       {endPage < totalPages && (
-        <span className="text-gray-700 dark:text-gray-300">...</span>
+        <span className="px-2 text-xs text-muted-foreground">...</span>
       )}
 
       <Button
+        variant="outline"
+        size="sm"
         onClick={() => router.push(`?${createPageURL(currentPage + 1)}`)}
         disabled={currentPage === totalPages}
-        className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50 dark:bg-gray-600 dark:hover:bg-gray-500"
+        className="h-8 w-8 p-0"
       >
-        &gt;
+        <ChevronRight size={14} />
       </Button>
+      
       <Button
+        variant="outline"
+        size="sm"
         onClick={() => router.push(`?${createPageURL(totalPages)}`)}
         disabled={currentPage === totalPages}
-        className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50 dark:bg-gray-600 dark:hover:bg-gray-500"
+        className="h-8 w-8 p-0"
       >
-        &gt;&gt;
+        <ChevronsRight size={14} />
       </Button>
     </div>
   )

@@ -44,3 +44,4 @@ supabase
 .vscode
 .env.local
 company-data
+scripts-data
