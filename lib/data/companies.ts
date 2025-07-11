@@ -72,7 +72,7 @@ export async function fetchCompanies(params: SearchParams): Promise<PaginatedRes
 
   // Exact match filters.
   if (params.provincia) {
-    query = query.eq("provincia", params.provincia);
+    query = query.eq("provincia", params.provincia.toUpperCase());
   }
   if (params.anio) {
     query = query.eq("anio", parseInt(params.anio, 10));

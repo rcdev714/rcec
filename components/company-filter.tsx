@@ -31,6 +31,14 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
     }));
   };
 
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFilters((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
   // When the user clicks "Apply", call the passed-in onApplyFilters function
   // which will update the URL and trigger a server-side re-fetch.
   const handleApply = () => {
@@ -78,15 +86,39 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
       <div className="grid grid-cols-1 gap-4 mb-4">
         <div>
           <Label htmlFor="provincia" className="text-gray-700 dark:text-gray-300">Provincia</Label>
-          <Input
-            type="text"
+          <select
             id="provincia"
             name="provincia"
             value={filters.provincia as string}
-            onChange={handleFilterChange}
-            placeholder="Provincia"
+            onChange={handleSelectChange}
             className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 ease-in-out"
-          />
+          >
+            <option value="">Todas las provincias</option>
+            <option value="AZUAY">Azuay</option>
+            <option value="BOLIVAR">Bolívar</option>
+            <option value="CAÑAR">Cañar</option>
+            <option value="CARCHI">Carchi</option>
+            <option value="CHIMBORAZO">Chimborazo</option>
+            <option value="COTOPAXI">Cotopaxi</option>
+            <option value="EL ORO">El Oro</option>
+            <option value="ESMERALDAS">Esmeraldas</option>
+            <option value="GALAPAGOS">Galápagos</option>
+            <option value="GUAYAS">Guayas</option>
+            <option value="IMBABURA">Imbabura</option>
+            <option value="LOJA">Loja</option>
+            <option value="LOS RIOS">Los Ríos</option>
+            <option value="MANABI">Manabí</option>
+            <option value="MORONA SANTIAGO">Morona Santiago</option>
+            <option value="NAPO">Napo</option>
+            <option value="ORELLANA">Orellana</option>
+            <option value="PASTAZA">Pastaza</option>
+            <option value="PICHINCHA">Pichincha</option>
+            <option value="SANTA ELENA">Santa Elena</option>
+            <option value="SANTO DOMINGO DE LOS TSACHILAS">Santo Domingo de los Tsáchilas</option>
+            <option value="SUCUMBIOS">Sucumbíos</option>
+            <option value="TUNGURAHUA">Tungurahua</option>
+            <option value="ZAMORA CHINCHIPE">Zamora Chinchipe</option>
+          </select>
         </div>
       </div>
       <div className="grid grid-cols-1 gap-4 mb-4">
