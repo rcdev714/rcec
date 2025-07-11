@@ -172,6 +172,105 @@
     text-decoration-color: rgb(37 37 37) !important;
   }
   
+  /* Fix any remaining yellow text issues */
+  h1, h2, h3, h4, h5, h6 {
+    color: rgb(37 37 37) !important;
+  }
+  
+  p, span, div {
+    color: inherit !important;
+  }
+  
+  /* Ensure proper text colors for all elements */
+  * {
+    color: inherit !important;
+  }
+  
+  /* Fix button text visibility - CRITICAL OVERRIDE */
+  button {
+    color: inherit !important;
+  }
+  
+  /* Primary button - force white text on dark background */
+  a[class*="bg-primary"],
+  button[class*="bg-primary"],
+  .bg-primary,
+  [class*="bg-primary"] {
+    color: white !important;
+    background-color: rgb(37 37 37) !important;
+  }
+  
+  a[class*="bg-primary"] *,
+  button[class*="bg-primary"] *,
+  .bg-primary *,
+  [class*="bg-primary"] * {
+    color: white !important;
+  }
+  
+  /* Secondary/outline buttons */
+  button[class*="border"],
+  button[class*="outline"],
+  a[class*="border"] {
+    color: rgb(37 37 37) !important;
+    border-color: rgb(37 37 37) !important;
+  }
+  
+  /* Override any conflicting button text colors */
+  button span,
+  a span,
+  button div,
+  a div {
+    color: inherit !important;
+  }
+  
+  /* Specific override for primary button text */
+  .bg-primary.text-primary-foreground,
+  a.bg-primary,
+  button.bg-primary {
+    color: white !important;
+  }
+  
+  /* Force visibility on all button content */
+  button *,
+  a[class*="bg-"] * {
+    color: inherit !important;
+  }
+  
+  /* White background counter styling */
+  .bg-white .text-black,
+  .bg-white .text-black * {
+    color: black !important;
+  }
+  
+  .bg-white .text-gray-600 {
+    color: rgb(75 85 99) !important;
+  }
+  
+  /* Override specific yellow classes that might be applied */
+  .text-yellow-100,
+  .text-yellow-200,
+  .text-yellow-300,
+  .text-yellow-400,
+  .text-yellow-500,
+  .text-yellow-600,
+  .text-yellow-700,
+  .text-yellow-800,
+  .text-yellow-900 {
+    color: rgb(37 37 37) !important;
+  }
+  
+  /* Force proper typography colors */
+  .font-bold,
+  .font-semibold,
+  .font-medium {
+    color: rgb(37 37 37) !important;
+  }
+  
+  /* Ensure muted text is properly colored */
+  .text-muted-foreground {
+    color: rgb(107 114 126) !important;
+  }
+  
   /* Fix yellow input borders - use gray/black instead */
   input:focus,
   input:focus-visible,

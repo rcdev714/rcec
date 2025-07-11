@@ -34,6 +34,26 @@ interface PaginatedResponse {
 const ITEMS_PER_PAGE = 12;
 
 /**
+ * Fetches the total count of companies in the database.
+ *
+ * @returns A promise that resolves to the total company count.
+ */
+export async function fetchTotalCompanyCount(): Promise<number> {
+  const supabase = await createClient();
+
+  const { count, error } = await supabase
+    .from("latest_companies")
+    .select("*", { count: "estimated", head: true });
+
+  if (error) {
+    console.error("Error fetching total company count:", error);
+    throw new Error("Could not fetch total company count.");
+  }
+
+  return count || 0;
+}
+
+/**
  * Fetches companies from the database with server-side
  * filtering and pagination.
  *
