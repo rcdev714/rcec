@@ -65,11 +65,11 @@ export default async function Home() {
             <div className="space-y-8">
               <div className="space-y-6">
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground tracking-tight leading-tight">
-                  Convierte tus ideas en{" "}
-                  <span className="text-primary">análisis empresarial</span>
+                  Base de Datos para{" "}
+                  <span className="text-primary">Análisis Empresarial</span>
                 </h1>
                 <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-xl">
-                  ¿Qué descubrirás? Las posibilidades son infinitas con nuestra base de datos completa de empresas ecuatorianas.
+                  Sistema avanzado de busqueda y filtrado de empresas para el analisis de datos financieros.
                 </p>
               </div>
               
