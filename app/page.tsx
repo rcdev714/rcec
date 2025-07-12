@@ -28,14 +28,7 @@ export default async function Home() {
     }
   ];
 
-  const companies = [
-    { name: "Google", logo: "🔍" },
-    { name: "Microsoft", logo: "🖥️" },
-    { name: "Apple", logo: "🍎" },
-    { name: "Amazon", logo: "📦" },
-    { name: "Meta", logo: "👥" },
-    { name: "Netflix", logo: "🎬" }
-  ];
+  
 
   return (
     <div className="min-h-screen bg-background">
@@ -143,11 +136,8 @@ export default async function Home() {
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight mb-4">
-              Herramientas Poderosas
+              Sistema de Analisis Financiero
             </h2>
-            <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto">
-              Todo lo que necesitas para analizar el panorama empresarial ecuatoriano
-            </p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -167,46 +157,9 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-20 border-t border-gray-300">
-        <div className="max-w-4xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
-            <div className="space-y-3">
-              <div className="text-4xl md:text-5xl font-bold text-primary">
-                {totalCompanyCount.toLocaleString()}+
-              </div>
-              <div className="text-muted-foreground text-lg">Empresas registradas</div>
-            </div>
-            <div className="space-y-3">
-              <div className="text-4xl md:text-5xl font-bold text-primary">50+</div>
-              <div className="text-muted-foreground text-lg">Métricas disponibles</div>
-            </div>
-            <div className="space-y-3">
-              <div className="text-4xl md:text-5xl font-bold text-primary">24/7</div>
-              <div className="text-muted-foreground text-lg">Acceso disponible</div>
-            </div>
-          </div>
-        </div>
-      </section>
+     
 
-      {/* Trusted By Section */}
-      <section className="py-20 border-t border-gray-300">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-12">
-            <p className="text-muted-foreground text-lg mb-8">
-              Confiado por equipos de análisis en empresas líderes
-            </p>
-            <div className="flex flex-wrap justify-center items-center gap-8 md:gap-12">
-              {companies.map((company, index) => (
-                <div key={index} className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors">
-                  <span className="text-2xl">{company.logo}</span>
-                  <span className="font-semibold">{company.name}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+      
     </div>
   );
 }
