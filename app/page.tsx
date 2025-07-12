@@ -40,7 +40,7 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border/60 bg-background">
+      <header className="border-b border-gray-300 bg-background">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="inline-block">
@@ -122,10 +122,10 @@ export default async function Home() {
               {/* Floating cards for visual interest */}
              
               
-              <div className="absolute bottom-4 -right-4 z-20 bg-card border border-border rounded-xl p-6 shadow-lg">
+              <div className="absolute bottom-4 -right-4 z-20 bg-card border border-gray-300 rounded-xl p-6 shadow-lg">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
-                    <span className="text-secondary-foreground text-base font-semibold">F</span>
+                  <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                    <span className="text-gray-700 text-base font-semibold">F</span>
                   </div>
                   <div>
                     <div className="text-lg font-bold text-foreground">Filtros Avanzados</div>
@@ -139,7 +139,7 @@ export default async function Home() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 border-t border-border/60">
+      <section className="py-20 border-t border-gray-300">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight mb-4">
@@ -168,7 +168,7 @@ export default async function Home() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-20 border-t border-border/60">
+      <section className="py-20 border-t border-gray-300">
         <div className="max-w-4xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
             <div className="space-y-3">
@@ -190,7 +190,7 @@ export default async function Home() {
       </section>
 
       {/* Trusted By Section */}
-      <section className="py-20 border-t border-border/60">
+      <section className="py-20 border-t border-gray-300">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-12">
             <p className="text-muted-foreground text-lg mb-8">

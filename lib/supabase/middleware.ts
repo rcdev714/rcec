@@ -40,10 +40,15 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Define public paths that don't require authentication
+  const publicPaths = ['/']
+  const isPublicPath = publicPaths.includes(request.nextUrl.pathname)
+
   if (
     !user &&
     !request.nextUrl.pathname.startsWith('/auth') &&
-    !request.nextUrl.pathname.startsWith('/api')
+    !request.nextUrl.pathname.startsWith('/api') &&
+    !isPublicPath
   ) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone()
