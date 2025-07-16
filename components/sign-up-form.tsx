@@ -37,11 +37,16 @@ export function SignUpForm({
     }
 
     try {
+      // Use production URL if available, otherwise use current origin
+      const redirectUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://unibrokers.netlify.app/auth/confirm'
+        : `${window.location.origin}/auth/confirm`;
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm`,
+          emailRedirectTo: redirectUrl,
         },
       });
       if (error) throw error;

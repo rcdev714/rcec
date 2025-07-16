@@ -51,3 +51,4 @@ Auth error: access_denied Email link is invalid or has expired
  GET /auth/confirm?token_hash=pkce_160e7b82142b06df83c508a316827f53b6c2a3d0218e5475775262de&type=email 307 in 198ms
  GET /companies 200 in 484ms
  GET /favicon.ico 200 in 5ms
+
