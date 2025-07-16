@@ -10,7 +10,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function LoginForm({
@@ -21,24 +20,56 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const supabase = createClient();
     setIsLoading(true);
     setError(null);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
+      const supabase = createClient();
+      
+      // Sign in with email and password
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
         password,
       });
-      if (error) throw error;
-      // Update this route to redirect to an authenticated route. The user already has an active session.
-      router.push("/companies");
+
+      if (signInError) {
+        console.error("Sign in error:", signInError);
+        // Provide user-friendly error messages
+        if (signInError.message.includes("Invalid login credentials")) {
+          setError("Credenciales inválidas. Por favor, verifica tu correo y contraseña.");
+        } else if (signInError.message.includes("Email not confirmed")) {
+          setError("Tu correo electrónico no ha sido confirmado. Por favor, revisa tu bandeja de entrada.");
+        } else {
+          setError(signInError.message);
+        }
+        return;
+      }
+
+      if (!data.user) {
+        setError("No se pudo iniciar sesión. Por favor, intenta nuevamente.");
+        return;
+      }
+
+      // Check if the session was created successfully
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        console.error("Session error:", sessionError);
+        setError("Error al crear la sesión. Por favor, intenta nuevamente.");
+        return;
+      }
+
+      console.log("Login successful, redirecting to /companies");
+      
+      // Force a hard navigation to ensure middleware runs
+      window.location.href = "/companies";
+      
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      console.error("Unexpected error:", error);
+      setError(error instanceof Error ? error.message : "Ocurrió un error inesperado");
     } finally {
       setIsLoading(false);
     }
@@ -60,6 +91,7 @@ export function LoginForm({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="h-10"
+                  autoComplete="email"
                 />
               </div>
               <div className="grid gap-2">
@@ -79,9 +111,14 @@ export function LoginForm({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-10"
+                  autoComplete="current-password"
                 />
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
+              {error && (
+                <div className="rounded-md bg-red-50 p-3">
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              )}
               <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={isLoading}>
                 {isLoading ? "Iniciando sesión..." : "Iniciar sesión"}
               </Button>
