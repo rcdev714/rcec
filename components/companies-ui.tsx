@@ -6,6 +6,7 @@ import { CompanyFilter } from '@/components/company-filter';
 import { CompanyCard } from '@/components/company-card';
 import { PaginationControls } from '@/components/pagination-controls';
 
+
 interface CompaniesUIProps {
   companies: Company[];
   totalCount: number;

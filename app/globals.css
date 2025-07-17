@@ -182,8 +182,8 @@
   }
   
   /* Ensure proper text colors for all elements */
-  * {
-    color: inherit !important;
+  *:not(button):not(a) {
+    color: inherit;
   }
   
   /* Fix button text visibility - CRITICAL OVERRIDE */
@@ -281,13 +281,13 @@
     outline: none !important;
     border-color: rgb(37 37 37) !important;
     box-shadow: 0 0 0 1px rgb(37 37 37) !important;
-    ring-color: rgb(37 37 37) !important;
+    
   }
   
   /* Override any ring colors */
   .focus-visible\:ring-ring:focus-visible,
   .focus-visible\:ring-1:focus-visible {
-    ring-color: rgb(37 37 37) !important;
+    
     --tw-ring-color: rgb(37 37 37) !important;
   }
   

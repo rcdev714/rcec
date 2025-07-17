@@ -48,7 +48,7 @@ export default async function ErrorPage({
             <Link href="/auth/login">Volver a iniciar sesión</Link>
           </Button>
           <Button asChild variant="outline" className="w-full">
-            <Link href="/auth/sign-up">Crear cuenta nueva</Link>
+            <Link href="/auth/sign-up">Crear nueva cuenta</Link>
           </Button>
         </div>
       </div>

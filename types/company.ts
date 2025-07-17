@@ -80,6 +80,10 @@ export interface Company {
   deuda_total: number | null;
   deuda_total_c_plazo: number | null;
   total_gastos: number | null;
+  total_activos_corrientes: number | null;
+  total_pasivos_corrientes: number | null;
+  total_activos_no_corrientes: number | null;
+  total_pasivos_no_corrientes: number | null;
   ciiu: string | null;
   descripcion: string | null;
   id_segmento: string | null;

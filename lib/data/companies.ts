@@ -31,6 +31,14 @@ interface PaginatedResponse {
   totalCount: number;
 }
 
+interface FinancialYearData {
+  anio: number;
+  ingresos_ventas_netas: number;
+  utilidad_integral_neta: number;
+  impuesto_renta: number;
+  utilidad_antes_impuestos: number;
+}
+
 const ITEMS_PER_PAGE = 12;
 
 /**
@@ -160,4 +168,96 @@ export async function fetchCompanies(params: SearchParams): Promise<PaginatedRes
     companies: data as Company[],
     totalCount: count || 0,
   };
+}
+
+/**
+ * Debug function to explore available tables and their data
+ */
+async function exploreCompanyTables() {
+  const supabase = await createClient();
+  
+  // Try some other possible table names for historical data
+  const tableNames = [
+    "estado_de_resultados",
+    "balance_general", 
+    "company_financials", 
+    "financial_statements", 
+    "company_years",
+    "historical_companies",
+    "companies_history",
+    "empresa_data"
+  ];
+  
+  for (const tableName of tableNames) {
+    try {
+      const { data, error } = await supabase
+        .from(tableName)
+        .select("*")
+        .limit(3);
+        
+      if (!error && data) {
+        console.log(`Table ${tableName} exists with structure:`, data);
+      }
+    } catch {
+      console.log(`Table ${tableName} does not exist or no access`);
+    }
+  }
+}
+
+export async function fetchCompanyHistory(ruc: string): Promise<Company[]> {
+  const supabase = await createClient();
+
+  console.log("Searching for RUC:", ruc);
+  
+  // Debug: explore available tables
+  await exploreCompanyTables();
+
+  // First, get the company basic info from latest_companies
+  const { data: companyData, error: companyError } = await supabase
+    .from("latest_companies")
+    .select("*")
+    .eq("ruc", ruc)
+    .single();
+
+  if (companyError || !companyData) {
+    console.error("Company not found:", companyError);
+    return [];
+  }
+
+  console.log("Found company:", companyData);
+
+  // Now get historical financial data from estado_de_resultados table
+  const { data: financialData, error: financialError } = await supabase
+    .from("estado_de_resultados")
+    .select("*")
+    .eq("company_id", companyData.id)
+    .order("anio", { ascending: false });
+
+  if (financialError) {
+    console.error("Error fetching financial history:", financialError);
+    // Fallback to just the company data if financial data fails
+    return [companyData as Company];
+  }
+
+  console.log("Found financial data:", financialData);
+
+  // If no financial history found, return just the company data
+  if (!financialData || financialData.length === 0) {
+    console.log("No financial history found, returning company data only");
+    return [companyData as Company];
+  }
+
+  // Combine company data with each year's financial data
+  const combinedHistory = financialData.map((yearData: FinancialYearData) => ({
+    ...companyData,
+    anio: yearData.anio,
+    ingresos_ventas: yearData.ingresos_ventas_netas,
+    utilidad_neta: yearData.utilidad_integral_neta,
+    impuesto_renta: yearData.impuesto_renta,
+    utilidad_an_imp: yearData.utilidad_antes_impuestos,
+    // Keep other company fields from latest_companies
+  }));
+
+  console.log("Combined history:", combinedHistory);
+  return combinedHistory as Company[];
 }

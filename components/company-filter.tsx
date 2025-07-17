@@ -307,10 +307,10 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
       )}
 
       {/* Action Buttons */}
-      <div className="flex gap-2 pt-2">
+      <div className="flex gap-2 pt-2 justify-center">
         <Button
           onClick={handleApply}
-          className="flex-1 bg-red-600 text-white hover:bg-red-700 text-sm h-9"
+          className="flex-1 bg-danger text-danger-foreground hover:bg-danger/90 text-sm h-9"
         >
           Aplicar filtros
         </Button>
