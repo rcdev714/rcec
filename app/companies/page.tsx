@@ -72,25 +72,23 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-6 py-4">
         {/* Header with logo and auth */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between">
           <Link href="/" className="inline-block">
             <Image
               src="/image.png"
               alt="UNIBROKERS Logo"
               width={120}
               height={36}
-              className="h-6 w-auto"
+              className="h-6 w-auto "
             />
           </Link>
           <AuthButton />
         </div>
         
-        <div className="mb-8">
-          <h1 className="text-3xl font-semibold text-foreground tracking-tight">
-            Empresas
-          </h1>
+        <div className="mb-4">
+          
           <p className="text-muted-foreground mt-2">
-            Explora y filtra empresas ecuatorianas por diversos criterios financieros y geográficos.
+            Explora los registros financieros empresariales
           </p>
         </div>
         

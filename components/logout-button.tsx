@@ -40,7 +40,7 @@ export function LogoutButton() {
       variant="ghost"
       size="sm"
       disabled={isLoggingOut}
-      className="bg-white border border-gray-300 text-gray-400 hover:text-gray-600 hover:border-gray-400 hover:bg-gray-50 hover:!bg-gray-50"
+      className="bg-white border border-gray-300 text-gray-400 hover:text-gray-600 hover:border-gray-400 hover:!bg-gray-50"
     >
       {isLoggingOut ? "Logging out..." : "Logout"}
     </Button>

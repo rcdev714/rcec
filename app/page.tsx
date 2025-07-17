@@ -3,11 +3,12 @@ import Image from "next/image";
 import { AuthButton } from "@/components/auth-button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnimatedCounter } from "@/components/animated-counter";
-import { fetchTotalCompanyCount } from "@/lib/data/companies";
+// import { fetchTotalCompanyCount } from "@/lib/data/companies";
 
 export default async function Home() {
   // Get the real company count from the database
-  const totalCompanyCount = await fetchTotalCompanyCount();
+  // const totalCompanyCount = await fetchTotalCompanyCount();
+  const totalFinancialRecords = 1552466;
   
   const features = [
     {
@@ -62,7 +63,7 @@ export default async function Home() {
                   <span className="text-primary">Análisis Empresarial</span>
                 </h1>
                 <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-xl">
-                  Sistema avanzado de busqueda y filtrado de empresas para el analisis de datos financieros.
+                  Sistema avanzado de busqueda y filtrado de registros financieros empresariales para el analisis de datos.
                 </p>
               </div>
               
@@ -70,14 +71,12 @@ export default async function Home() {
               <div className="bg-white border border-gray-300 rounded-2xl p-6 max-w-md shadow-lg">
                 <div className="text-center space-y-2">
                   <div className="text-5xl md:text-6xl font-bold text-black">
-                    <AnimatedCounter targetNumber={totalCompanyCount} className="font-bold text-black" />
+                    <AnimatedCounter targetNumber={totalFinancialRecords} className="font-bold text-black" />
                   </div>
-                  <div className="text-lg font-semibold text-black">
-                    Empresas disponibles
+                  <div className="text-lg text-black">
+                    Registros Financieros Empresariales
                   </div>
-                  <div className="text-sm text-gray-600">
-                    Base de datos actualizada en tiempo real
-                  </div>
+            
                 </div>
               </div>
               
@@ -118,11 +117,11 @@ export default async function Home() {
               <div className="absolute bottom-4 -right-4 z-20 bg-card border border-gray-300 rounded-xl p-6 shadow-lg">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                    <span className="text-gray-700 text-base font-semibold">F</span>
+                    <span className="text-gray-700 text-base font-semibold">+</span>
                   </div>
                   <div>
-                    <div className="text-lg font-bold text-foreground">Filtros Avanzados</div>
-                    <div className="text-sm text-muted-foreground">50+ métricas</div>
+                    <div className="text-lg font-bold text-foreground">Busqueda</div>
+                    <div className="text-sm text-muted-foreground">14 filtros disponibles</div>
                   </div>
                 </div>
               </div>

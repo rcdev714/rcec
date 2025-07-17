@@ -45,3 +45,8 @@ supabase
 .env.local
 company-data
 scripts-data
+
+# Local Netlify folder
+.netlify
+
+SUPABASE_AUTH_FIX.md
