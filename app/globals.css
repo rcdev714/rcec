@@ -187,9 +187,9 @@
   }
   
   /* Fix button text visibility - CRITICAL OVERRIDE */
-  button {
+  /* button {
     color: inherit !important;
-  }
+  } */
   
   /* Primary button - force white text on dark background */
   a[class*="bg-primary"],
@@ -231,10 +231,10 @@
   }
   
   /* Force visibility on all button content */
-  button *,
+  /* button *,
   a[class*="bg-"] * {
     color: inherit !important;
-  }
+  } */
   
   /* White background counter styling */
   .bg-white .text-black,

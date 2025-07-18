@@ -170,47 +170,10 @@ export async function fetchCompanies(params: SearchParams): Promise<PaginatedRes
   };
 }
 
-/**
- * Debug function to explore available tables and their data
- */
-async function exploreCompanyTables() {
-  const supabase = await createClient();
-  
-  // Try some other possible table names for historical data
-  const tableNames = [
-    "estado_de_resultados",
-    "balance_general", 
-    "company_financials", 
-    "financial_statements", 
-    "company_years",
-    "historical_companies",
-    "companies_history",
-    "empresa_data"
-  ];
-  
-  for (const tableName of tableNames) {
-    try {
-      const { data, error } = await supabase
-        .from(tableName)
-        .select("*")
-        .limit(3);
-        
-      if (!error && data) {
-        console.log(`Table ${tableName} exists with structure:`, data);
-      }
-    } catch {
-      console.log(`Table ${tableName} does not exist or no access`);
-    }
-  }
-}
-
 export async function fetchCompanyHistory(ruc: string): Promise<Company[]> {
   const supabase = await createClient();
 
   console.log("Searching for RUC:", ruc);
-  
-  // Debug: explore available tables
-  await exploreCompanyTables();
 
   // First, get the company basic info from latest_companies
   const { data: companyData, error: companyError } = await supabase
