@@ -88,4 +88,8 @@ export interface Company {
   descripcion: string | null;
   id_segmento: string | null;
   segmento: string | null;
+  director_nombre: string | null;
+  director_telefono: string | null;
+  director_representante: string | null;
+  director_cargo: string | null;
 } 

@@ -79,7 +79,7 @@ export async function fetchCompanies(params: SearchParams): Promise<PaginatedRes
   // We select all columns and request the total count for
   // pagination.
   let query = supabase
-    .from("latest_companies")
+    .from("latest_companies_with_directors")
     .select("*", { count: "estimated" });
 
   // Apply filters based on search parameters.
@@ -177,7 +177,7 @@ export async function fetchCompanyHistory(ruc: string): Promise<Company[]> {
 
   // First, get the company basic info from latest_companies
   const { data: companyData, error: companyError } = await supabase
-    .from("latest_companies")
+    .from("latest_companies_with_directors")
     .select("*")
     .eq("ruc", ruc)
     .single();

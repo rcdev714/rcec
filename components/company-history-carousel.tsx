@@ -54,9 +54,15 @@ export default function CompanyHistoryCarousel({ history, ruc }: CompanyHistoryC
           </Link>
         </div>
 
-        <h1 className="text-2xl font-semibold text-foreground mb-8 text-center md:text-left">
+        <h1 className="text-2xl font-semibold text-foreground mb-2 text-center md:text-left">
           Historia Financiera: {company.nombre_comercial || company.nombre} (RUC: {ruc})
         </h1>
+        
+        <div className="text-center md:text-left mb-8 text-sm text-muted-foreground">
+          <p>Director: {company.director_representante || 'N/A'}</p>
+          <p>Cargo: {company.director_cargo || 'N/A'}</p>
+          <p>Teléfono: {company.director_telefono || 'N/A'}</p>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-x-12 items-start">
           {/* Left Column: Carousel/Card */}
