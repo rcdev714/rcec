@@ -66,7 +66,7 @@ export function CompanyCard({ company }: CompanyCardProps) {
           {/* Director Information */}
           <div className="pt-3 border-t border-border space-y-2">
             <div className="flex justify-between items-center">
-              <p className="text-xs text-muted-foreground">Director</p>
+              <p className="text-xs text-muted-foreground">Contacto</p>
               <p className="notion-text-sm truncate">{company.director_representante || 'N/A'}</p>
             </div>
             <div className="flex justify-between items-center">
