@@ -58,10 +58,14 @@ export default function CompanyHistoryCarousel({ history, ruc }: CompanyHistoryC
           Historia Financiera: {company.nombre_comercial || company.nombre} (RUC: {ruc})
         </h1>
         
-        <div className="text-center md:text-left mb-8 text-sm text-muted-foreground">
-          <p>Director: {company.director_representante || 'N/A'}</p>
-          <p>Cargo: {company.director_cargo || 'N/A'}</p>
-          <p>Teléfono: {company.director_telefono || 'N/A'}</p>
+        {/* Director Info Box */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4 my-6 text-center md:text-left shadow-sm">
+          <h2 className="text-lg font-semibold text-gray-800 mb-2">Información de Contacto</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-base">
+            <p><span className="font-medium text-gray-600">Director:</span> {company.director_representante || 'N/A'}</p>
+            <p><span className="font-medium text-gray-600">Cargo:</span> {company.director_cargo || 'N/A'}</p>
+            <p><span className="font-medium text-gray-600">Teléfono:</span> {company.director_telefono || 'N/A'}</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-x-12 items-start">

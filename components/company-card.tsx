@@ -62,6 +62,22 @@ export function CompanyCard({ company }: CompanyCardProps) {
               <p className="notion-text-sm">{company.anio}</p>
             </div>
           </div>
+
+          {/* Director Information */}
+          <div className="pt-3 border-t border-border space-y-2">
+            <div className="flex justify-between items-center">
+              <p className="text-xs text-muted-foreground">Director</p>
+              <p className="notion-text-sm truncate">{company.director_representante || 'N/A'}</p>
+            </div>
+            <div className="flex justify-between items-center">
+              <p className="text-xs text-muted-foreground">Cargo</p>
+              <p className="notion-text-sm truncate">{company.director_cargo || 'N/A'}</p>
+            </div>
+            <div className="flex justify-between items-center">
+              <p className="text-xs text-muted-foreground">Teléfono</p>
+              <p className="notion-text-sm truncate">{company.director_telefono || 'N/A'}</p>
+            </div>
+          </div>
         </div>
       </div>
     </Link>
