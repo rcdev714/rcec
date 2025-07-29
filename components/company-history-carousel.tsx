@@ -94,28 +94,28 @@ export default function CompanyHistoryCarousel({ history, ruc }: CompanyHistoryC
           {/* Left Sidebar - Contact Information */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6">
-              <div className="flex items-center gap-2 mb-6">
-                <User className="h-5 w-5 text-gray-600" />
-                <h2 className="text-lg font-semibold text-gray-900">Información de Contacto</h2>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <User className="h-5 w-5 text-gray-600" />
+                  <h2 className="text-lg font-semibold text-gray-900">Datos de Contacto</h2>
+                </div>
+                {company.director_representante && (
+                  <a
+                    href={`https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(company.director_representante)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                  >
+                    <span className="!text-white">Buscar</span>
+                    <LinkedinIcon className="h-3 w-3 text-white" />
+                  </a>
+                )}
               </div>
               
               <div className="space-y-6">
                 {/* Contact Person */}
                 <div>
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <p className="text-sm font-medium text-gray-500">Contacto</p>
-                    {company.director_representante && (
-                      <a
-                        href={`https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(company.director_representante)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-                      >
-                        <span className="!text-white">Buscar</span>
-                        <LinkedinIcon className="h-3 w-3 text-white" />
-                      </a>
-                    )}
-                  </div>
+                  <p className="text-sm font-medium text-gray-500 mb-2">Persona</p>
                   <p className="text-base font-medium text-gray-900">
                     {company.director_representante || 'No especificado'}
                   </p>
@@ -133,7 +133,7 @@ export default function CompanyHistoryCarousel({ history, ruc }: CompanyHistoryC
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Phone className="h-4 w-4 text-gray-500" />
-                    <p className="text-sm font-medium text-gray-500">Teléfono</p>
+                    <p className="text-sm font-medium text-gray-500">Teléfono Empresa</p>
                   </div>
                   <p className="text-base text-gray-900">
                     {company.director_telefono || 'No especificado'}
