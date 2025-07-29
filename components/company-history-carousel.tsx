@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Company } from "@/types/company";
 import { CompanyCard } from "@/components/company-card";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, LinkedinIcon, Building2, User, Phone } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
@@ -23,14 +23,23 @@ export default function CompanyHistoryCarousel({ history, ruc }: CompanyHistoryC
 
   if (!history || history.length === 0) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <h1 className="text-3xl font-semibold text-foreground mb-4">
-            No se encontraron datos para RUC: {ruc}
-          </h1>
-          <Link href="/companies" className="text-blue-600 hover:underline">
-            ← Volver a empresas
-          </Link>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="text-center py-12">
+            <Building2 className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              No se encontraron datos
+            </h1>
+            <p className="text-xl text-gray-600 mb-8">
+              RUC: {ruc}
+            </p>
+            <Link 
+              href="/companies" 
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              ← Volver a empresas
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -42,120 +51,237 @@ export default function CompanyHistoryCarousel({ history, ruc }: CompanyHistoryC
   const company = history[currentIndex];
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-6 py-4">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <Link href="/" className="inline-block">
-            <Image src="/image.png" alt="UNIBROKERS Logo" width={120} height={36} className="h-6 w-auto" />
-          </Link>
-          <Link href="/companies" className="text-blue-600 hover:underline">
-            ← Volver a empresas
-          </Link>
-        </div>
+        <header className="mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <Link href="/" className="inline-block">
+              <Image 
+                src="/image.png" 
+                alt="UNIBROKERS Logo" 
+                width={140} 
+                height={42} 
+                className="h-8 w-auto" 
+              />
+            </Link>
+            <Link 
+              href="/companies" 
+              className="inline-flex items-center text-white hover:text-blue-700 font-medium transition-colors"
+            >
+              ← Volver a empresas
+            </Link>
+          </div>
 
-        <h1 className="text-2xl font-semibold text-foreground mb-2 text-center md:text-left">
-          Historia Financiera: {company.nombre_comercial || company.nombre} (RUC: {ruc})
-        </h1>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Building2 className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
+                  {company.nombre_comercial || company.nombre}
+                </h1>
+                <p className="text-gray-600 font-medium">RUC: {ruc}</p>
+                <p className="text-sm text-gray-500 mt-1">Historia Financiera</p>
+              </div>
+            </div>
+          </div>
+        </header>
         
-        {/* Director Info Box */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4 my-6 text-center md:text-left shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">Información de Contacto</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-base">
-            <p><span className="font-medium text-gray-600">Contacto:</span> {company.director_representante || 'N/A'}</p>
-            <p><span className="font-medium text-gray-600">Cargo:</span> {company.director_cargo || 'N/A'}</p>
-            <p><span className="font-medium text-gray-600">Teléfono:</span> {company.director_telefono || 'N/A'}</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-x-12 items-start">
-          {/* Left Column: Carousel/Card */}
-          <div className="lg:col-span-2">
-            {history.length > 1 ? (
-              <div className="relative max-w-md mx-auto lg:max-w-none lg:mx-0">
-                {/* Year indicator */}
-                <div className="text-center mb-4">
-                  <span className="text-sm text-muted-foreground">
-                    Año {currentIndex + 1} de {history.length}
-                  </span>
+        {/* Main Layout with Sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Left Sidebar - Contact Information */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6">
+              <div className="flex items-center gap-2 mb-6">
+                <User className="h-5 w-5 text-gray-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Información de Contacto</h2>
+              </div>
+              
+              <div className="space-y-6">
+                {/* Contact Person */}
+                <div>
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <p className="text-sm font-medium text-gray-500">Contacto</p>
+                    {company.director_representante && (
+                      <a
+                        href={`https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(company.director_representante)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                      >
+                        <span className="!text-white">Buscar</span>
+                        <LinkedinIcon className="h-3 w-3 text-white" />
+                      </a>
+                    )}
+                  </div>
+                  <p className="text-base font-medium text-gray-900">
+                    {company.director_representante || 'No especificado'}
+                  </p>
                 </div>
-                
-                {/* Carousel Navigation */}
-                <button onClick={prev} className="absolute -left-4 md:-left-12 top-1/2 -translate-y-1/2 p-2 bg-white text-black border rounded-full z-10 transition-colors hover:bg-gray-200">
-                  <ChevronLeft size={24} />
-                </button>
-                <button onClick={next} className="absolute -right-4 md:-right-12 top-1/2 -translate-y-1/2 p-2 bg-white text-black border rounded-full z-10 transition-colors hover:bg-gray-200">
-                  <ChevronRight size={24} />
-                </button>
 
-                {/* Expanded Card */}
-                <div className="bg-card border border-border rounded-lg p-6">
-                  <h2 className="text-xl font-medium mb-4">Año Fiscal: {company.anio || 'No especificado'}</h2>
-                  <CompanyCard company={company} />
-                  
-                  {/* Additional financial details */}
-                  <div className="mt-6 space-y-4">
-                    <h3 className="text-lg font-medium">Detalles Financieros Adicionales</h3>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Ingresos Ventas:</p>
-                        <p className="font-medium">{company.ingresos_ventas?.toLocaleString() || 'N/A'}</p>
+                {/* Position */}
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-2">Cargo</p>
+                  <p className="text-base text-gray-900">
+                    {company.director_cargo || 'No especificado'}
+                  </p>
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Phone className="h-4 w-4 text-gray-500" />
+                    <p className="text-sm font-medium text-gray-500">Teléfono</p>
+                  </div>
+                  <p className="text-base text-gray-900">
+                    {company.director_telefono || 'No especificado'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Content Area */}
+          <div className="lg:col-span-3">
+            <div className="space-y-8">
+              {/* Financial Data - Full Width */}
+              <div>
+                {history.length > 1 ? (
+                  <div className="relative">
+                    {/* Year Navigation */}
+                    <div className="text-center mb-6">
+                      <div className="inline-flex items-center gap-2 bg-white rounded-lg px-4 py-2 shadow-sm border border-gray-200">
+                        <span className="text-sm font-medium text-gray-600">
+                          Año {currentIndex + 1} de {history.length}
+                        </span>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Impuesto Renta:</p>
-                        <p className="font-medium">{company.impuesto_renta?.toLocaleString() || 'N/A'}</p>
+                    </div>
+                    
+                    {/* Carousel Navigation */}
+                    <button 
+                      onClick={prev} 
+                      className="absolute -left-4 top-1/2 -translate-y-1/2 p-3 bg-white text-gray-700 border border-gray-200 rounded-full shadow-md z-10 hover:bg-gray-50 hover:shadow-lg transition-all"
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <button 
+                      onClick={next} 
+                      className="absolute -right-4 top-1/2 -translate-y-1/2 p-3 bg-white text-gray-700 border border-gray-200 rounded-full shadow-md z-10 hover:bg-gray-50 hover:shadow-lg transition-all"
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+
+                    {/* Financial Data Card */}
+                    <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+                      <div className="flex items-center gap-2 mb-6">
+                        <div className="p-2 bg-green-100 rounded-lg">
+                          <Building2 className="h-5 w-5 text-green-600" />
+                        </div>
+                        <h2 className="text-xl font-semibold text-gray-900">
+                          Año Fiscal: {company.anio || 'No especificado'}
+                        </h2>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Utilidad Antes Impuestos:</p>
-                        <p className="font-medium">{company.utilidad_an_imp?.toLocaleString() || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Gastos Financieros:</p>
-                        <p className="font-medium">{company.gastos_financieros?.toLocaleString() || 'N/A'}</p>
+                      
+                      <CompanyCard company={company} />
+                      
+                      {/* Additional Financial Details */}
+                      <div className="mt-8">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Detalles Financieros Adicionales</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div className="bg-gray-50 rounded-lg p-4">
+                            <p className="text-sm font-medium text-gray-500 mb-1">Ingresos Ventas</p>
+                            <p className="text-lg font-semibold text-gray-900">
+                              ${company.ingresos_ventas?.toLocaleString() || 'N/A'}
+                            </p>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-4">
+                            <p className="text-sm font-medium text-gray-500 mb-1">Impuesto Renta</p>
+                            <p className="text-lg font-semibold text-gray-900">
+                              ${company.impuesto_renta?.toLocaleString() || 'N/A'}
+                            </p>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-4">
+                            <p className="text-sm font-medium text-gray-500 mb-1">Utilidad Antes Impuestos</p>
+                            <p className="text-lg font-semibold text-gray-900">
+                              ${company.utilidad_an_imp?.toLocaleString() || 'N/A'}
+                            </p>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-4">
+                            <p className="text-sm font-medium text-gray-500 mb-1">Gastos Financieros</p>
+                            <p className="text-lg font-semibold text-gray-900">
+                              ${company.gastos_financieros?.toLocaleString() || 'N/A'}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            ) : (
-              <div className="max-w-md mx-auto lg:max-w-none lg:mx-0">
-                <div className="bg-card border border-border rounded-lg p-6">
-                  <h2 className="text-xl font-medium mb-4">Año Fiscal: {company.anio || 'No especificado'}</h2>
-                  <CompanyCard company={company} />
-                  
-                  {/* Additional financial details for single year */}
-                  <div className="mt-6 space-y-4">
-                    <h3 className="text-lg font-medium">Detalles Financieros Adicionales</h3>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Ingresos Ventas:</p>
-                        <p className="font-medium">{company.ingresos_ventas?.toLocaleString() || 'N/A'}</p>
+                ) : (
+                  <div>
+                    <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+                      <div className="flex items-center gap-2 mb-6">
+                        <div className="p-2 bg-green-100 rounded-lg">
+                          <Building2 className="h-5 w-5 text-green-600" />
+                        </div>
+                        <h2 className="text-xl font-semibold text-gray-900">
+                          Año Fiscal: {company.anio || 'No especificado'}
+                        </h2>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Impuesto Renta:</p>
-                        <p className="font-medium">{company.impuesto_renta?.toLocaleString() || 'N/A'}</p>
+                      
+                      <CompanyCard company={company} />
+                      
+                      {/* Additional Financial Details */}
+                      <div className="mt-8">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Detalles Financieros Adicionales</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div className="bg-gray-50 rounded-lg p-4">
+                            <p className="text-sm font-medium text-gray-500 mb-1">Ingresos Ventas</p>
+                            <p className="text-lg font-semibold text-gray-900">
+                              ${company.ingresos_ventas?.toLocaleString() || 'N/A'}
+                            </p>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-4">
+                            <p className="text-sm font-medium text-gray-500 mb-1">Impuesto Renta</p>
+                            <p className="text-lg font-semibold text-gray-900">
+                              ${company.impuesto_renta?.toLocaleString() || 'N/A'}
+                            </p>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-4">
+                            <p className="text-sm font-medium text-gray-500 mb-1">Utilidad Antes Impuestos</p>
+                            <p className="text-lg font-semibold text-gray-900">
+                              ${company.utilidad_an_imp?.toLocaleString() || 'N/A'}
+                            </p>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-4">
+                            <p className="text-sm font-medium text-gray-500 mb-1">Gastos Financieros</p>
+                            <p className="text-lg font-semibold text-gray-900">
+                              ${company.gastos_financieros?.toLocaleString() || 'N/A'}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Utilidad Antes Impuestos:</p>
-                        <p className="font-medium">{company.utilidad_an_imp?.toLocaleString() || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Gastos Financieros:</p>
-                        <p className="font-medium">{company.gastos_financieros?.toLocaleString() || 'N/A'}</p>
+                    </div>
+                    
+                    <div className="mt-6 text-center">
+                      <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2">
+                        <span className="text-sm text-amber-800">
+                          Solo un año disponible ({company.anio || 'año no especificado'})
+                        </span>
                       </div>
                     </div>
                   </div>
-                </div>
-                <p className="mt-4 text-muted-foreground text-center">
-                  Solo un año disponible ({company.anio || 'año no especificado'}).
-                </p>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Right Column: Charts */}
-          <div className="lg:col-span-3 mt-8 lg:mt-0">
-            <CompanyHistoryCharts history={history} />
+              {/* Charts - Full Width */}
+              <div>
+                <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+                  <CompanyHistoryCharts history={history} />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
