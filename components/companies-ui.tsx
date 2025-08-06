@@ -5,6 +5,7 @@ import { Company } from '@/types/company';
 import { CompanyFilter } from '@/components/company-filter';
 import { CompanyCard } from '@/components/company-card';
 import { PaginationControls } from '@/components/pagination-controls';
+import { DownloadExcelButton } from '@/components/download-excel-button';
 
 
 interface CompaniesUIProps {
@@ -70,6 +71,19 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
 
       {/* Main content area */}
       <div className="flex-1 min-w-0">
+        {/* Download Excel Button */}
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-semibold text-foreground">
+              {totalCount > 0 ? `${totalCount.toLocaleString()} empresas encontradas` : 'Resultados'}
+            </h2>
+          </div>
+          <DownloadExcelButton 
+            searchParams={initialFilters}
+            totalCount={totalCount}
+          />
+        </div>
+
         {companies.length > 0 ? (
           <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">

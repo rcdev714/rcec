@@ -69,11 +69,12 @@ export async function fetchTotalCompanyCount(): Promise<number> {
  * @returns A promise that resolves to the paginated company
  * data.
  */
-export async function fetchCompanies(params: SearchParams): Promise<PaginatedResponse> {
+export async function fetchCompanies(params: SearchParams & { exportAll?: boolean; pageSize?: number }): Promise<PaginatedResponse> {
   const supabase = await createClient();
 
   const currentPage = parseInt(params.page || "1", 10);
-  const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+  const pageSize = params.pageSize || ITEMS_PER_PAGE;
+  const offset = (currentPage - 1) * pageSize;
 
   // Start building the query to the "latest_companies" view.
   // We select all columns and request the total count for
@@ -154,10 +155,16 @@ export async function fetchCompanies(params: SearchParams): Promise<PaginatedRes
   // Apply sorting and pagination to the final query.
   // This order must match our database indexes for optimal
   // performance.
-  const { data, error, count } = await query
+  let finalQuery = query
     .order("expediente", { ascending: true })
-    .order("id", { ascending: true })
-    .range(offset, offset + ITEMS_PER_PAGE - 1);
+    .order("id", { ascending: true });
+
+  // Only apply pagination if not exporting all data
+  if (!params.exportAll) {
+    finalQuery = finalQuery.range(offset, offset + pageSize - 1);
+  }
+
+  const { data, error, count } = await finalQuery;
 
   if (error) {
     console.error("Error fetching companies:", error);
