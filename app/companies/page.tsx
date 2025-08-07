@@ -70,27 +70,13 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-6 py-4">
+      <div className="max-w-7xl mx-auto px-2 py-4">
         {/* Header with logo and auth */}
         <div className="mb-4 flex items-center justify-between">
-          <Link href="/" className="inline-block">
-            <Image
-              src="/image.png"
-              alt="UNIBROKERS Logo"
-              width={120}
-              height={36}
-              className="h-6 w-auto "
-            />
-          </Link>
-          <AuthButton />
+        <h1 className="text-2xl font-semibold px-6">Empresas</h1>
         </div>
         
-        <div className="mb-4">
-          
-          <p className="text-muted-foreground mt-2">
-            Explora los registros financieros empresariales
-          </p>
-        </div>
+        
         
         <CompaniesUI
           companies={companies}
