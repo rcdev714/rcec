@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "next-themes";
-import { Suspense } from "react";
-import LoadingSpinner from "@/components/loading-spinner";
 import "./globals.css";
 import ClientLayout from "@/components/client-layout";
+
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`

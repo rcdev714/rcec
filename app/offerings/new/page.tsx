@@ -1,14 +1,14 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { redirect, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { User } from "@supabase/supabase-js";
+
 
 interface SocialMediaLinkInput {
   platform: string;
@@ -22,7 +22,7 @@ interface DocumentationUrlInput {
 
 export default function NewOfferingPage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null); // State to store user
+  const [user, setUser] = useState<User | null>(null); // State to store user
   const [offeringName, setOfferingName] = useState("");
   const [description, setDescription] = useState("");
   const [industry, setIndustry] = useState("");
@@ -159,7 +159,7 @@ export default function NewOfferingPage() {
                 id="description"
                 placeholder="Protege tu negocio de reclamos por negligencia, errores u omisiones."
                 value={description}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
+                onChange={(e) => setDescription(e.target.value)}
                 rows={4}
               />
             </div>
@@ -181,7 +181,7 @@ export default function NewOfferingPage() {
                 id="pricePlans"
                 placeholder={'[{"cobertura":"Básica","prima":"$100/mes"}, {"cobertura":"Completa","prima":"$250/mes"}]'}
                 value={pricePlans}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPricePlans(e.target.value)}
+                onChange={(e) => setPricePlans(e.target.value)}
                 rows={3}
               />
             </div>
@@ -193,7 +193,7 @@ export default function NewOfferingPage() {
                 type="text"
                 placeholder="Tecnología, Consultoría, Marketing"
                 value={industryTargets}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setIndustryTargets(e.target.value)}
+                onChange={(e) => setIndustryTargets(e.target.value)}
               />
             </div>
 

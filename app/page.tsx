@@ -37,15 +37,6 @@ export default async function Home() {
       <header className="border-b border-gray-300 bg-background">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="inline-block">
-              <Image
-                src="/image.png"
-                alt="UNIBROKERS Logo"
-                width={120}
-                height={36}
-                className="h-6 w-auto"
-              />
-            </Link>
             <AuthButton />
           </div>
         </div>

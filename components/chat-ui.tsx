@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, FormEvent, ChangeEvent, useRef, useEffect, ReactNode } from "react";
+import { useState, FormEvent, ChangeEvent, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowDown, LoaderCircle, Copy, CopyCheck, ArrowUp } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { createClient } from "@/lib/supabase/client";
 import UserAvatar from "./user-avatar";
 
 interface Message {
@@ -156,13 +155,13 @@ export default function ChatUI() {
 
       {messages.length > 0 && (
         <>
-          <div ref={scrollContainerRef} className="flex-grow p-6 overflow-y-auto relative">
-            <div className="space-y-6 max-w-4xl mx-auto">
+          <div ref={scrollContainerRef} className="flex-grow p-4 sm:p-6 overflow-y-auto relative">
+            <div className="space-y-4 max-w-full sm:max-w-4xl mx-auto">
               {messages.map((msg, index) => (
                 <div
                   key={index}
                   className={cn(
-                    "flex items-start gap-4",
+                    "flex items-start gap-2 sm:gap-4",
                     msg.role === "user" && "justify-end"
                   )}
                 >
@@ -177,7 +176,7 @@ export default function ChatUI() {
                   )}
                   <div
                     className={cn(
-                      "max-w-lg px-4 py-3 rounded-lg shadow-sm relative group",
+                      "max-w-xs sm:max-w-lg px-3 sm:px-4 py-2 sm:py-3 rounded-lg shadow-sm relative group",
                       msg.role === "user"
                         ? "bg-white text-gray-800"
                         : "bg-gray-100 text-gray-800"
@@ -195,12 +194,12 @@ export default function ChatUI() {
                     {msg.role === 'assistant' && msg.content && !isSending && (
                        <button
                         onClick={() => handleCopy(msg.content, index)}
-                        className="absolute top-2 right-2 p-1 rounded-md bg-gray-200 text-gray-600 hover:bg-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-1 right-1 sm:top-2 sm:right-2 p-1 rounded-md bg-gray-200 text-gray-600 hover:bg-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         {copiedMessageIndex === index ? (
-                          <CopyCheck className="w-4 h-4 text-green-600" />
+                          <CopyCheck className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
                         ) : (
-                          <Copy className="w-4 h-4" />
+                          <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
                         )}
                       </button>
                     )}
@@ -227,9 +226,9 @@ export default function ChatUI() {
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.3 }}
-            className="border-t border-gray-200 p-4"
+            className="border-t border-gray-200 p-2 sm:p-4"
           >
-            <div className="max-w-4xl mx-auto">{formLayout}</div>
+            <div className="max-w-full sm:max-w-4xl mx-auto">{formLayout}</div>
           </motion.div>
         </>
       )}

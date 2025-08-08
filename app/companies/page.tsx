@@ -1,10 +1,9 @@
 import { CompaniesUI } from "@/components/companies-ui";
 import { fetchCompanies } from "@/lib/data/companies";
 import { createClient } from "@/lib/supabase/server";
-import { AuthButton } from "@/components/auth-button";
 import { redirect } from "next/navigation";
-import Image from "next/image";
-import Link from "next/link";
+
+
 
 // Define the expected search parameters for the page.
 interface CompaniesPageProps {
