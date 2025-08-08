@@ -10,8 +10,8 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "UNIBROKERS - Financial DB",
-  description: "Una aplicación web para descubrir, gestionar y explorar empresas.",
+  title: "Acquira B2B",
+  description: "Conecta y crece tu negocio",
 };
 
 export default function RootLayout({

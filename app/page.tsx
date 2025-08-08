@@ -1,36 +1,8 @@
 import Link from "next/link";
-import Image from "next/image";
 import { AuthButton } from "@/components/auth-button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AnimatedCounter } from "@/components/animated-counter";
-// import { fetchTotalCompanyCount } from "@/lib/data/companies";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function Home() {
-  // Get the real company count from the database
-  // const totalCompanyCount = await fetchTotalCompanyCount();
-  const totalFinancialRecords = 1552466;
-  
-  const features = [
-    {
-      title: "Búsqueda Avanzada",
-      description: "Busca empresas por RUC, nombre comercial o provincia de manera rápida y precisa."
-    },
-    {
-      title: "Filtros Financieros",
-      description: "Filtra por métricas clave como activos, patrimonio, utilidades y más indicadores financieros."
-    },
-    {
-      title: "Análisis Temporal",
-      description: "Analiza datos históricos por año fiscal y evolución del número de empleados."
-    },
-    {
-      title: "Exportación de Datos",
-      description: "Exporta resultados filtrados para realizar análisis más detallados en herramientas externas."
-    }
-  ];
-
-  
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -42,114 +14,79 @@ export default async function Home() {
         </div>
       </header>
 
-      {/* Hero Section - Replit Style */}
-      <section className="relative py-20 lg:py-32 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left side - Content */}
-            <div className="space-y-8">
-              <div className="space-y-6">
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground tracking-tight leading-tight">
-                  Base de Datos para{" "}
-                  <span className="text-primary">Análisis Empresarial</span>
-                </h1>
-                <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-xl">
-                  Sistema avanzado de busqueda y filtrado de registros financieros empresariales para el analisis de datos.
-                </p>
-              </div>
-              
-              {/* Animated Counter Feature */}
-              <div className="bg-white border border-gray-300 rounded-2xl p-6 max-w-md shadow-lg">
-                <div className="text-center space-y-2">
-                  <div className="text-5xl md:text-6xl font-bold text-black">
-                    <AnimatedCounter targetNumber={totalFinancialRecords} className="font-bold text-black" />
-                  </div>
-                  <div className="text-lg text-black">
-                    Registros Financieros Empresariales
-                  </div>
-            
-                </div>
-              </div>
-              
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link
-                  href="/companies"
-                  className="inline-flex items-center justify-center px-8 py-4 bg-primary text-primary-foreground text-lg font-semibold rounded-lg hover:bg-primary/90 transition-colors shadow-lg"
-                >
-                  Explorar Empresas →
-                </Link>
-                <button className="inline-flex items-center justify-center px-8 py-4 border border-border text-foreground text-lg font-semibold rounded-lg hover:bg-muted/50 transition-colors">
-                  Ver Demo
-                </button>
-              </div>
-            </div>
-
-            {/* Right side - Hero Image Space */}
-            <div className="relative">
-              <div className="relative z-10">
-                {/* Hero Image */}
-                <div className="rounded-2xl overflow-hidden shadow-xl aspect-[3/2] bg-muted/10 max-w-lg mx-auto lg:max-w-none">
-                  <Image
-                    src="/HeroImageRC.jpg"
-                    alt="Hero Analysis Image"
-                    width={800}
-                    height={533}
-                    className="w-full h-full object-cover"
-                    sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 500px"
-                    priority
-                    quality={90}
-                  />
-                </div>
-              </div>
-              
-              {/* Floating cards for visual interest */}
-             
-              
-              <div className="absolute bottom-4 -right-4 z-20 bg-card border border-gray-300 rounded-xl p-6 shadow-lg">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                    <span className="text-gray-700 text-base font-semibold">+</span>
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-foreground">Busqueda</div>
-                    <div className="text-sm text-muted-foreground">14 filtros disponibles</div>
-                  </div>
-                </div>
-              </div>
-            </div>
+      {/* Hero */}
+      <section className="py-20 lg:py-28">
+        <div className="max-w-5xl mx-auto px-6 text-center space-y-8">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
+            Plataforma B2B impulsada por IA
+          </h1>
+          <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+            Accede a una base de datos de <span className="font-semibold text-foreground">300.000+ empresas</span> y
+            <span className="font-semibold text-foreground"> 200.000+ contactos</span> verificados. Nuestro asistente actúa como tu representante de ventas 24/7:
+            navega la web, identifica a tus clientes ideales y te ayuda a vender tu producto o servicio.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link href="/companies" className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors">
+              Explorar empresas
+            </Link>
+            <Link href="/chat" className="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-border text-foreground font-medium hover:bg-gray-200 transition-colors">
+              Hablar con el asistente IA
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto pt-6">
+            <Card className="border-gray-300">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-2xl">300.000+</CardTitle>
+                <CardDescription>Empresas</CardDescription>
+              </CardHeader>
+            </Card>
+            <Card className="border-gray-300">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-2xl">200.000+</CardTitle>
+                <CardDescription>Contactos verificados</CardDescription>
+              </CardHeader>
+            </Card>
+            <Card className="border-gray-300">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-2xl">Rep. de ventas 24/7</CardTitle>
+                <CardDescription>Asistente de IA personal</CardDescription>
+              </CardHeader>
+            </Card>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 border-t border-gray-300">
+      {/* Features - minimalist */}
+      <section className="py-16 border-t border-gray-300">
         <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight mb-4">
-              Sistema de Analisis Financiero
-            </h2>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, index) => (
-              <Card key={index} className="h-full hover:shadow-lg transition-all duration-300 hover:scale-105">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg font-semibold text-foreground">{feature.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-base leading-relaxed text-muted-foreground">
-                    {feature.description}
-                  </CardDescription>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Representante de ventas 24/7</CardTitle>
+                <CardDescription>
+                  Prospección continua: busca, prioriza y te sugiere a quién contactar, incluso mientras duermes.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Datos confiables</CardTitle>
+                <CardDescription>
+                  Empresas y contactos verificados con filtros por industria, tamaño y ubicación.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Mensajes y seguimiento</CardTitle>
+                <CardDescription>
+                  Redacción de mensajes, follow-ups automáticos y registro de conversaciones para cerrar más negocios.
+                </CardDescription>
+              </CardHeader>
+            </Card>
           </div>
         </div>
       </section>
-
-     
-
-      
     </div>
   );
 }
