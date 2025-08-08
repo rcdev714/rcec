@@ -76,6 +76,11 @@ export default function ChatUI() {
         body: JSON.stringify({ message: input }),
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to fetch chat response.");
+      }
+
       if (!response.body) return;
 
       const reader = response.body.getReader();
@@ -91,7 +96,7 @@ export default function ChatUI() {
         setMessages((prev) => {
           const newMessages = [...prev];
           const lastMessage = newMessages[newMessages.length - 1];
-          if (lastMessage.role === 'assistant') {
+          if (lastMessage.role === "assistant") {
             lastMessage.content = assistantResponse;
           }
           return newMessages;
@@ -99,13 +104,14 @@ export default function ChatUI() {
       }
     } catch (error) {
       console.error("Error fetching chat response:", error);
+      const errorMessage = error instanceof Error ? error.message : "Lo siento, algo salió mal.";
       setMessages((prev) => {
         const newMessages = [...prev];
         const lastMessage = newMessages[newMessages.length - 1];
         if (lastMessage.role === 'assistant' && lastMessage.content === '') {
-            newMessages[newMessages.length - 1].content = "Lo siento, algo salió mal.";
+            newMessages[newMessages.length - 1].content = errorMessage;
         } else {
-            newMessages.push({ role: "assistant", content: "Lo siento, algo salió mal." });
+            newMessages.push({ role: "assistant", content: errorMessage });
         }
         return newMessages;
       });
