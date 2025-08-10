@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Package, Building, MessageSquare } from "lucide-react";
+import { Home, Package, Building, MessageSquare, CreditCard, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import UserAvatar from "./user-avatar";
 
@@ -16,6 +16,7 @@ const Sidebar = () => {
     { href: "/offerings", icon: <Package size={20} />, label: "Servicios" },
     { href: "/companies", icon: <Building size={20} />, label: "Empresas" },
     { href: "/chat", icon: <MessageSquare size={20} />, label: "Asistente" },
+    { href: "/pricing", icon: <CreditCard size={20} />, label: "Suscripción" },
   ];
 
   return (
@@ -68,8 +69,29 @@ const Sidebar = () => {
         </ul>
       </nav>
 
-      <div className="mt-auto p-2 flex justify-center items-center">
-        <UserAvatar />
+      <div className="mt-auto p-2 space-y-2">
+        <Link
+          href="/settings"
+          className={cn(
+            "flex items-center p-2 rounded-md transition-colors duration-200 border border-transparent",
+            "text-gray-500 hover:bg-gray-100 hover:text-gray-900 hover:border-gray-200",
+            pathname.startsWith("/settings") && "bg-gray-100 text-gray-900 font-medium border-gray-200",
+            isExpanded ? "justify-start" : "justify-center"
+          )}
+        >
+          <Settings size={20} />
+          <span
+            className={cn(
+              "overflow-hidden transition-all duration-200",
+              isExpanded ? "w-full ml-3" : "w-0"
+            )}
+          >
+            Configuración
+          </span>
+        </Link>
+        <div className="flex justify-center items-center">
+          <UserAvatar />
+        </div>
       </div>
     </aside>
   );

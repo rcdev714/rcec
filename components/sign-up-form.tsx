@@ -21,7 +21,7 @@ export function SignUpForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
-  const [userType, setUserType] = useState<"regular" | "enterprise">("regular");
+  const [userType, setUserType] = useState<"individual" | "enterprise">("individual");
   const [enterpriseRole, setEnterpriseRole] = useState("");
   const [customRole, setCustomRole] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -162,21 +162,21 @@ export function SignUpForm({
                   <UICard 
                     className={cn(
                       "cursor-pointer transition-all border hover:shadow-md bg-white",
-                      userType === "regular" 
+                      userType === "individual" 
                         ? "border-gray-800 border-2" 
                         : "border-gray-200 hover:border-gray-400"
                     )}
-                    onClick={() => setUserType("regular")}
+                    onClick={() => setUserType("individual")}
                   >
                     <div className="p-4">
                       <div className="flex items-center space-x-3">
                         <div className={cn(
                           "w-4 h-4 rounded-full border-2 flex items-center justify-center",
-                          userType === "regular" 
+                          userType === "individual" 
                             ? "border-gray-800 bg-gray-800" 
                             : "border-gray-400"
                         )}>
-                          {userType === "regular" && (
+                          {userType === "individual" && (
                             <div className="w-2 h-2 rounded-full bg-white"></div>
                           )}
                         </div>

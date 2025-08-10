@@ -41,9 +41,10 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Define public paths that don't require authentication
-  const publicPaths = ['/', '/dashboard']
+  const publicPaths = ['/', '/dashboard', '/pricing']
   const isPublicPath = publicPaths.includes(request.nextUrl.pathname)
 
+  // Authentication check
   if (
     !user &&
     !request.nextUrl.pathname.startsWith('/auth') &&
@@ -54,6 +55,19 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
     return NextResponse.redirect(url)
+  }
+
+  // Subscription-based route protection
+  if (user && shouldCheckSubscription(request.nextUrl.pathname)) {
+    const subscription = await getUserSubscription(supabase, user.id)
+    const hasAccess = checkRouteAccess(request.nextUrl.pathname, subscription?.plan || 'FREE')
+    
+    if (!hasAccess) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/pricing'
+      url.searchParams.set('upgrade', 'required')
+      return NextResponse.redirect(url)
+    }
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're
@@ -67,4 +81,59 @@ export async function updateSession(request: NextRequest) {
   // of sync and terminate the user's session prematurely.
 
   return response
+}
+
+// Helper function to get user subscription in middleware
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getUserSubscription(supabase: any, userId: string) {
+  try {
+    const { data } = await supabase
+      .from('user_subscriptions')
+      .select('plan, status')
+      .eq('user_id', userId)
+      .single()
+    
+    return data
+  } catch (error) {
+    console.error('Error fetching subscription in middleware:', error)
+    return null
+  }
+}
+
+// Define which routes should be checked for subscription
+function shouldCheckSubscription(pathname: string): boolean {
+  const protectedRoutes = [
+    '/companies/export', // Pro+ feature
+    '/api/companies/export', // Pro+ feature
+    '/analytics', // Enterprise feature
+    '/api/analytics', // Enterprise feature
+  ]
+  
+  return protectedRoutes.some(route => pathname.startsWith(route))
+}
+
+// Check if user has access to specific route based on their plan
+function checkRouteAccess(pathname: string, plan: string): boolean {
+  // Free plan restrictions
+  if (plan === 'FREE') {
+    const restrictedPaths = [
+      '/companies/export',
+      '/api/companies/export',
+      '/analytics',
+      '/api/analytics',
+    ]
+    return !restrictedPaths.some(path => pathname.startsWith(path))
+  }
+  
+  // Pro plan restrictions
+  if (plan === 'PRO') {
+    const enterpriseOnlyPaths = [
+      '/analytics',
+      '/api/analytics',
+    ]
+    return !enterpriseOnlyPaths.some(path => pathname.startsWith(path))
+  }
+  
+  // Enterprise has access to everything
+  return true
 }
