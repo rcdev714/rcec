@@ -177,13 +177,26 @@
     color: rgb(37 37 37) !important;
   }
   
-  p, span, div {
+  p, div {
     color: inherit !important;
   }
-  
+  span {
+    color: inherit;
+  }
+
   /* Ensure proper text colors for all elements */
   *:not(button):not(a) {
     color: inherit;
+  }
+
+  /* Fix badge text visibility for white background */
+  .badge.bg-white {
+    color: rgb(37 37 37) !important; /* Force dark text on white badge */
+  }
+
+  /* Force white text on black background badges */
+  .badge.bg-black {
+    color: white !important;
   }
   
   /* Fix button text visibility - CRITICAL OVERRIDE */

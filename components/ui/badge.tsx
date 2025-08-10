@@ -15,6 +15,8 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
         outline: "text-foreground",
+        "light-outline": "border border-gray-300 bg-white text-gray-900 dark:bg-black dark:text-white", // Updated for dark mode
+        "status-active": "bg-black text-white", // New variant for active status
       },
     },
     defaultVariants: {

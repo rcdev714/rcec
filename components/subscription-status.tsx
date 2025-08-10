@@ -76,15 +76,17 @@ export default function SubscriptionStatus() {
   const getStatusColor = (planStatus: string) => {
     switch (planStatus) {
       case 'active':
-        return 'bg-green-100 text-green-800';
+        return 'bg-black text-white'; // Changed to black background, white text
       case 'trialing':
         return 'bg-blue-100 text-blue-800';
       case 'past_due':
         return 'bg-yellow-100 text-yellow-800';
       case 'cancelled':
         return 'bg-red-100 text-red-800';
+      case 'inactive':
+        return 'light-outline';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'light-outline';
     }
   };
 
@@ -94,8 +96,10 @@ export default function SubscriptionStatus() {
         return 'bg-blue-100 text-blue-800';
       case 'ENTERPRISE':
         return 'bg-purple-100 text-purple-800';
+      case 'FREE':
+        return 'light-outline'; // Use the new variant
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'light-outline'; // Use the new variant
     }
   };
 
@@ -173,7 +177,7 @@ export default function SubscriptionStatus() {
         
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium">Estado:</span>
-          <Badge className={getStatusColor(status.status)}>
+          <Badge variant={getStatusColor(status.status) as "default" | "secondary" | "destructive" | "outline" | "light-outline" | "status-active"}>
             {translateStatus(status.status)}
           </Badge>
         </div>
