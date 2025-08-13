@@ -1,0 +1,170 @@
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { HumanMessage, BaseMessage } from "@langchain/core/messages";
+import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { companyTools } from "./tools/company-tools";
+import { CompanySearchResult } from "@/types/chat";
+
+// System prompt for the company search assistant (Spanish)
+const SYSTEM_PROMPT = `Eres un asistente de IA especializado en ayudar a usuarios a buscar empresas en Ecuador. Tienes acceso a una base de datos completa de empresas con información financiera y empresarial detallada.
+
+## Herramientas Disponibles
+
+Tienes acceso a las siguientes herramientas:
+1. **search_companies**: Buscar empresas basado en consultas en lenguaje natural
+2. **export_companies**: Exportar resultados de búsqueda a archivos Excel
+3. **get_company_details**: Obtener información detallada sobre empresas específicas
+4. **refine_search**: Refinar resultados de búsquedas previas
+
+## Capacidades de Búsqueda
+
+Puedes buscar empresas por:
+- **Ubicación**: Las 24 provincias del Ecuador (usa nombres de provincia como PICHINCHA, GUAYAS, AZUAY, etc.)
+- **Tamaño**: Rangos de número de empleados (micro: 1-9, pequeña: 10-49, mediana: 50-199, grande: 200+)
+- **Métricas financieras**: Rangos de ingresos, activos, patrimonio, utilidad neta
+- **Períodos de tiempo**: Años fiscales (2000-presente)
+- **Identificadores de empresa**: Números RUC, nombres de empresa, nombres comerciales
+- **Rentabilidad**: Empresas rentables/no rentables
+
+## Mapeo de Provincias
+- Quito → PICHINCHA
+- Guayaquil → GUAYAS  
+- Cuenca → AZUAY
+- Machala → EL ORO
+- Manta/Portoviejo → MANABI
+- Ambato → TUNGURAHUA
+- Y todas las demás ciudades principales a sus respectivas provincias
+
+## Directrices de Respuesta
+
+1. **Siempre usa herramientas** para buscar empresas en lugar de inventar información
+2. **Presenta resultados claramente** con tarjetas de empresa mostrando información clave
+3. **Proporciona resúmenes** de criterios de búsqueda y resultados
+4. **Ofrece opciones de exportación** para usuarios que quieren descargar datos
+5. **Haz preguntas aclaratorias** si las consultas son ambiguas
+6. **Sugiere refinamientos** si hay demasiados o muy pocos resultados
+
+## Ejemplos de Interacciones
+
+Usuario: "Muéstrame empresas rentables en Guayaquil"
+→ Usar search_companies con consulta "empresas rentables en Guayaquil"
+→ Presentar resultados con tarjetas de empresa
+→ Ofrecer opción de exportación
+
+Usuario: "Empresas con más de 100 empleados en tecnología"
+→ Usar search_companies con filtros apropiados
+→ Si hay demasiados resultados, sugerir agregar filtros de ubicación o ingresos
+
+Usuario: "Exportar empresas manufactureras del 2023"
+→ Usar export_companies con filtros apropiados
+→ Proporcionar información de descarga
+
+## Formato de Respuesta
+
+- Responde SIEMPRE en español
+- Usa un tono profesional pero amigable
+- Explica claramente los criterios de búsqueda aplicados
+- Proporciona contexto útil sobre los resultados
+- Sugiere acciones adicionales cuando sea apropiado
+
+Recuerda: Siempre sé útil, preciso, y usa las herramientas disponibles para proporcionar datos reales en lugar de especulaciones.`;
+
+// Initialize the Gemini model
+const model = new ChatGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_API_KEY,
+  model: "gemini-2.0-flash-exp",
+  temperature: 0.7,
+  maxOutputTokens: 2048,
+});
+
+// Create the ReAct agent using prebuilt function
+const agent = createReactAgent({
+  llm: model,
+  tools: companyTools,
+  messageModifier: SYSTEM_PROMPT,
+});
+
+// Enhanced chat function with LangGraph
+export async function chatWithLangGraph(
+  message: string, 
+  conversationHistory: BaseMessage[] = []
+): Promise<ReadableStream> {
+  const userMessage = new HumanMessage(message);
+  
+  // Prepare initial state for the React agent
+  const initialMessages = [...conversationHistory, userMessage];
+  
+  // Create a readable stream to return results
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        let finalResponse = '';
+        let searchResult: CompanySearchResult | undefined;
+        
+        // Execute the React agent
+        const result = await agent.invoke({
+          messages: initialMessages,
+        });
+        
+        // Get the final AI response
+        if (result && result.messages && Array.isArray(result.messages)) {
+          const lastMessage = result.messages[result.messages.length - 1];
+          if (lastMessage && lastMessage.content) {
+            finalResponse = lastMessage.content.toString();
+          }
+          
+          // Extract search results from tool calls if available
+          for (const msg of result.messages) {
+            if (msg && 'tool_calls' in msg && msg.tool_calls && Array.isArray(msg.tool_calls)) {
+              for (const toolCall of msg.tool_calls) {
+                if (toolCall.name === 'search_companies') {
+                  // Find corresponding tool response
+                  const toolResponseIndex = result.messages.findIndex(
+                    (m: BaseMessage, idx: number) => idx > result.messages.indexOf(msg) && 
+                    m && 'tool_call_id' in m && (m as BaseMessage & { tool_call_id: string }).tool_call_id === toolCall.id
+                  );
+                  
+                  if (toolResponseIndex !== -1) {
+                    const toolResponse = result.messages[toolResponseIndex];
+                    try {
+                      const toolResult = JSON.parse(toolResponse.content.toString());
+                      if (toolResult.success && toolResult.result) {
+                        searchResult = toolResult.result;
+                      }
+                    } catch (e) {
+                      console.warn('Failed to parse tool result:', e);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        
+
+        
+        // Send the final response directly (no chunking to avoid controller issues)
+        const responseText = finalResponse + (searchResult ? `\n\n[SEARCH_RESULTS]${JSON.stringify(searchResult)}[/SEARCH_RESULTS]` : '');
+        controller.enqueue(new TextEncoder().encode(responseText));
+        controller.close();
+        
+      } catch (error) {
+        console.error('Error in LangGraph chat:', error);
+        const errorMessage = 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta de nuevo.';
+        controller.enqueue(new TextEncoder().encode(errorMessage));
+        controller.close();
+      }
+    },
+  });
+  
+  return stream;
+}
+
+// Function to get conversation context from Supabase
+export async function getConversationContext(): Promise<BaseMessage[]> {
+  // This will be implemented when we update the conversation manager
+  // For now, return empty array
+  return [];
+}
+
+// Export the React agent for direct use if needed
+export { agent as langGraphAgent };

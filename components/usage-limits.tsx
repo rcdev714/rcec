@@ -9,44 +9,34 @@ import { UserSubscription } from '@/types/subscription';
 
 // Usage limits function moved here to avoid server-side imports
 function getUsageLimits(plan: 'FREE' | 'PRO' | 'ENTERPRISE') {
+  // Monthly limits aligned with server usage tracking (lib/usage.ts)
   const limits = {
     FREE: {
-      searches_per_day: 10,
-      exports_per_month: 0,
-      companies_per_export: 0,
+      searches_per_month: 10,
+      exports_per_month: 10,
     },
     PRO: {
-      searches_per_day: -1, // unlimited
+      searches_per_month: -1, // unlimited
       exports_per_month: 50,
-      companies_per_export: 1000,
     },
     ENTERPRISE: {
-      searches_per_day: -1, // unlimited
+      searches_per_month: -1, // unlimited
       exports_per_month: -1, // unlimited
-      companies_per_export: -1, // unlimited
     },
-  };
+  } as const;
 
   return limits[plan];
 }
 
-// This would typically come from your usage tracking system
-// For now, we'll simulate some usage data
-const simulateUsageData = (plan: string) => {
-  const limits = getUsageLimits(plan as 'FREE' | 'PRO' | 'ENTERPRISE');
-  
-  return {
-    searches_today: plan === 'FREE' ? 7 : plan === 'PRO' ? 45 : 150,
-    exports_this_month: plan === 'FREE' ? 0 : plan === 'PRO' ? 12 : 89,
-    searches_limit: limits.searches_per_day,
-    exports_limit: limits.exports_per_month,
-  };
+type UsageSummary = {
+  plan: 'FREE' | 'PRO' | 'ENTERPRISE';
+  usage: { searches: number; exports: number };
 };
 
 export default function UsageLimits() {
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [usage, setUsage] = useState<{
-    searches_today: number;
+    searches_this_month: number;
     exports_this_month: number;
     searches_limit: number;
     exports_limit: number;
@@ -56,15 +46,27 @@ export default function UsageLimits() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const response = await fetch('/api/subscriptions/status');
-        if (response.ok) {
-          const data = await response.json();
+        // Load subscription for plan label
+        const [statusResp, summaryResp] = await Promise.all([
+          fetch('/api/subscriptions/status'),
+          fetch('/api/usage/summary'),
+        ]);
+
+        if (statusResp.ok) {
+          const data = await statusResp.json();
           setSubscription(data.subscription);
-          
-          if (data.subscription) {
-            const usageData = simulateUsageData(data.subscription.plan);
-            setUsage(usageData);
-          }
+        }
+
+        if (summaryResp.ok) {
+          const summary: UsageSummary = await summaryResp.json();
+          console.debug('UsageLimits summary', summary);
+          const limits = getUsageLimits(summary.plan);
+          setUsage({
+            searches_this_month: summary.usage.searches || 0,
+            exports_this_month: summary.usage.exports || 0,
+            searches_limit: limits.searches_per_month,
+            exports_limit: limits.exports_per_month,
+          });
         }
       } catch (error) {
         console.error('Error fetching usage data:', error);
@@ -107,7 +109,7 @@ export default function UsageLimits() {
 
   const searchesPercentage = usage.searches_limit === -1 
     ? 0 
-    : (usage.searches_today / usage.searches_limit) * 100;
+    : (usage.searches_this_month / usage.searches_limit) * 100;
     
   const exportsPercentage = usage.exports_limit === -1 
     ? 0 
@@ -133,9 +135,9 @@ export default function UsageLimits() {
         {/* Searches */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Búsquedas Diarias</span>
+            <span className="text-sm font-medium">Búsquedas Mensuales</span>
             <span className="text-sm text-gray-600">
-              {usage.searches_today} / {usage.searches_limit === -1 ? '∞' : usage.searches_limit}
+              {usage.searches_this_month} / {usage.searches_limit === -1 ? '∞' : usage.searches_limit}
             </span>
           </div>
           {usage.searches_limit !== -1 && (

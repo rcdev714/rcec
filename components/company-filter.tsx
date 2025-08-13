@@ -15,6 +15,8 @@ interface CompanyFilterProps {
 export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: CompanyFilterProps) {
   const [filters, setFilters] = useState(initialFilters);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
+  const [applyError, setApplyError] = useState<string | null>(null);
 
   useEffect(() => {
     setFilters(initialFilters);
@@ -36,8 +38,31 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
     }));
   };
 
-  const handleApply = () => {
-    onApplyFilters(filters);
+  const handleApply = async () => {
+    try {
+      setApplyError(null);
+      setIsApplying(true);
+      const resp = await fetch('/api/usage/search', { method: 'POST' });
+      if (resp.status === 401) {
+        window.location.href = '/auth/login';
+        return;
+      }
+      if (resp.status === 403) {
+        setApplyError('Has alcanzado el límite mensual de búsquedas en tu plan.');
+        // Optionally navigate to pricing
+        // window.location.href = '/pricing?upgrade=required';
+        return;
+      }
+      // Proceed with filters even if usage API has a transient error (avoid blocking UX)
+      if (!resp.ok) {
+        console.warn('Usage API non-ok status on apply; continuing with filters');
+      }
+      onApplyFilters(filters);
+    } catch {
+      setApplyError('Ocurrió un error. Intenta nuevamente.');
+    } finally {
+      setIsApplying(false);
+    }
   };
 
   const handleClear = () => {
@@ -311,8 +336,9 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
         <Button
           onClick={handleApply}
           className="flex-1 text-sm h-9 border hover:text-gray-600 border-gray-300"
+          disabled={isApplying}
         >
-          Aplicar filtros
+          {isApplying ? 'Aplicando...' : 'Aplicar filtros'}
         </Button>
         <Button
           onClick={handleClear}
@@ -325,6 +351,9 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
 
       {/* Results Count */}
       <div className="text-center pt-2 border-t border-border">
+        {applyError && (
+          <p className="text-xs text-destructive mb-1">{applyError}</p>
+        )}
         <p className="text-xs text-muted-foreground">
           {companyCount.toLocaleString()} empresa{companyCount !== 1 ? 's' : ''} encontrada{companyCount !== 1 ? 's' : ''}
         </p>

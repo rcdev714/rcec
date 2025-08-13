@@ -1,0 +1,133 @@
+export interface SearchFilters {
+  ruc?: string;
+  nombre?: string;
+  provincia?: string;
+  anio?: string;
+  nEmpleadosMin?: string;
+  nEmpleadosMax?: string;
+  ingresosVentasMin?: string;
+  ingresosVentasMax?: string;
+  activosMin?: string;
+  activosMax?: string;
+  patrimonioMin?: string;
+  patrimonioMax?: string;
+  impuestoRentaMin?: string;
+  impuestoRentaMax?: string;
+  utilidadAnImpMin?: string;
+  utilidadAnImpMax?: string;
+  utilidadNetaMin?: string;
+  utilidadNetaMax?: string;
+  nombreComercial?: string;
+}
+
+export interface CompanySearchResult {
+  companies: Company[];
+  totalCount: number;
+  filters: SearchFilters;
+  query: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  metadata?: {
+    type?: 'text' | 'company_results' | 'export_link';
+    searchResult?: CompanySearchResult;
+    exportData?: {
+      filename: string;
+      downloadUrl: string;
+      recordCount: number;
+    };
+  };
+  tokenCount?: number;
+  createdAt: Date;
+}
+
+export interface ConversationData {
+  id: string;
+  userId: string;
+  title: string;
+  messages: ChatMessage[];
+  createdAt: Date;
+  updatedAt: Date;
+  isArchived: boolean;
+  metadata?: Record<string, any>;
+}
+
+// Province mapping for natural language processing
+export const PROVINCE_MAPPING: Record<string, string> = {
+  // Main names
+  'azuay': 'AZUAY',
+  'bolivar': 'BOLIVAR',
+  'cañar': 'CAÑAR',
+  'carchi': 'CARCHI',
+  'chimborazo': 'CHIMBORAZO',
+  'cotopaxi': 'COTOPAXI',
+  'el oro': 'EL ORO',
+  'esmeraldas': 'ESMERALDAS',
+  'galapagos': 'GALAPAGOS',
+  'guayas': 'GUAYAS',
+  'imbabura': 'IMBABURA',
+  'loja': 'LOJA',
+  'los rios': 'LOS RIOS',
+  'manabi': 'MANABI',
+  'morona santiago': 'MORONA SANTIAGO',
+  'napo': 'NAPO',
+  'orellana': 'ORELLANA',
+  'pastaza': 'PASTAZA',
+  'pichincha': 'PICHINCHA',
+  'santa elena': 'SANTA ELENA',
+  'santo domingo de los tsachilas': 'SANTO DOMINGO DE LOS TSACHILAS',
+  'sucumbios': 'SUCUMBIOS',
+  'tungurahua': 'TUNGURAHUA',
+  'zamora chinchipe': 'ZAMORA CHINCHIPE',
+  
+  // City aliases
+  'quito': 'PICHINCHA',
+  'guayaquil': 'GUAYAS',
+  'cuenca': 'AZUAY',
+  'machala': 'EL ORO',
+  'portoviejo': 'MANABI',
+  'manta': 'MANABI',
+  'ambato': 'TUNGURAHUA',
+  'riobamba': 'CHIMBORAZO',
+  'ibarra': 'IMBABURA',
+  'santo domingo': 'SANTO DOMINGO DE LOS TSACHILAS',
+  'nueva loja': 'SUCUMBIOS',
+  'latacunga': 'COTOPAXI',
+  'puyo': 'PASTAZA',
+  'babahoyo': 'LOS RIOS',
+  'tulcan': 'CARCHI',
+  'guaranda': 'BOLIVAR',
+  'macas': 'MORONA SANTIAGO',
+  'puerto ayora': 'GALAPAGOS',
+  'tena': 'NAPO',
+  'coca': 'ORELLANA',
+  'azogues': 'CAÑAR',
+  'zamora': 'ZAMORA CHINCHIPE',
+  'la libertad': 'SANTA ELENA',
+};
+
+// Company size categories
+export const COMPANY_SIZE_MAPPING = {
+  'micro': { nEmpleadosMin: '1', nEmpleadosMax: '9' },
+  'pequeña': { nEmpleadosMin: '10', nEmpleadosMax: '49' },
+  'mediana': { nEmpleadosMin: '50', nEmpleadosMax: '199' },
+  'grande': { nEmpleadosMin: '200' },
+  'small': { nEmpleadosMin: '10', nEmpleadosMax: '49' },
+  'medium': { nEmpleadosMin: '50', nEmpleadosMax: '199' },
+  'large': { nEmpleadosMin: '200' },
+};
+
+// Revenue ranges (in USD)
+export const REVENUE_MAPPING = {
+  'bajo': { ingresosVentasMax: '100000' },
+  'medio': { ingresosVentasMin: '100000', ingresosVentasMax: '1000000' },
+  'alto': { ingresosVentasMin: '1000000' },
+  'low': { ingresosVentasMax: '100000' },
+  'medium': { ingresosVentasMin: '100000', ingresosVentasMax: '1000000' },
+  'high': { ingresosVentasMin: '1000000' },
+};
+
+import { Company } from './company';

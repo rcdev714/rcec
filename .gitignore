@@ -48,3 +48,7 @@ scripts-data
 
 # Local Netlify folder
 .netlify
+
+#Tests files
+scripts-tests
+documentation-md
