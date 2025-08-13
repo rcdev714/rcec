@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import ConversationManager from "@/lib/conversation-manager";
 import { HumanMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   if (!process.env.GOOGLE_API_KEY) {
