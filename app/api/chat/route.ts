@@ -3,12 +3,29 @@ import { chatWithLangGraph } from "@/lib/chat-agent-langgraph";
 import { createClient } from "@/lib/supabase/server";
 import ConversationManager from "@/lib/conversation-manager";
 import { HumanMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
+import { validateEnvironment } from "@/lib/env-validation";
 
+// Use Node.js runtime for full compatibility with LangChain and streaming
+// Edge runtime has limitations with certain Node.js APIs
 export const runtime = "nodejs";
+export const maxDuration = 30; // Maximum allowed duration for Vercel Hobby plan
 
 export async function POST(req: Request) {
-  if (!process.env.GOOGLE_API_KEY) {
-    return new Response("Missing GOOGLE_API_KEY", { status: 500 });
+  // Validate environment variables
+  const envValidation = validateEnvironment();
+  if (!envValidation.isValid) {
+    console.error("Environment validation failed:", envValidation.missing);
+    return new Response(
+      JSON.stringify({ 
+        error: "Configuration error", 
+        message: "Required environment variables are missing. Please check your configuration.", 
+        missing: envValidation.missing
+      }), 
+      { 
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      }
+    );
   }
 
   try {
@@ -81,7 +98,22 @@ export async function POST(req: Request) {
     }
   } catch (error) {
     console.error("Error in chat route:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-    return new Response(`Error: ${errorMessage}`, { status: 500 });
+    
+    // Detailed error response for better debugging
+    const errorDetails = {
+      error: "Chat processing failed",
+      message: error instanceof Error ? error.message : "An unknown error occurred",
+      timestamp: new Date().toISOString(),
+      // Include stack trace in non-production environments for debugging
+      ...(process.env.NODE_ENV !== 'production' && error instanceof Error ? { stack: error.stack } : {})
+    };
+    
+    return new Response(
+      JSON.stringify(errorDetails), 
+      { 
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      }
+    );
   }
 }

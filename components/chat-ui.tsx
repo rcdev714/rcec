@@ -232,8 +232,19 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to fetch chat response.");
+        let errorMessage = "Failed to fetch chat response.";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+          console.error("API Error:", errorData);
+        } catch {
+          // If response is not JSON, try to get text
+          const errorText = await response.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       if (!response.body) return;

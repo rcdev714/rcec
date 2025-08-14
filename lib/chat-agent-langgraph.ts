@@ -68,12 +68,14 @@ Usuario: "Exportar empresas manufactureras del 2023"
 
 Recuerda: Siempre sé útil, preciso, y usa las herramientas disponibles para proporcionar datos reales en lugar de especulaciones.`;
 
-// Initialize the Gemini model
+// Initialize the Gemini model with error handling
+// Note: gemini-1.5-flash has higher rate limits than gemini-2.0-flash-exp
 const model = new ChatGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_API_KEY,
-  model: "gemini-2.0-flash-exp",
+  apiKey: process.env.GOOGLE_API_KEY || '',
+  model: process.env.GEMINI_MODEL || "gemini-1.5-flash", // Use 1.5-flash for higher rate limits
   temperature: 0.7,
   maxOutputTokens: 2048,
+  maxRetries: 2,
 });
 
 // Create the ReAct agent using prebuilt function
@@ -149,7 +151,29 @@ export async function chatWithLangGraph(
         
       } catch (error) {
         console.error('Error in LangGraph chat:', error);
-        const errorMessage = 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta de nuevo.';
+        
+        // More detailed error logging for production debugging
+        console.error('Error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+          timestamp: new Date().toISOString(),
+        });
+        
+        // Check for specific error types
+        let errorMessage = 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta de nuevo.';
+        
+        if (error instanceof Error) {
+          if (error.message.includes('API key')) {
+            errorMessage = 'Error de configuración: La clave API no está configurada correctamente.';
+          } else if (error.message.includes('timeout')) {
+            errorMessage = 'La solicitud tardó demasiado tiempo. Por favor, intenta con una consulta más simple.';
+          } else if (error.message.includes('rate limit') || error.message.includes('Too Many Requests') || error.message.includes('quota')) {
+            errorMessage = 'Has excedido el límite de consultas diarias de la API. Por favor, espera hasta mañana o considera actualizar tu plan de Google AI.';
+          } else if (error.message.includes('429')) {
+            errorMessage = 'Límite de consultas alcanzado. El plan gratuito de Google Gemini permite 50 consultas por día. Intenta de nuevo mañana.';
+          }
+        }
+        
         controller.enqueue(new TextEncoder().encode(errorMessage));
         controller.close();
       }
