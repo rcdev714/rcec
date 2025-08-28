@@ -316,4 +316,38 @@
   select:hover {
     border-color: rgb(107 114 126) !important;
   }
+
+  /* Add vertical spacing to chat content */
+  .chat-content > * + * {
+    @apply mt-4;
+  }
+
+  .chat-content h1,
+  .chat-content h2,
+  .chat-content h3,
+  .chat-content h4 {
+    @apply mb-3 mt-6 font-semibold;
+  }
+
+  .chat-content p {
+    @apply leading-relaxed;
+  }
+
+  .chat-content ul,
+  .chat-content ol {
+    @apply list-inside space-y-2 pl-4;
+  }
+
+  .chat-content table {
+    @apply w-full my-6;
+  }
+
+  .chat-content th,
+  .chat-content td {
+    @apply border px-4 py-2 text-left;
+  }
+
+  .chat-content th {
+    @apply font-medium;
+  }
 }

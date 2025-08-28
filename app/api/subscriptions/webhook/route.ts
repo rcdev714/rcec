@@ -42,7 +42,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  console.log('Received Stripe event:', event.type);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('Received Stripe event:', event.type);
+  }
 
   try {
     await handleStripeEvent(event);

@@ -62,7 +62,9 @@ export function LoginForm({
         return;
       }
 
-      console.log("Login successful, redirecting to /companies");
+      if (process.env.NODE_ENV !== 'production') {
+        console.log("Login successful, redirecting to /companies");
+      }
       
       // Force a hard navigation to ensure middleware runs
       window.location.href = "/companies";

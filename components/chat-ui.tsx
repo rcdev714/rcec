@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent, ChangeEvent, useRef, useEffect } from "react";
+import { useState, FormEvent, ChangeEvent, useRef, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowDown, LoaderCircle, Copy, CopyCheck, ArrowUp } from "lucide-react";
@@ -8,7 +8,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import UserAvatar from "./user-avatar";
 import ConversationSidebar from "./conversation-sidebar";
-import TokenProgress from "./token-progress";
+import ContextIndicator from "./context-indicator";
 import ConversationManager from "@/lib/conversation-manager";
 import { ChatCompanyResults } from "./chat-company-card";
 import { CompanySearchResult } from "@/types/chat";
@@ -40,9 +40,25 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId || null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const conversationManager = ConversationManager.getInstance();
+  const conversationManager = useMemo(() => ConversationManager.getInstance(), []);
+
+  const allSuggestions = useMemo(() => [
+    'Enseñame empresas del guayas con mas de 1000 empleados',
+    'Busca empresas de manufactura con almenos 1000 en ingresos en el ecuador',
+    'Exporta una lista de empresas de construcción en Pichincha',
+    '¿Cuales son las empresas mas grandes de Azuay por número de empleados?',
+    'Encuentra empresas de tecnología fundadas en los últimos 5 años',
+    'Dame un resumen de las empresas con mayores ingresos en Manabí'
+  ], []);
+
+  // Efecto para seleccionar sugerencias dinámicas al montar
+  useEffect(() => {
+    const shuffled = [...allSuggestions].sort(() => 0.5 - Math.random());
+    setSuggestions(shuffled.slice(0, 3));
+  }, [allSuggestions]);
 
   // Cargar conversaciones guardadas al inicializar
   useEffect(() => {
@@ -138,7 +154,9 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
       }]);
       
     } catch (error) {
-      console.error('Error exporting companies:', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Error exporting companies:', error);
+      }
       setMessages((prev) => [...prev, {
         role: "assistant", 
         content: "Error al exportar las empresas. Por favor, intenta de nuevo.",
@@ -196,22 +214,25 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
         });
       }
     } catch (error) {
-      console.error('Error loading more results:', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Error loading more results:', error);
+      }
     }
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!input.trim() || isSending) return;
+  const startChat = async (message: string) => {
+    if (!message.trim() || isSending) return;
+
+    let finalSearchResult: CompanySearchResult | undefined;
 
     setIsSending(true);
-    const userMessage: Message = { role: "user", content: input };
+    const userMessage: Message = { role: "user", content: message };
     setMessages((prev) => [...prev, userMessage]);
     
     // Crear nueva conversación si no existe
     let currentConvId = conversationId;
     if (!currentConvId) {
-      currentConvId = await conversationManager.createConversation(input);
+      currentConvId = await conversationManager.createConversation(message);
       setConversationId(currentConvId);
     } else {
       // Actualizar actividad de conversación existente
@@ -236,7 +257,9 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || errorData.error || errorMessage;
-          console.error("API Error:", errorData);
+          if (process.env.NODE_ENV !== 'production') {
+            console.error("API Error:", errorData);
+          }
         } catch {
           // If response is not JSON, try to get text
           const errorText = await response.text();
@@ -281,6 +304,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
             
             try {
               const searchResult = JSON.parse(resultsJson);
+              finalSearchResult = searchResult;
               setMessages((prev) => {
                 const newMessages = [...prev];
                 const lastMessage = newMessages[newMessages.length - 1];
@@ -292,7 +316,9 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                 return newMessages;
               });
             } catch (e) {
-              console.warn('Failed to parse search results:', e);
+              if (process.env.NODE_ENV !== 'production') {
+                console.warn('Failed to parse search results:', e);
+              }
               assistantResponse += chunk;
             }
           } else {
@@ -311,8 +337,24 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
           return newMessages;
         });
       }
+
+      // Persist the final assistant message to the database
+      if (currentConvId) {
+        await conversationManager.addMessage(currentConvId, {
+          id: '', // DB generates
+          role: 'assistant',
+          content: assistantResponse,
+          metadata: {
+            type: finalSearchResult ? 'company_results' : 'text',
+            searchResult: finalSearchResult,
+          },
+          createdAt: new Date(),
+        });
+      }
     } catch (error) {
-      console.error("Error fetching chat response:", error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error("Error fetching chat response:", error);
+      }
       const errorMessage = error instanceof Error ? error.message : "Lo siento, algo salió mal.";
       setMessages((prev) => {
         const newMessages = [...prev];
@@ -327,6 +369,16 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    startChat(input);
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setInput(suggestion);
+    startChat(suggestion);
   };
 
   const formLayout = (
@@ -353,9 +405,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
       </form>
       
       {/* Token Progress Bar - Centered and same width as input */}
-      <div className="w-full max-w-2xl">
-        <TokenProgress conversationId={conversationId || undefined} />
-      </div>
+      
     </div>
   );
 
@@ -370,6 +420,12 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-h-0 bg-white">
+        {/* Absolutely positioned context indicator */}
+        {conversationId && (
+          <div className="absolute top-4 right-6 z-10">
+            <ContextIndicator conversationId={conversationId} />
+          </div>
+        )}
         {/* Empty State */}
         <AnimatePresence>
           {messages.length === 0 && (
@@ -387,7 +443,23 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                   Chat inteligente con memoria de 1 millón de tokens
                 </p>
               </div>
-              <div className="w-full px-4">{formLayout}</div>
+
+              {/* Sugerencias de Prompt */}
+              <div className="w-full max-w-2xl mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-center">
+                  {suggestions.map((s, i) => (
+                    <button 
+                      key={i}
+                      onClick={() => handleSuggestionClick(s)}
+                      className="p-3 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 bg-white shadow-sm"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="w-full px-4 mt-8">{formLayout}</div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -399,7 +471,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
               ref={scrollContainerRef} 
               className="flex-1 overflow-y-auto p-4 md:p-6 pb-0"
             >
-              <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
+              <div className="w-full max-w-6xl mx-auto space-y-4 md:space-y-6">
                 {messages.map((msg, index) => (
                   <div
                     key={index}
@@ -419,10 +491,10 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                     )}
                     <div
                       className={cn(
-                        "max-w-[85%] md:max-w-[75%] px-3 md:px-4 py-2 md:py-3 rounded-2xl shadow-sm relative group border",
+                        "max-w-[90%] px-3 md:px-4 py-2 md:py-3 rounded-2xl shadow-sm relative group border",
                         msg.role === "user"
-                          ? "bg-white text-gray-800 border-gray-200 rounded-br-md"
-                          : "bg-gray-100 text-gray-800 border-gray-200 rounded-bl-md"
+                          ? "bg-white text-gray-800 border-gray-200 rounded-br-md self-end"
+                          : "bg-gray-100 text-gray-800 border-gray-200 rounded-bl-md self-start"
                       )}
                     >
                       {msg.role === 'assistant' && msg.content === '' && isSending ? (
@@ -430,7 +502,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                       ) : (
                         <div className="space-y-4">
                           {msg.content && (
-                            <div className="prose prose-sm max-w-none">
+                            <div className="prose prose-sm max-w-none chat-content overflow-x-auto">
                               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                 {msg.content}
                               </ReactMarkdown>

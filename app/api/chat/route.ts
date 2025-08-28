@@ -64,7 +64,9 @@ export async function POST(req: Request) {
     } else {
       // Fallback to original memory-based agent
       const statsBefore = getConversationStats(effectiveConversationId);
-      console.log(`Conversation ${effectiveConversationId} stats before:`, statsBefore);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`Conversation ${effectiveConversationId} stats before:`, statsBefore);
+      }
       stream = await chatWithMemory(message, effectiveConversationId);
     }
 

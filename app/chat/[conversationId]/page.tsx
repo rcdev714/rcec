@@ -38,23 +38,23 @@ export default async function ConversationPage({ params }: ConversationPageProps
     .order('created_at', { ascending: true })
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <div className="flex-1 flex flex-col">
-        <div className="border-b border-gray-200 bg-white px-6 py-4">
-          <h1 className="text-lg font-semibold text-gray-900">
-            {conversation.title}
-          </h1>
-          <p className="text-sm text-gray-500">
-            Conversación iniciada el {new Date(conversation.created_at).toLocaleDateString('es-ES')}
-          </p>
-        </div>
-        
-        <div className="flex-1 overflow-hidden">
-          <ChatUI 
-            initialConversationId={conversationId}
-            initialMessages={messages || []}
-          />
-        </div>
+    <div className="flex flex-col h-screen bg-background">
+      {/* Header */}
+      <div className="border-b border-border bg-card px-6 py-4 shrink-0">
+        <h1 className="text-lg font-semibold text-foreground">
+          {conversation.title}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Conversación iniciada el {new Date(conversation.created_at).toLocaleDateString('es-ES')}
+        </p>
+      </div>
+      
+      {/* Chat UI takes the remaining space */}
+      <div className="flex-1 overflow-hidden">
+        <ChatUI 
+          initialConversationId={conversationId}
+          initialMessages={messages || []}
+        />
       </div>
     </div>
   )

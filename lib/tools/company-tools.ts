@@ -72,8 +72,8 @@ export const searchCompaniesTool = tool(
       return {
         success: true,
         result,
-        summary: `Encontré ${totalCount} empresas que coinciden con: ${filterSummary}. Resultados ordenados por completitud de datos (${stats.highQualityCount} empresas con datos completos, ${stats.mediumQualityCount} con datos parciales).`,
-        showingResults: `Mostrando ${sortedCompanies.length} de ${totalCount} resultados priorizados por calidad de información`,
+        summary: `Encontré ${totalCount} empresas que coinciden con: ${filterSummary}. Los resultados se ordenan por relevancia, priorizando empresas con información de contacto completa y datos financieros recientes.`,
+        showingResults: `Mostrando ${sortedCompanies.length} de ${totalCount} resultados. Cargar más mostrará el siguiente grupo de empresas relevantes.`,
         appliedFilters: validatedFilters,
         dataQuality: stats,
       };
