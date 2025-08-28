@@ -126,7 +126,7 @@ export default function NewOfferingPage() {
       setDocumentationUrls([{ url: '', description: '' }]);
       setTargetCompanyRUCs("");
 
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
       setIsLoading(false);

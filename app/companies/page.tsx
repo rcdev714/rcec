@@ -3,8 +3,6 @@ import { fetchCompanies } from "@/lib/data/companies";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
-
-
 // Define the expected search parameters for the page.
 interface CompaniesPageProps {
   searchParams: Promise<{
