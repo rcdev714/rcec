@@ -1,0 +1,54 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]: A
+      - navigation [ref=e5]:
+        - list [ref=e6]:
+          - listitem [ref=e7]:
+            - link "Consola" [ref=e8] [cursor=pointer]:
+              - /url: /dashboard
+              - img [ref=e9] [cursor=pointer]
+              - generic: Consola
+          - listitem [ref=e12]:
+            - link "Servicios" [ref=e13] [cursor=pointer]:
+              - /url: /offerings
+              - img [ref=e14] [cursor=pointer]
+              - generic: Servicios
+          - listitem [ref=e18]:
+            - link "Empresas" [ref=e19] [cursor=pointer]:
+              - /url: /companies
+              - img [ref=e20] [cursor=pointer]
+              - generic: Empresas
+          - listitem [ref=e23]:
+            - link "Asistente" [ref=e24] [cursor=pointer]:
+              - /url: /chat
+              - img [ref=e25] [cursor=pointer]
+              - generic: Asistente
+          - listitem [ref=e27]:
+            - link "Suscripción" [ref=e28] [cursor=pointer]:
+              - /url: /pricing
+              - img [ref=e29] [cursor=pointer]
+              - generic: Suscripción
+      - link "Configuración" [ref=e32] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e33] [cursor=pointer]
+        - generic: Configuración
+    - main [ref=e38]:
+      - generic [ref=e40]:
+        - link "UNIBROKERS Logo" [ref=e42] [cursor=pointer]:
+          - /url: /
+          - img "UNIBROKERS Logo" [ref=e43] [cursor=pointer]
+        - generic [ref=e44]:
+          - heading "Recuperar contraseña" [level=1] [ref=e45]
+          - paragraph [ref=e46]: Te enviaremos un enlace para restablecer tu contraseña
+        - generic [ref=e51]:
+          - heading "Revisa tu correo" [level=3] [ref=e52]
+          - paragraph [ref=e53]: Hemos enviado las instrucciones para restablecer tu contraseña a tu correo electrónico.
+        - paragraph [ref=e55]: © 2024 UNIBROKERS. Todos los derechos reservados.
+  - alert [ref=e56]
+  - button "Open Next.js Dev Tools" [ref=e62] [cursor=pointer]:
+    - img [ref=e63] [cursor=pointer]
+```

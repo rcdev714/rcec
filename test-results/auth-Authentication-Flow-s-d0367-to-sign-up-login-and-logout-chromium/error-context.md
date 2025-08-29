@@ -1,0 +1,72 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]: A
+      - navigation [ref=e5]:
+        - list [ref=e6]:
+          - listitem [ref=e7]:
+            - link "Consola" [ref=e8] [cursor=pointer]:
+              - /url: /dashboard
+              - img [ref=e9] [cursor=pointer]
+              - generic: Consola
+          - listitem [ref=e12]:
+            - link "Servicios" [ref=e13] [cursor=pointer]:
+              - /url: /offerings
+              - img [ref=e14] [cursor=pointer]
+              - generic: Servicios
+          - listitem [ref=e18]:
+            - link "Empresas" [ref=e19] [cursor=pointer]:
+              - /url: /companies
+              - img [ref=e20] [cursor=pointer]
+              - generic: Empresas
+          - listitem [ref=e23]:
+            - link "Asistente" [ref=e24] [cursor=pointer]:
+              - /url: /chat
+              - img [ref=e25] [cursor=pointer]
+              - generic: Asistente
+          - listitem [ref=e27]:
+            - link "Suscripción" [ref=e28] [cursor=pointer]:
+              - /url: /pricing
+              - img [ref=e29] [cursor=pointer]
+              - generic: Suscripción
+      - link "Configuración" [ref=e32] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e33] [cursor=pointer]
+        - generic: Configuración
+    - main [ref=e38]:
+      - generic [ref=e40]:
+        - link "UNIBROKERS Logo" [ref=e42] [cursor=pointer]:
+          - /url: /
+          - img "UNIBROKERS Logo" [ref=e43] [cursor=pointer]
+        - generic [ref=e44]:
+          - heading "Crear cuenta" [level=1] [ref=e45]
+          - paragraph [ref=e46]: Únete a UNIBROKERS para empezar
+        - generic [ref=e51]:
+          - generic [ref=e52]:
+            - generic [ref=e53]:
+              - generic [ref=e54]: Correo electrónico
+              - textbox "Correo electrónico" [ref=e55]: test+1756437639256@example.com
+            - generic [ref=e56]:
+              - generic [ref=e57]: Contraseña
+              - textbox "Contraseña" [ref=e58]: SecurePassword123!
+            - generic [ref=e59]:
+              - generic [ref=e60]: Confirmar contraseña
+              - textbox "Confirmar contraseña" [active] [ref=e61]
+            - generic [ref=e62]:
+              - generic [ref=e63]: Tipo de usuario
+              - generic [ref=e64]:
+                - heading "Usuario Regular" [level=3] [ref=e71] [cursor=pointer]
+                - heading "Usuario Empresarial" [level=3] [ref=e77] [cursor=pointer]
+            - button "Crear cuenta" [ref=e78] [cursor=pointer]
+          - generic [ref=e79]:
+            - generic [ref=e80]: ¿Ya tienes una cuenta?
+            - link "Iniciar sesión" [ref=e81] [cursor=pointer]:
+              - /url: /auth/login
+        - paragraph [ref=e83]: © 2024 UNIBROKERS. Todos los derechos reservados.
+  - alert [ref=e84]
+  - button "Open Next.js Dev Tools" [ref=e90] [cursor=pointer]:
+    - img [ref=e91] [cursor=pointer]
+```

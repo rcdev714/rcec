@@ -1,0 +1,103 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]: A
+      - navigation [ref=e5]:
+        - list [ref=e6]:
+          - listitem [ref=e7]:
+            - link "Consola" [ref=e8] [cursor=pointer]:
+              - /url: /dashboard
+              - img [ref=e9] [cursor=pointer]
+              - generic: Consola
+          - listitem [ref=e12]:
+            - link "Servicios" [ref=e13] [cursor=pointer]:
+              - /url: /offerings
+              - img [ref=e14] [cursor=pointer]
+              - generic: Servicios
+          - listitem [ref=e18]:
+            - link "Empresas" [ref=e19] [cursor=pointer]:
+              - /url: /companies
+              - img [ref=e20] [cursor=pointer]
+              - generic: Empresas
+          - listitem [ref=e23]:
+            - link "Asistente" [ref=e24] [cursor=pointer]:
+              - /url: /chat
+              - img [ref=e25] [cursor=pointer]
+              - generic: Asistente
+          - listitem [ref=e27]:
+            - link "Suscripción" [ref=e28] [cursor=pointer]:
+              - /url: /pricing
+              - img [ref=e29] [cursor=pointer]
+              - generic: Suscripción
+      - link "Configuración" [ref=e32] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e33] [cursor=pointer]
+        - generic: Configuración
+    - main [ref=e38]:
+      - generic [ref=e40]:
+        - generic [ref=e41]:
+          - heading "Bienvenido" [level=1] [ref=e42]
+          - paragraph [ref=e43]: Resumen de tu plan y uso
+        - generic [ref=e44]:
+          - generic [ref=e45]:
+            - generic [ref=e46]:
+              - generic [ref=e47]:
+                - generic [ref=e48]:
+                  - generic [ref=e49]: Plan
+                  - generic [ref=e51]: —
+                - generic [ref=e52]:
+                  - generic [ref=e53]: Gasto este mes
+                  - generic [ref=e54]: $0
+              - generic [ref=e55]:
+                - button "Cambiar Plan" [ref=e56] [cursor=pointer]
+                - button "Editar" [ref=e57] [cursor=pointer]
+            - generic [ref=e58]:
+              - generic [ref=e59]:
+                - generic [ref=e60]: Tus analíticas
+                - generic [ref=e61]:
+                  - button "1d" [ref=e62] [cursor=pointer]
+                  - button "7d" [ref=e63] [cursor=pointer]
+                  - button "30d" [ref=e64] [cursor=pointer]
+              - generic [ref=e66]:
+                - generic [ref=e67]:
+                  - generic [ref=e68]: Búsquedas
+                  - generic [ref=e69]: "0"
+                - generic [ref=e70]:
+                  - generic [ref=e71]: Exportaciones
+                  - generic [ref=e72]: "0"
+            - heading "Acciones Principales" [level=2] [ref=e74]
+            - generic [ref=e75]:
+              - link "Buscar Empresas" [ref=e76] [cursor=pointer]:
+                - /url: /companies
+                - button "Buscar Empresas" [ref=e77] [cursor=pointer]:
+                  - img
+                  - generic [ref=e78] [cursor=pointer]: Buscar Empresas
+              - link "Mis Servicios" [ref=e79] [cursor=pointer]:
+                - /url: /offerings
+                - button "Mis Servicios" [ref=e80] [cursor=pointer]:
+                  - img
+                  - generic [ref=e81] [cursor=pointer]: Mis Servicios
+              - link "Assistente" [ref=e82] [cursor=pointer]:
+                - /url: /chat
+                - button "Assistente" [ref=e83] [cursor=pointer]:
+                  - img
+                  - generic [ref=e84] [cursor=pointer]: Assistente
+            - generic [ref=e85]:
+              - heading "Acciones Rápidas" [level=3] [ref=e86]
+              - generic [ref=e87]:
+                - link "Ver Planes de Suscripción" [ref=e88] [cursor=pointer]:
+                  - /url: /pricing
+                  - button "Ver Planes de Suscripción" [ref=e89] [cursor=pointer]
+                - link "Búsqueda Avanzada" [ref=e90] [cursor=pointer]:
+                  - /url: /companies
+                  - button "Búsqueda Avanzada" [ref=e91] [cursor=pointer]
+          - generic [ref=e93]:
+            - generic [ref=e95]: Estado de Suscripción
+            - paragraph [ref=e97]: No se pudo cargar el estado de la suscripción
+  - alert [ref=e98]
+  - button "Open Next.js Dev Tools" [ref=e104] [cursor=pointer]:
+    - img [ref=e105] [cursor=pointer]
+```

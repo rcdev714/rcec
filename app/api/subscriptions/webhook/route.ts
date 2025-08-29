@@ -16,6 +16,7 @@ interface StripeInvoiceWithSubscription extends Stripe.Invoice {
 }
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
   const body = await request.text();
   const signature = request.headers.get('stripe-signature');
 
@@ -46,11 +47,66 @@ export async function POST(request: NextRequest) {
     console.log('Received Stripe event:', event.type);
   }
 
+  const supabase = await createClient();
+
+  // Log webhook event for idempotency and audit
+  const { error: logError } = await supabase
+    .from('webhook_logs')
+    .insert({
+      webhook_id: event.id,
+      event_type: event.type,
+      status: 'received',
+      stripe_event_id: event.id,
+      payload: {
+        id: event.id,
+        type: event.type,
+        object: 'event',
+        api_version: event.api_version,
+        created: event.created,
+                  // @ts-expect-error - Simplified payload structure for logging
+          data: { object: { id: event.data.object.id } }
+      }
+    });
+
+  // If it's a unique constraint violation, it's a duplicate event, so we can ignore it.
+  if (logError && logError.code === '23505') {
+    console.log(`Duplicate webhook event received: ${event.id}`);
+    return NextResponse.json({ received: true, message: 'Duplicate event' });
+  }
+
+  if (logError) {
+    console.error('Error logging webhook:', logError);
+    // We don't return here because we should still try to process the event
+  }
+
   try {
     await handleStripeEvent(event);
+    
+    // Update webhook log as processed
+    await supabase
+      .from('webhook_logs')
+      .update({
+        status: 'processed',
+        processing_time_ms: Date.now() - startTime,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('stripe_event_id', event.id);
+
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error('Error processing webhook:', error);
+    
+    // Update webhook log as failed
+    await supabase
+      .from('webhook_logs')
+      .update({
+        status: 'failed',
+        processing_time_ms: Date.now() - startTime,
+        error_message: error instanceof Error ? error.message : 'Unknown error',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('stripe_event_id', event.id);
+
     return NextResponse.json(
       { error: 'Webhook processing failed' },
       { status: 500 }
@@ -62,6 +118,73 @@ async function handleStripeEvent(event: Stripe.Event) {
   const supabase = await createClient();
 
   switch (event.type) {
+    case 'customer.created': {
+      const customer = event.data.object as Stripe.Customer;
+      
+      // Log system event
+      await supabase
+        .from('system_events')
+        .insert({
+          event_type: 'customer_created',
+          description: `New Stripe customer created: ${customer.id}`,
+          metadata: { customer_id: customer.id, email: customer.email },
+        });
+      break;
+    }
+
+    case 'invoice.created': {
+      const invoice = event.data.object as Stripe.Invoice;
+      
+      // Log system event
+      await supabase
+        .from('system_events')
+        .insert({
+          event_type: 'invoice_created',
+          description: `Invoice created: ${invoice.id}`,
+          metadata: { 
+            invoice_id: invoice.id,
+            amount: invoice.amount_due,
+            customer_id: invoice.customer,
+          },
+        });
+      break;
+    }
+
+    case 'invoice.finalized': {
+      const invoice = event.data.object as Stripe.Invoice;
+      
+      // Log system event
+      await supabase
+        .from('system_events')
+        .insert({
+          event_type: 'invoice_finalized',
+          description: `Invoice finalized: ${invoice.id}`,
+          metadata: { 
+            invoice_id: invoice.id,
+            amount: invoice.amount_due,
+            customer_id: invoice.customer,
+          },
+        });
+      break;
+    }
+
+    case 'invoice.paid': {
+      const invoice = event.data.object as Stripe.Invoice;
+      
+      // Log system event
+      await supabase
+        .from('system_events')
+        .insert({
+          event_type: 'invoice_paid',
+          description: `Invoice paid: ${invoice.id}`,
+          metadata: { 
+            invoice_id: invoice.id,
+            amount_paid: invoice.amount_paid,
+            customer_id: invoice.customer,
+          },
+        });
+      break;
+    }
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
       const userId = session.metadata?.supabase_user_id;
