@@ -1,8 +1,30 @@
 import Stripe from 'stripe';
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  typescript: true,
-});
+// Lazily initialize Stripe to avoid build-time failures when env isn't loaded
+let stripeSingleton: Stripe | null = null;
+
+export function getStripe(): Stripe {
+  if (!stripeSingleton) {
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
+      throw new Error('STRIPE_SECRET_KEY is not set');
+    }
+    stripeSingleton = new Stripe(secretKey, {
+      typescript: true,
+    });
+  }
+  return stripeSingleton;
+}
+
+// Backward-compatible proxy export so existing imports `import { stripe }` keep working
+// Methods are forwarded to the lazily-created client instance
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const stripe = new Proxy({} as Stripe, {
+  get(_target: Stripe, prop: PropertyKey) {
+    const client = getStripe() as unknown as Record<PropertyKey, unknown>;
+    return client[prop];
+  },
+}) as unknown as Stripe;
 
 export const SUBSCRIPTION_PLANS = {
   FREE: {

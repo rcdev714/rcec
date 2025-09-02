@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin'
 import { createClient } from '@/lib/supabase/server'
-import { stripe } from '@/lib/stripe/server'
+import { getStripe } from '@/lib/stripe/server'
 
 export async function GET() {
   try {
@@ -14,6 +14,7 @@ export async function GET() {
     // Check Stripe status (simplified)
     let stripeStatus: 'operational' | 'degraded' | 'down' = 'operational'
     try {
+      const stripe = getStripe()
       await stripe.balance.retrieve()
     } catch (error) {
       console.error('Stripe error:', error)
@@ -105,6 +106,7 @@ async function getRecentTransactions(): Promise<number> {
     // Get charges from last 7 days
     const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000)
     
+    const stripe = getStripe()
     const charges = await stripe.charges.list({
       created: { gte: sevenDaysAgo },
       limit: 100,

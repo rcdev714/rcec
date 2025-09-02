@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin'
 import { createClient } from '@/lib/supabase/server'
-import { stripe } from '@/lib/stripe/server'
+import { getStripe } from '@/lib/stripe/server'
 
 export async function GET() {
   try {
@@ -117,6 +117,7 @@ async function getActualMRRFromStripe(): Promise<number> {
     let mrr = 0
     
     // Use auto-pagination to get all active subscriptions
+    const stripe = getStripe()
     for await (const subscription of stripe.subscriptions.list({
       status: 'active',
     })) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe/server';
+import { getStripe } from '@/lib/stripe/server';
 import { createClient } from '@/lib/supabase/server';
 import Stripe from 'stripe';
 
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(
+    event = getStripe().webhooks.constructEvent(
       body,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!
@@ -220,7 +220,7 @@ async function handleStripeEvent(event: Stripe.Event) {
       const subscription = event.data.object as StripeSubscriptionWithPeriods;
       
       // Get the customer to find the user
-      const customer = await stripe.customers.retrieve(subscription.customer as string);
+      const customer = await getStripe().customers.retrieve(subscription.customer as string);
       
       if (customer.deleted) {
         console.error('Customer was deleted');
@@ -265,7 +265,7 @@ async function handleStripeEvent(event: Stripe.Event) {
       const subscription = event.data.object as Stripe.Subscription;
       
       // Get the customer to find the user
-      const customer = await stripe.customers.retrieve(subscription.customer as string);
+      const customer = await getStripe().customers.retrieve(subscription.customer as string);
       
       if (customer.deleted) {
         console.error('Customer was deleted');

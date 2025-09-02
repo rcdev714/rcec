@@ -69,22 +69,37 @@ Usuario: "Exportar empresas manufactureras del 2023"
 
 Recuerda: Siempre sé útil, preciso, y usa las herramientas disponibles para proporcionar datos reales en lugar de especulaciones.`;
 
-// Initialize the Gemini model with error handling
-// Note: gemini-1.5-flash has higher rate limits than gemini-2.0-flash-exp
-const model = new ChatGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_API_KEY || '',
-  model: process.env.GEMINI_MODEL || "gemini-2.5-flash", // Use 1.5-flash for higher rate limits
-  temperature: 0.7,
-  maxOutputTokens: 2048,
-  maxRetries: 2,
-});
+// Lazily initialize the Gemini model and agent to avoid build-time env checks
+let geminiModel: ChatGoogleGenerativeAI | null = null;
+let langGraphAgentInstance: ReturnType<typeof createReactAgent> | null = null;
 
-// Create the ReAct agent using prebuilt function
-const agent = createReactAgent({
-  llm: model,
-  tools: companyTools,
-  messageModifier: SYSTEM_PROMPT,
-});
+function getGeminiModel(): ChatGoogleGenerativeAI {
+  if (!geminiModel) {
+    const apiKey = process.env.GOOGLE_API_KEY;
+    if (!apiKey) {
+      throw new Error('GOOGLE_API_KEY is not set');
+    }
+    geminiModel = new ChatGoogleGenerativeAI({
+      apiKey,
+      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+      temperature: 0.7,
+      maxOutputTokens: 2048,
+      maxRetries: 2,
+    });
+  }
+  return geminiModel;
+}
+
+function getLangGraphAgent() {
+  if (!langGraphAgentInstance) {
+    langGraphAgentInstance = createReactAgent({
+      llm: getGeminiModel(),
+      tools: companyTools,
+      messageModifier: SYSTEM_PROMPT,
+    });
+  }
+  return langGraphAgentInstance;
+}
 
 // Enhanced chat function with LangGraph
 export async function chatWithLangGraph(
@@ -104,7 +119,7 @@ export async function chatWithLangGraph(
         let searchResult: CompanySearchResult | undefined;
         
         // Execute the React agent
-        const result = await agent.invoke({
+        const result = await getLangGraphAgent().invoke({
           messages: initialMessages,
         });
         
@@ -191,5 +206,7 @@ export async function getConversationContext(): Promise<BaseMessage[]> {
   return [];
 }
 
-// Export the React agent for direct use if needed
-export { agent as langGraphAgent };
+// Export accessor for the React agent for direct use if needed
+export const langGraphAgent = {
+  get: () => getLangGraphAgent(),
+};
