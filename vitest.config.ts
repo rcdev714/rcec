@@ -37,7 +37,7 @@ export default defineConfig({
     },
     // Better error handling in CI environments
     bail: process.env.CI ? 1 : 0,
-    reporter: process.env.CI ? 'verbose' : 'default'
+    reporters: process.env.CI ? ['verbose'] : ['default']
   },
   resolve: {
     alias: {
