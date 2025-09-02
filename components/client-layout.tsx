@@ -3,16 +3,21 @@
 import { Suspense } from "react";
 import Sidebar from "@/components/sidebar";
 import LoadingSpinner from "@/components/loading-spinner";
+import { usePathname } from "next/navigation";
 
 export default function ClientLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  // Don't show sidebar on landing page, auth pages, or any other public pages
+  const shouldRenderSidebar = pathname !== "/" && !pathname.startsWith("/auth");
+  
   return (
     <div className="flex min-h-screen">
-      <Sidebar />
-      <main className="flex-1 ml-14">
+      {shouldRenderSidebar && <Sidebar />}
+      <main className={`flex-1 ${shouldRenderSidebar ? "ml-14" : "ml-0"}`}>
         <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>
       </main>
     </div>

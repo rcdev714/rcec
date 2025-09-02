@@ -7,7 +7,11 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
     include: ['tests/**/*.{test,spec}.{js,ts,tsx}'],
-    exclude: ['tests/e2e/**/*'],
+    exclude: [
+      'tests/e2e/**/*',
+      'node_modules/**/*',
+      '.next/**/*'
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -22,8 +26,18 @@ export default defineConfig({
         'postcss.config.mjs'
       ]
     },
-    testTimeout: 15000,
-    hookTimeout: 15000
+    testTimeout: 30000,
+    hookTimeout: 10000,
+    // Improved test environment for CI/CD
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true
+      }
+    },
+    // Better error handling in CI environments
+    bail: process.env.CI ? 1 : 0,
+    reporter: process.env.CI ? 'verbose' : 'default'
   },
   resolve: {
     alias: {

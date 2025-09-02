@@ -15,11 +15,14 @@ declare global {
 }
 
 // Mock environment variables for tests
-process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
-process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
-process.env.GOOGLE_API_KEY = 'test-google-api-key'
-process.env.STRIPE_SECRET_KEY = 'sk_test_123'
-process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_123'
+// NODE_ENV is automatically set by test runner, no need to override
+process.env.NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://test.supabase.co'
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'test-anon-key'
+process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'test-service-role-key'
+process.env.GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || 'test-google-api-key'
+process.env.STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || 'sk_test_123'
+process.env.STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_test_123'
+process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_123'
 
 // Mock Next.js router
 const mockRouter = {
