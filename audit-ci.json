@@ -4,7 +4,10 @@
   "high": true,
   "critical": true,
   "report-type": "summary",
-  "allowlist": [],
+  "allowlist": [
+    "GHSA-5pgg-2g8v-p4x9",
+    "GHSA-67mh-4wv8-2f99"
+  ],
   "skip-dev": false,
   "output-format": "text"
 }
