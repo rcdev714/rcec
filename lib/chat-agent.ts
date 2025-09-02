@@ -20,13 +20,24 @@ const MAX_USABLE_TOKENS = MAX_CONTEXT_TOKENS - TOKEN_BUFFER;
 // In-memory store (in production, consider using Redis or database)
 const memoryStore: MemoryStore = {};
 
-// Initialize the Gemini model with optimal settings for large context
-const model = new ChatGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_API_KEY,
-  model: "gemini-2.0-flash-exp", // Latest model with largest context window
-  temperature: 0.7,
-  maxOutputTokens: 8192, // Reasonable output limit
-});
+// Lazy initialization of the Gemini model to avoid build-time errors
+let model: ChatGoogleGenerativeAI | null = null;
+
+function getModel(): ChatGoogleGenerativeAI {
+  if (!model) {
+    if (!process.env.GOOGLE_API_KEY) {
+      throw new Error('GOOGLE_API_KEY environment variable is required');
+    }
+    
+    model = new ChatGoogleGenerativeAI({
+      apiKey: process.env.GOOGLE_API_KEY,
+      model: "gemini-2.0-flash-exp", // Latest model with largest context window
+      temperature: 0.7,
+      maxOutputTokens: 8192, // Reasonable output limit
+    });
+  }
+  return model;
+}
 
 // Unified accurate token counter with fallback
 async function countTokens(text: string): Promise<number> {
@@ -123,7 +134,8 @@ ${conversationText}
 Summary:`;
 
   try {
-    const summaryResponse = await model.invoke([new HumanMessage(summaryPrompt)]);
+    const aiModel = getModel();
+    const summaryResponse = await aiModel.invoke([new HumanMessage(summaryPrompt)]);
     const summaryMessage = new AIMessage(
       `[CONVERSATION SUMMARY]: ${summaryResponse.content}`
     );
@@ -184,7 +196,8 @@ async function chatWithMemory(message: string, conversationId: string = 'default
   const conversationMessages = await manageMemory(conversationId, userMessage);
   
   // Stream response from Gemini
-  const stream = await model.stream(conversationMessages);
+  const aiModel = getModel();
+  const stream = await aiModel.stream(conversationMessages);
   
   // Collect the complete response for memory storage
   let assistantResponse = '';
@@ -273,7 +286,8 @@ function getConversationHistory(conversationId: string = 'default'): BaseMessage
 
 // Legacy simple chat for backward compatibility
 async function simpleChat(message: string) {
-  const stream = await model.stream([new HumanMessage(message)]);
+  const aiModel = getModel();
+  const stream = await aiModel.stream([new HumanMessage(message)]);
   return stream;
 }
 
