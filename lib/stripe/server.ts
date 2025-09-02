@@ -18,7 +18,6 @@ export function getStripe(): Stripe {
 
 // Backward-compatible proxy export so existing imports `import { stripe }` keep working
 // Methods are forwarded to the lazily-created client instance
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const stripe = new Proxy({} as Stripe, {
   get(_target: Stripe, prop: PropertyKey) {
     const client = getStripe() as unknown as Record<PropertyKey, unknown>;

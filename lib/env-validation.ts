@@ -4,7 +4,6 @@
 
 export function validateEnvironment() {
   const required = [
-    'GOOGLE_API_KEY',
     'NEXT_PUBLIC_SUPABASE_URL',
     'NEXT_PUBLIC_SUPABASE_ANON_KEY',
     'STRIPE_SECRET_KEY',
@@ -31,10 +30,7 @@ export function validateEnvironment() {
     }
   }
 
-  // Validate format of certain env vars
-  if (process.env.GOOGLE_API_KEY && !process.env.GOOGLE_API_KEY.startsWith('AI')) {
-    console.warn('GOOGLE_API_KEY format may be incorrect');
-  }
+  // Validate format of certain env vars (reserved for future use)
 
   // Log optional configurations
   console.log('\nOptional configurations:');

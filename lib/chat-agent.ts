@@ -25,12 +25,8 @@ let model: ChatGoogleGenerativeAI | null = null;
 
 function getModel(): ChatGoogleGenerativeAI {
   if (!model) {
-    if (!process.env.GOOGLE_API_KEY) {
-      throw new Error('GOOGLE_API_KEY environment variable is required');
-    }
-    
     model = new ChatGoogleGenerativeAI({
-      apiKey: process.env.GOOGLE_API_KEY,
+      apiKey: process.env.GOOGLE_API_KEY || '',
       model: "gemini-2.0-flash-exp", // Latest model with largest context window
       temperature: 0.7,
       maxOutputTokens: 8192, // Reasonable output limit

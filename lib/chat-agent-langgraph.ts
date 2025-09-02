@@ -75,10 +75,7 @@ let langGraphAgentInstance: ReturnType<typeof createReactAgent> | null = null;
 
 function getGeminiModel(): ChatGoogleGenerativeAI {
   if (!geminiModel) {
-    const apiKey = process.env.GOOGLE_API_KEY;
-    if (!apiKey) {
-      throw new Error('GOOGLE_API_KEY is not set');
-    }
+    const apiKey = process.env.GOOGLE_API_KEY || '';
     geminiModel = new ChatGoogleGenerativeAI({
       apiKey,
       model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
