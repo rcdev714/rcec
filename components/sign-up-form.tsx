@@ -64,23 +64,24 @@ export function SignUpForm({
     }
 
     try {
-      // Use environment variable if set, otherwise auto-detect
-      const redirectUrl = process.env.NEXT_PUBLIC_SITE_URL 
-        ? `${process.env.NEXT_PUBLIC_SITE_URL}/auth/confirm`
-        : process.env.NODE_ENV === 'production' 
-          ? 'https://unibrokers.netlify.app/auth/confirm'
-          : `${window.location.origin}/auth/confirm`;
+      // Since email confirmation is disabled in Supabase settings,
+      // we no longer need to specify an email redirect URL.
+      // const redirectUrl = process.env.NEXT_PUBLIC_SITE_URL
+      //   ? `${process.env.NEXT_PUBLIC_SITE_URL}/auth/confirm`
+      //   : process.env.NODE_ENV === 'production'
+      //     ? 'https://unibrokers.netlify.app/auth/confirm'
+      //     : `${window.location.origin}/auth/confirm`;
 
       // Prepare role data
       const roleToSave = userType === "enterprise" 
         ? (enterpriseRole === "Otro" ? customRole : enterpriseRole)
         : null;
 
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: redirectUrl,
+          // emailRedirectTo: redirectUrl,
           data: {
             user_type: userType,
             enterprise_role: roleToSave,
@@ -89,24 +90,10 @@ export function SignUpForm({
       });
       if (error) throw error;
 
-      // If user is created successfully, also create the profile record
-      if (data.user) {
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .insert({
-            user_id: data.user.id,
-            user_type: userType,
-            enterprise_role: roleToSave
-          });
-        
-        if (profileError) {
-          console.error('Error creating user profile:', profileError);
-          // We don't throw here to avoid blocking the signup process
-          // The profile can be created later if needed
-        }
-      }
+      // The profile creation is now handled by a database trigger (create_user_profile)
+      // on the auth.users table, so this client-side insertion is no longer needed.
 
-      router.push("/auth/sign-up-success");
+      router.push("/dashboard");
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {

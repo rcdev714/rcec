@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function LoginForm({
@@ -20,6 +21,7 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,21 +55,11 @@ export function LoginForm({
         return;
       }
 
-      // Check if the session was created successfully
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !session) {
-        console.error("Session error:", sessionError);
-        setError("Error al crear la sesión. Por favor, intenta nuevamente.");
-        return;
-      }
-
       if (process.env.NODE_ENV !== 'production') {
-        console.log("Login successful, redirecting to /companies");
+        console.log("Login successful, redirecting to /dashboard");
       }
       
-      // Force a hard navigation to ensure middleware runs
-      window.location.href = "/companies";
+      router.push("/dashboard");
       
     } catch (error: unknown) {
       console.error("Unexpected error:", error);
