@@ -20,13 +20,23 @@ interface DocumentationUrlInput {
   description: string;
 }
 
+interface PricePlanInput {
+  name: string;
+  price: string;
+  period: string;
+}
+
+type PaymentType = 'one-time' | 'subscription';
+
 export default function NewOfferingPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null); // State to store user
   const [offeringName, setOfferingName] = useState("");
   const [description, setDescription] = useState("");
   const [industry, setIndustry] = useState("");
-  const [pricePlans, setPricePlans] = useState("");
+  const [paymentType, setPaymentType] = useState<PaymentType>('one-time');
+  const [oneTimePrice, setOneTimePrice] = useState('');
+  const [pricePlans, setPricePlans] = useState<PricePlanInput[]>([{ name: '', price: '', period: '' }]);
   const [industryTargets, setIndustryTargets] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [socialMediaLinks, setSocialMediaLinks] = useState<SocialMediaLinkInput[]>([{ platform: '', url: '' }]);
@@ -83,6 +93,21 @@ export default function NewOfferingPage() {
     setDocumentationUrls(newDocs);
   };
 
+  const handleAddPricePlan = () => {
+    setPricePlans([...pricePlans, { name: '', price: '', period: '' }]);
+  };
+
+  const handlePricePlanChange = (index: number, field: keyof PricePlanInput, value: string) => {
+    const newPlans = [...pricePlans];
+    newPlans[index][field] = value;
+    setPricePlans(newPlans);
+  };
+
+  const handleRemovePricePlan = (index: number) => {
+    const newPlans = pricePlans.filter((_, i) => i !== index);
+    setPricePlans(newPlans);
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -99,7 +124,16 @@ export default function NewOfferingPage() {
           offering_name: offeringName,
           description,
           industry,
-          price_plans: pricePlans ? JSON.parse(pricePlans) : undefined, // Parse JSON for backend
+          payment_type: paymentType,
+          price_plans: paymentType === 'one-time'
+            ? (oneTimePrice.trim() ? [{ name: 'Pago único', price: parseFloat(oneTimePrice) || 0, period: 'único' }] : undefined)
+            : (pricePlans.filter(plan => plan.name.trim() || plan.price.trim() || plan.period.trim()).length > 0
+                ? pricePlans.filter(plan => plan.name.trim() || plan.price.trim() || plan.period.trim()).map(plan => ({
+                    name: plan.name.trim(),
+                    price: parseFloat(plan.price) || 0,
+                    period: plan.period.trim()
+                  }))
+                : undefined),
           industry_targets: industryTargets.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),
           website_url: websiteUrl,
           social_media_links: socialMediaLinks.filter(link => link.url.length > 0),
@@ -119,7 +153,9 @@ export default function NewOfferingPage() {
       setOfferingName("");
       setDescription("");
       setIndustry("");
-      setPricePlans("");
+      setPaymentType('one-time');
+      setOneTimePrice('');
+      setPricePlans([{ name: '', price: '', period: '' }]);
       setIndustryTargets("");
       setWebsiteUrl("");
       setSocialMediaLinks([{ platform: '', url: '' }]);
@@ -175,15 +211,127 @@ export default function NewOfferingPage() {
               />
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="pricePlans">Planes de Precios (JSON)</Label>
-              <Textarea
-                id="pricePlans"
-                placeholder={'[{"cobertura":"Básica","prima":"$100/mes"}, {"cobertura":"Completa","prima":"$250/mes"}]'}
-                value={pricePlans}
-                onChange={(e) => setPricePlans(e.target.value)}
-                rows={3}
-              />
+            {/* Payment Type Selection */}
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">Tipo de Pago</Label>
+
+              {/* Payment Type Radio Buttons */}
+              <div className="flex gap-6">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paymentType"
+                    value="one-time"
+                    checked={paymentType === 'one-time'}
+                    onChange={(e) => setPaymentType(e.target.value as PaymentType)}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                      <span className="text-green-600 font-bold text-sm">$</span>
+                    </div>
+                    <div>
+                      <div className="font-medium">Pago único</div>
+                      <div className="text-sm text-gray-500">Cobrar una sola vez</div>
+                    </div>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paymentType"
+                    value="subscription"
+                    checked={paymentType === 'subscription'}
+                    onChange={(e) => setPaymentType(e.target.value as PaymentType)}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 font-bold text-sm">∞</span>
+                    </div>
+                    <div>
+                      <div className="font-medium">Suscripción</div>
+                      <div className="text-sm text-gray-500">Cobros recurrentes</div>
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              {/* One-time Payment */}
+              {paymentType === 'one-time' && (
+                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <Label htmlFor="oneTimePrice" className="text-sm font-medium text-green-800">
+                    Precio del Pago Único
+                  </Label>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-lg font-medium">$</span>
+                    <Input
+                      id="oneTimePrice"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={oneTimePrice}
+                      onChange={(e) => setOneTimePrice(e.target.value)}
+                      className="max-w-xs border-green-300 focus:border-green-500"
+                    />
+                  </div>
+                  <p className="text-xs text-green-600 mt-1">
+                    Los clientes pagarán este monto una sola vez
+                  </p>
+                </div>
+              )}
+
+              {/* Subscription Plans */}
+              {paymentType === 'subscription' && (
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <Label className="text-sm font-medium text-blue-800 mb-3 block">
+                    Planes de Suscripción
+                  </Label>
+
+                  <div className="space-y-3">
+                    {pricePlans.map((plan, index) => (
+                      <div key={index} className="flex gap-3 items-center p-3 bg-white border border-blue-200 rounded-lg">
+                        <Input
+                          placeholder="Nombre del plan (ej: Básico)"
+                          value={plan.name}
+                          onChange={(e) => handlePricePlanChange(index, 'name', e.target.value)}
+                          className="flex-1 border-blue-300"
+                        />
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm font-medium">$</span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={plan.price}
+                            onChange={(e) => handlePricePlanChange(index, 'price', e.target.value)}
+                            className="w-24 border-blue-300"
+                          />
+                        </div>
+                        <span className="text-sm text-gray-500">por</span>
+                        <Input
+                          placeholder="mes"
+                          value={plan.period}
+                          onChange={(e) => handlePricePlanChange(index, 'period', e.target.value)}
+                          className="w-20 border-blue-300"
+                        />
+                        <Button type="button" variant="outline" size="icon" onClick={() => handleRemovePricePlan(index)}>
+                          -
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddPricePlan} className="mt-3">
+                    + Añadir Plan de Suscripción
+                  </Button>
+
+                  <p className="text-xs text-blue-600 mt-2">
+                    Los clientes serán cobrados recurrentemente según el período seleccionado
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="grid gap-2">

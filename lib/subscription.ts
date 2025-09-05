@@ -13,7 +13,11 @@ export async function getUserSubscription(userId: string): Promise<UserSubscript
     .single();
 
   if (error) {
-    console.error('Error fetching user subscription:', error);
+    // PostgREST error PGRST116: "The result of a function call or a view is empty, and the client requested a single object."
+    // This is not an actual error but a "not found" case, so we don't log it.
+    if (error.code !== 'PGRST116') {
+      console.error('Error fetching user subscription:', error);
+    }
     return null;
   }
 
@@ -78,7 +82,11 @@ export async function getUserSubscriptionClient(): Promise<UserSubscription | nu
     .single();
 
   if (error) {
-    console.error('Error fetching user subscription:', error);
+    // PostgREST error PGRST116: "The result of a function call or a view is empty, and the client requested a single object."
+    // This is not an actual error but a "not found" case, so we don't log it.
+    if (error.code !== 'PGRST116') {
+      console.error('Error fetching user subscription:', error);
+    }
     return null;
   }
 
@@ -114,18 +122,19 @@ export function canAccessFeature(plan: 'FREE' | 'PRO' | 'ENTERPRISE', feature: s
     // Free features
     'basic_search': ['FREE', 'PRO', 'ENTERPRISE'],
     'basic_support': ['FREE', 'PRO', 'ENTERPRISE'],
-    
+
     // Pro features
     'unlimited_search': ['PRO', 'ENTERPRISE'],
     'advanced_filtering': ['PRO', 'ENTERPRISE'],
     'export_data': ['PRO', 'ENTERPRISE'],
     'priority_support': ['PRO', 'ENTERPRISE'],
-    
+    'linkedin_search': ['PRO', 'ENTERPRISE'],
+
     // Enterprise features
-    'api_access': ['ENTERPRISE'],
     'custom_integrations': ['ENTERPRISE'],
     'dedicated_support': ['ENTERPRISE'],
     'advanced_analytics': ['ENTERPRISE'],
+    'api_access': ['ENTERPRISE'],
   };
 
   const allowedPlans = featureMap[feature as keyof typeof featureMap];
@@ -136,17 +145,17 @@ export function canAccessFeature(plan: 'FREE' | 'PRO' | 'ENTERPRISE', feature: s
 export function getUsageLimits(plan: 'FREE' | 'PRO' | 'ENTERPRISE') {
   const limits = {
     FREE: {
-      searches_per_day: 10,
-      exports_per_month: 0,
+      searches_per_month: 100,
+      exports_per_month: 10,
       companies_per_export: 0,
     },
     PRO: {
-      searches_per_day: -1, // unlimited
+      searches_per_month: -1, // unlimited
       exports_per_month: 50,
       companies_per_export: 1000,
     },
     ENTERPRISE: {
-      searches_per_day: -1, // unlimited
+      searches_per_month: -1, // unlimited
       exports_per_month: -1, // unlimited
       companies_per_export: -1, // unlimited
     },

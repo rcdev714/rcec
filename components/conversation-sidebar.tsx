@@ -24,7 +24,8 @@ export default function ConversationSidebar({
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const conversationManager = ConversationManager.getInstance();
 
-  const loadConversations = useCallback(() => {
+  const loadConversations = useCallback(async () => {
+    await conversationManager.initialize();
     const convs = conversationManager.getAllConversations();
     setConversations(convs);
   }, [conversationManager]);
@@ -105,9 +106,9 @@ export default function ConversationSidebar({
         variant="outline"
         size="sm"
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-40 md:hidden bg-white shadow-md"
+        className="fixed top-4 left-4 z-40 md:hidden bg-white shadow-md min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation"
       >
-        {isOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+        {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </Button>
 
       {/* Mobile overlay */}
@@ -121,15 +122,15 @@ export default function ConversationSidebar({
       {/* Sidebar container: mobile drawer + desktop static */}
       <div
         className={`
-          z-40 border-r border-gray-200 bg-white transition-all duration-300 ease-in-out
-          fixed inset-y-0 left-0 w-64 ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static
-          ${isCollapsed ? 'md:w-16' : 'md:w-64'}
+          z-40 bg-white transition-all duration-300 ease-in-out
+          fixed inset-y-0 left-0 w-64 ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static md:ml-12
+          ${isCollapsed ? 'md:w-16 md:ml-12' : 'md:w-64 md:ml-12'}
           flex flex-col h-full
         `}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className={`p-4 border-b border-gray-200 ${isCollapsed ? 'px-2' : ''}`}>
+          <div className={`p-4 ${isCollapsed ? 'px-2' : ''}`}>
             {!isCollapsed ? (
               <>
                 <div className="flex items-center justify-between mb-3">
@@ -148,16 +149,16 @@ export default function ConversationSidebar({
                       variant="outline"
                       size="sm"
                       onClick={() => setIsOpen(false)}
-                      className="md:hidden p-2"
+                      className="md:hidden p-2 min-h-[40px] min-w-[40px] flex items-center justify-center touch-manipulation"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-5 h-5" />
                     </Button>
                   </div>
                 </div>
                 
                 <Button
                   onClick={handleNewConversation}
-                  className="w-full bg-white hover:bg-gray-200 text-black border border-gray-200"
+                  className="w-full bg-white hover:bg-gray-200 text-black"
                   size="sm"
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -177,7 +178,7 @@ export default function ConversationSidebar({
                 </Button>
                 <Button
                   onClick={handleNewConversation}
-                  className="w-full bg-white hover:bg-gray-200 text-black border border-gray-200 p-2"
+                  className="w-full bg-white hover:bg-gray-200 text-black p-2"
                   size="sm"
                   title="Nueva Conversación"
                 >
@@ -202,7 +203,7 @@ export default function ConversationSidebar({
                       key={conv.id}
                       className={`
                         p-3 cursor-pointer transition-all duration-200 hover:bg-gray-50 group
-                        ${conv.id === currentConversationId ? 'bg-gray-100 border-gray-300' : 'border-gray-200'}
+                        ${conv.id === currentConversationId ? 'bg-gray-100' : ''}
                       `}
                       onClick={() => handleSelectConversation(conv.id)}
                     >
@@ -216,9 +217,6 @@ export default function ConversationSidebar({
                           </div>
                           <p className="text-sm font-medium text-gray-800 truncate">
                             {conv.title}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {conv.messageCount} mensajes
                           </p>
                         </div>
                         
@@ -238,28 +236,6 @@ export default function ConversationSidebar({
             </div>
           )}
 
-          {/* Collapsed state - minimal indicators */}
-          {isCollapsed && conversations.length > 0 && (
-            <div className="flex-1 overflow-y-auto p-1">
-              <div className="space-y-1">
-                {conversations.slice(0, 10).map((conv) => (
-                  <Button
-                    key={conv.id}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleSelectConversation(conv.id)}
-                    className={`
-                      w-full p-2 h-8 justify-center
-                      ${conv.id === currentConversationId ? 'bg-gray-100' : ''}
-                    `}
-                    title={conv.title}
-                  >
-                    <MessageSquare className="w-3 h-3" />
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </>

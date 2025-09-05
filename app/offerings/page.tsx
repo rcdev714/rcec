@@ -31,12 +31,84 @@ export default function OfferingsPage() {
     fetchOfferings();
   }, []);
 
+  const handleUpdateOffering = async (id: string, updates: Partial<UserOffering>) => {
+    try {
+      const response = await fetch('/api/user-offerings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id,
+          ...updates,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update offering');
+      }
+
+      const result = await response.json();
+
+      // Refetch all offerings to ensure we have the latest data
+      const fetchResponse = await fetch('/api/user-offerings');
+      if (fetchResponse.ok) {
+        const updatedOfferings = await fetchResponse.json();
+        setOfferings(updatedOfferings);
+      } else {
+        // Fallback: Update the offering in local state
+        setOfferings(prevOfferings =>
+          prevOfferings.map(offering =>
+            offering.id === id ? result.offering : offering
+          )
+        );
+      }
+    } catch (err) {
+      console.error('Error updating offering:', err);
+      throw err; // Re-throw to let the component handle the error
+    }
+  };
+
+  const handleDeleteOffering = async (id: string) => {
+    try {
+      const response = await fetch(`/api/user-offerings?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete offering');
+      }
+
+      // Remove the offering from local state
+      setOfferings(prevOfferings =>
+        prevOfferings.filter(offering => offering.id !== id)
+      );
+    } catch (err) {
+      console.error('Error deleting offering:', err);
+      throw err; // Re-throw to let the component handle the error
+    }
+  };
+
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="p-4 md:p-8">
+        <div className="flex justify-center items-center min-h-[200px]">
+          <div className="text-gray-500">Cargando servicios...</div>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div>Error: {error}</div>;
+    return (
+      <div className="p-4 md:p-8">
+        <div className="text-center text-red-600">
+          Error: {error}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -50,11 +122,28 @@ export default function OfferingsPage() {
           </button>
         </Link>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {offerings.map((offering) => (
-          <OfferingCard key={offering.id} offering={offering} />
-        ))}
-      </div>
+
+      {offerings.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500 mb-4">No tienes servicios registrados aún.</p>
+          <Link href="/offerings/new" passHref>
+            <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-full shadow">
+              Crear tu primer servicio
+            </button>
+          </Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {offerings.map((offering) => (
+            <OfferingCard
+              key={offering.id}
+              offering={offering}
+              onUpdate={handleUpdateOffering}
+              onDelete={handleDeleteOffering}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

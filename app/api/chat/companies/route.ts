@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { searchCompaniesTool } from '@/lib/tools/company-tools';
+import { ensureSearchAllowedAndIncrement } from '@/lib/usage';
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,6 +23,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Query parameter is required' },
         { status: 400 }
+      );
+    }
+
+    // Check rate limiting for searches
+    const rateLimitResult = await ensureSearchAllowedAndIncrement(user.id);
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: 'Search limit reached. Please upgrade your plan or try again later.' },
+        { status: 429 }
       );
     }
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { ArrowRight, Database, Brain, Target } from "lucide-react";
+import { FaLinkedin } from "react-icons/fa";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -20,18 +21,7 @@ export default async function Home() {
             </div>
             <div className="flex items-center gap-4">
               {user ? (
-                <>
-                  <Link href="/dashboard">
-                    <Button variant="ghost" size="sm">
-                      Consola
-                    </Button>
-                  </Link>
-                  <Link href="/pricing">
-                    <Button size="sm">
-                      Planes
-                    </Button>
-                  </Link>
-                </>
+                <></>
               ) : (
                 <>
                   <Link href="/auth/login">
@@ -40,7 +30,7 @@ export default async function Home() {
                     </Button>
                   </Link>
                   <Link href="/auth/sign-up">
-                    <Button size="sm">
+                    <Button size="sm" variant="secondary">
                       Registrarse
                     </Button>
                   </Link>
@@ -57,43 +47,28 @@ export default async function Home() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
           <div className="text-center">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900">
-              La base de datos más{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-black">
-                completa
-              </span>{" "}
-              de empresas ecuatorianas
+              Encuentra Empresas Ecuatorianas con Inteligencia Artificial
             </h1>
             <p className="mt-6 text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-              Encuentra y conecta con empresas ecuatorianas usando tu agente de IA personal. 
-              Acelera tus ventas con insights inteligentes y datos actualizados.
+              
             </p>
             
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
               {user ? (
                 <>
                   <Link href="/dashboard">
-                    <Button size="lg" className="bg-white hover:bg-gray-200 text-black border border-gray-300 px-8 py-3">
-                      Ir a Consola
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                  <Link href="/pricing">
-                    <Button variant="outline" size="lg" className="px-8 py-3">
-                      Ver Planes
+                    <Button size="lg" variant="secondary" className="px-8 py-3 text-lg">
+                      Encontrar Empresas
+                      <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
                   </Link>
                 </>
               ) : (
                 <>
                   <Link href="/auth/sign-up">
-                    <Button size="lg" className="bg-black hover:bg-gray-800 text-white px-8 py-3">
-                      Comenzar Gratis
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                  <Link href="/auth/login">
-                    <Button variant="outline" size="lg" className="px-8 py-3">
-                      Iniciar Sesión
+                    <Button size="lg" variant="secondary" className="px-8 py-3 text-lg">
+                      Encontrar Empresas
+                      <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
                   </Link>
                 </>
@@ -129,8 +104,9 @@ export default async function Home() {
             
             <div className="p-6">
               <div className="text-4xl font-bold text-gray-900 mb-2">200,000</div>
-              <div className="text-sm text-gray-600 uppercase tracking-wide">
-                Contactos LinkedIn
+              <div className="text-sm text-gray-600 uppercase tracking-wide flex items-center justify-center space-x-1">
+                <span>Contactos</span>
+                <FaLinkedin className="h-5 w-5 text-[#0077B5]" />
               </div>
               <div className="text-xs text-gray-500 mt-1">
                 Perfiles profesionales disponibles

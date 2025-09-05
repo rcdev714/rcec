@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { getUserSubscription } from '@/lib/subscription';
+import { isAdmin } from '@/lib/admin';
 
 type Plan = 'FREE' | 'PRO' | 'ENTERPRISE';
 
@@ -96,9 +97,9 @@ function getLimits(plan: Plan) {
   // Monthly limits
   if (plan === 'FREE') {
     return {
-      searches: 10,
+      searches: 100,
       exports: 10,
-      prompt_dollars: 0, // Use prompt count instead on FREE
+      prompt_dollars: 0, // Not used for FREE plan
       prompt_count: 10,
     } as const;
   }
@@ -106,16 +107,16 @@ function getLimits(plan: Plan) {
     return {
       searches: -1, // unlimited
       exports: 50,
-      prompt_dollars: 20,
-      prompt_count: -1,
+      prompt_dollars: 0, // Not used for PRO plan - using count-based
+      prompt_count: 100,
     } as const;
   }
   // ENTERPRISE
   return {
     searches: -1,
     exports: -1,
-    prompt_dollars: 200,
-    prompt_count: -1,
+    prompt_dollars: 0, // Not used for ENTERPRISE plan - using count-based
+    prompt_count: 500,
   } as const;
 }
 
@@ -124,6 +125,12 @@ export async function ensureSearchAllowedAndIncrement(userId: string): Promise<{
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { allowed: false };
+
+  // Admin bypass: Allow unlimited searches for admin users
+  if (await isAdmin()) {
+    return { allowed: true };
+  }
+
   const subscription = await getUserSubscription(user.id);
   const plan: Plan = (subscription?.plan as Plan) || 'FREE';
 
@@ -177,6 +184,12 @@ export async function ensureExportAllowedAndIncrement(userId: string): Promise<{
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { allowed: false };
+
+  // Admin bypass: Allow unlimited exports for admin users
+  if (await isAdmin()) {
+    return { allowed: true };
+  }
+
   const subscription = await getUserSubscription(user.id);
   const plan: Plan = (subscription?.plan as Plan) || 'FREE';
 
@@ -203,15 +216,21 @@ export async function ensureExportAllowedAndIncrement(userId: string): Promise<{
 
 export async function ensurePromptAllowedAndTrack(
   userId: string,
-  options: {
+  _options: {
     model: keyof typeof GEMINI_PRICING_PER_MILLION;
     inputTokensEstimate: number;
   }
-): Promise<{ allowed: boolean; remainingDollars?: number }>
+): Promise<{ allowed: boolean; remainingPrompts?: number }>
 {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { allowed: false };
+
+  // Admin bypass: Allow unlimited prompts for admin users
+  if (await isAdmin()) {
+    return { allowed: true };
+  }
+
   const subscription = await getUserSubscription(user.id);
   const plan: Plan = (subscription?.plan as Plan) || 'FREE';
 
@@ -219,40 +238,22 @@ export async function ensurePromptAllowedAndTrack(
   const usage = await getOrCreateUsageRow(userId, start, end);
   const limits = getLimits(plan);
 
-  if (plan === 'FREE') {
-    // Count-based limit for prompts
-    const usedCount = Math.floor(usage.prompt_input_tokens); // repurpose as counter if tokens not tracked on FREE
-    if (limits.prompt_count !== -1 && usedCount >= limits.prompt_count) {
-      return { allowed: false };
-    }
-    const { error } = await supabase
-      .from('user_usage')
-      .update({ prompt_input_tokens: usedCount + 1 })
-      .eq('user_id', userId)
-      .eq('period_start', usage.period_start);
-    if (error) throw error;
-    return { allowed: true };
+  // Count-based limit for all plans
+  const usedCount = Math.floor(usage.prompt_input_tokens); // repurpose prompt_input_tokens as counter
+  if (usedCount >= limits.prompt_count) {
+    return { allowed: false, remainingPrompts: 0 };
   }
 
-  // Dollar-budget limit for paid plans
-  const projectedDollars = usage.prompt_dollars + dollarsFromTokens(options.model, options.inputTokensEstimate, 0);
-  if (projectedDollars > limits.prompt_dollars) {
-    return { allowed: false, remainingDollars: Math.max(0, limits.prompt_dollars - usage.prompt_dollars) };
-  }
-
-  // Track input tokens and projected dollars; output tokens will be added after streaming finishes
+  // Track prompt usage
   const { error } = await supabase
     .from('user_usage')
-    .update({
-      prompt_input_tokens: usage.prompt_input_tokens + options.inputTokensEstimate,
-      prompt_dollars: projectedDollars,
-    })
+    .update({ prompt_input_tokens: usedCount + 1 })
     .eq('user_id', userId)
     .eq('period_start', usage.period_start);
   if (error) throw error;
 
-  const remainingDollars = Math.max(0, limits.prompt_dollars - projectedDollars);
-  return { allowed: true, remainingDollars };
+  const remainingPrompts = Math.max(0, limits.prompt_count - (usedCount + 1));
+  return { allowed: true, remainingPrompts };
 }
 
 export async function trackOutputTokensAndDollars(

@@ -350,4 +350,39 @@
   .chat-content th {
     @apply font-medium;
   }
+
+  /* Mobile-specific optimizations */
+  @media (max-width: 768px) {
+    /* Improve touch targets */
+    .touch-manipulation {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    }
+
+    /* Better scrolling on mobile */
+    .overflow-y-auto {
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Prevent zoom on input focus */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
+
+    /* Improve button touch feedback */
+    button:active {
+      transform: scale(0.98);
+      transition: transform 0.1s ease;
+    }
+
+    /* Better spacing for mobile chat bubbles */
+    .chat-content {
+      font-size: 14px;
+      line-height: 1.5;
+    }
+  }
 }

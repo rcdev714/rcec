@@ -1,12 +1,27 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Company } from "@/types/company";
 import { CompanyCard } from "@/components/company-card";
 import { ChevronLeft, ChevronRight, LinkedinIcon, Building2, User, Phone } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
+// Client-side feature access function (avoiding server imports)
+async function canAccessLinkedIn(plan: 'FREE' | 'PRO' | 'ENTERPRISE'): Promise<boolean> {
+  // Admin bypass: Allow LinkedIn access for admin users
+  try {
+    const response = await fetch('/api/admin/check');
+    if (response.ok) {
+      const data = await response.json();
+      if (data.isAdmin) return true;
+    }
+  } catch (error) {
+    console.warn('Admin check failed:', error);
+  }
+
+  return plan === 'PRO' || plan === 'ENTERPRISE';
+}
 
 // Dynamically import the charts component to avoid SSR issues with Recharts
 const CompanyHistoryCharts = dynamic(() => import("./company-history-charts"), { ssr: false });
@@ -18,6 +33,27 @@ interface CompanyHistoryCarouselProps {
 
 export default function CompanyHistoryCarousel({ history, ruc }: CompanyHistoryCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [canAccessLinkedInFeature, setCanAccessLinkedInFeature] = useState(false);
+
+  useEffect(() => {
+    async function fetchSubscription() {
+      try {
+        const response = await fetch('/api/subscriptions/status');
+        if (response.ok) {
+          const data = await response.json();
+          const plan = data.subscription?.plan || 'FREE';
+
+          // Check LinkedIn access (including admin bypass)
+          const hasLinkedInAccess = await canAccessLinkedIn(plan);
+          setCanAccessLinkedInFeature(hasLinkedInAccess);
+        }
+      } catch (error) {
+        console.error('Error fetching subscription:', error);
+        setCanAccessLinkedInFeature(false);
+      }
+    }
+    fetchSubscription();
+  }, []);
 
   console.log("CompanyHistoryCarousel received:", { history, ruc });
 
@@ -100,15 +136,36 @@ export default function CompanyHistoryCarousel({ history, ruc }: CompanyHistoryC
                   <h2 className="text-lg font-semibold text-gray-900">Datos de Contacto</h2>
                 </div>
                 {company.director_representante && (
-                  <a
-                    href={`https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(company.director_representante)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-                  >
-                    <span className="!text-white">Buscar</span>
-                    <LinkedinIcon className="h-3 w-3 text-white" />
-                  </a>
+                  <div className="relative group">
+                    {canAccessLinkedInFeature ? (
+                      <a
+                        href={`https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(company.director_representante)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                      >
+                        <span className="!text-white">Buscar</span>
+                        <LinkedinIcon className="h-3 w-3 !text-white" />
+                      </a>
+                    ) : (
+                      <Link
+                        href="/pricing"
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                      >
+                        <span className="!text-white">Buscar</span>
+                        <LinkedinIcon className="h-3 w-3 !text-white" />
+                      </Link>
+                    )}
+
+                    {/* Tooltip */}
+                    {!canAccessLinkedInFeature && (
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-white text-gray-900 text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10 shadow-lg border border-gray-200">
+                        Actualizar plan para desbloquear
+                        {/* Arrow */}
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-white"></div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
               

@@ -8,10 +8,10 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import UserAvatar from "./user-avatar";
 import ConversationSidebar from "./conversation-sidebar";
-import ContextIndicator from "./context-indicator";
 import ConversationManager from "@/lib/conversation-manager";
 import { ChatCompanyResults } from "./chat-company-card";
 import { CompanySearchResult } from "@/types/chat";
+import { StarField } from "./star-field";
 
 interface Message {
   role: "user" | "assistant";
@@ -47,11 +47,10 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
 
   const allSuggestions = useMemo(() => [
     'Enseñame empresas del guayas con mas de 1000 empleados',
-    'Busca empresas de manufactura con almenos 1000 en ingresos en el ecuador',
+    'Busca empresas de almenos 100 empleados con almenos 1000 en ingresos',
     'Exporta una lista de empresas de construcción en Pichincha',
-    '¿Cuales son las empresas mas grandes de Azuay por número de empleados?',
-    'Encuentra empresas de tecnología fundadas en los últimos 5 años',
-    'Dame un resumen de las empresas con mayores ingresos en Manabí'
+    'Encuentra el RUC de la empresa Unibrokers',
+    'Dame los datos de la empresa con el ruc 1792848830001'
   ], []);
 
   // Efecto para seleccionar sugerencias dinámicas al montar
@@ -254,9 +253,15 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
 
       if (!response.ok) {
         let errorMessage = "Failed to fetch chat response.";
+        let isRateLimit = false;
+        let upgradeUrl = "/pricing";
+
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || errorData.error || errorMessage;
+          isRateLimit = response.status === 429 || errorData.error === "Rate limit exceeded";
+          upgradeUrl = errorData.upgradeUrl || "/pricing";
+
           if (process.env.NODE_ENV !== 'production') {
             console.error("API Error:", errorData);
           }
@@ -265,8 +270,20 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
           const errorText = await response.text();
           if (errorText) {
             errorMessage = errorText;
+            isRateLimit = errorText.includes("Rate limit exceeded") || errorText.includes("límite");
           }
         }
+
+        // Handle rate limiting specifically
+        if (isRateLimit) {
+          setMessages((prev) => [...prev, {
+            role: "assistant",
+            content: `${errorMessage}\n\n[Actualizar Plan](${upgradeUrl})`,
+            metadata: { type: 'text' }
+          }]);
+          return;
+        }
+
         throw new Error(errorMessage);
       }
 
@@ -371,46 +388,100 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
     }
   };
 
+  const checkUsageAndWarn = async (): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/usage/summary');
+      if (response.ok) {
+        const data = await response.json();
+        const promptsUsed = data.usage?.prompt_input_tokens || 0;
+        const isFreePlan = data.plan === 'FREE';
+        const limit = isFreePlan ? 10 : -1; // FREE plan has 10 prompt limit
+
+        if (isFreePlan && promptsUsed >= 8) { // Warn at 80% usage
+          const shouldContinue = confirm(
+            `Has usado ${promptsUsed} de ${limit} prompts este mes. ¿Quieres continuar? Considera actualizar tu plan para más prompts.`
+          );
+          if (!shouldContinue) {
+            return false;
+          }
+        } else if (!isFreePlan && data.usage?.prompt_dollars >= (data.planDollarLimit * 0.8)) {
+          const shouldContinue = confirm(
+            `Has usado $${data.usage.prompt_dollars.toFixed(2)} de $${data.planDollarLimit} en prompts este mes. ¿Quieres continuar?`
+          );
+          if (!shouldContinue) {
+            return false;
+          }
+        }
+      }
+      return true;
+    } catch (error) {
+      console.error('Error checking usage:', error);
+      return true; // Continue if we can't check usage
+    }
+  };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // Check usage before sending request
+    const shouldContinue = await checkUsageAndWarn();
+    if (!shouldContinue) {
+      return;
+    }
+
     startChat(input);
   };
 
-  const handleSuggestionClick = (suggestion: string) => {
+  const handleSuggestionClick = async (suggestion: string) => {
     setInput(suggestion);
+
+    // Check usage before sending request
+    const shouldContinue = await checkUsageAndWarn();
+    if (!shouldContinue) {
+      return;
+    }
+
     startChat(suggestion);
   };
 
   const formLayout = (
-    <div className="w-full flex flex-col items-center space-y-3">
+    <div className="w-full flex flex-col items-center space-y-3 px-2 md:px-0">
       <form onSubmit={handleSubmit} className="relative w-full max-w-2xl">
         <input
           type="text"
           value={input}
           onChange={handleInputChange}
           placeholder="Escribe tu mensaje..."
-          className="w-full pl-4 pr-16 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white text-base"
+          className="w-full pl-4 pr-16 md:pr-16 py-4 md:py-3 border border-gray-200 rounded-xl md:rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white text-base md:text-base touch-manipulation"
         />
         <button
           type="submit"
           disabled={isSending}
-          className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-2 bg-gray-800 text-white rounded-full hover:bg-gray-700 disabled:bg-gray-500 transition-colors"
+          className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-3 md:px-2 md:py-2 bg-gray-800 text-white rounded-full hover:bg-gray-700 disabled:bg-gray-500 transition-colors min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px] flex items-center justify-center touch-manipulation"
         >
           {isSending ? (
-            <LoaderCircle className="w-5 h-5 animate-spin" />
+            <LoaderCircle className="w-5 h-5 md:w-5 md:h-5 animate-spin" />
           ) : (
-            <ArrowUp className="w-4 h-4" />
+            <ArrowUp className="w-5 h-5 md:w-4 md:h-4" />
           )}
         </button>
       </form>
-      
+
       {/* Token Progress Bar - Centered and same width as input */}
-      
+
     </div>
   );
 
   return (
     <div className="relative flex h-screen bg-white overflow-hidden">
+      {/* Night Sky Background Animation - only visible in empty state */}
+      {messages.length === 0 && (
+        <>
+          {console.log('Rendering StarField - messages.length:', messages.length)}
+          <StarField />
+        </>
+      )}
+
       {/* Conversation Sidebar as a normal flex child on desktop; mobile drawer handled inside */}
       <ConversationSidebar
         currentConversationId={conversationId}
@@ -420,12 +491,6 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-h-0 bg-white">
-        {/* Absolutely positioned context indicator */}
-        {conversationId && (
-          <div className="absolute top-4 right-6 z-10">
-            <ContextIndicator conversationId={conversationId} />
-          </div>
-        )}
         {/* Empty State */}
         <AnimatePresence>
           {messages.length === 0 && (
@@ -437,21 +502,21 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
             >
               <div className="text-center mb-8 md:mb-12">
                 <h1 className="text-2xl md:text-3xl font-semibold mb-3 text-gray-800">
-                  Asistente AI
+                  Agente
                 </h1>
                 <p className="text-gray-600 text-sm md:text-base max-w-md mx-auto">
-                  Chat inteligente con memoria de 1 millón de tokens
+                  Chat inteligente con acceso a toda la información de las empresas de Ecuador
                 </p>
               </div>
 
               {/* Sugerencias de Prompt */}
               <div className="w-full max-w-2xl mx-auto">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-center">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-2 text-center">
                   {suggestions.map((s, i) => (
-                    <button 
+                    <button
                       key={i}
                       onClick={() => handleSuggestionClick(s)}
-                      className="p-3 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 bg-white shadow-sm"
+                      className="p-4 md:p-3 border border-gray-200 rounded-xl md:rounded-lg text-sm md:text-xs text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 bg-white shadow-sm min-h-[48px] md:min-h-auto flex items-center justify-center touch-manipulation"
                     >
                       {s}
                     </button>
@@ -467,16 +532,16 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
         {/* Messages */}
         {messages.length > 0 && (
           <>
-            <div 
-              ref={scrollContainerRef} 
-              className="flex-1 overflow-y-auto p-4 md:p-6 pb-0"
+            <div
+              ref={scrollContainerRef}
+              className="flex-1 overflow-y-auto p-3 md:p-6 pb-0"
             >
-              <div className="w-full max-w-6xl mx-auto space-y-4 md:space-y-6">
+              <div className="w-full max-w-6xl mx-auto space-y-3 md:space-y-6">
                 {messages.map((msg, index) => (
                   <div
                     key={index}
                     className={cn(
-                      "flex items-start gap-3 md:gap-4",
+                      "flex items-start gap-2 md:gap-4",
                       msg.role === "user" && "justify-end"
                     )}
                   >
@@ -485,13 +550,13 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                         <UserAvatar />
                       </div>
                     ) : (
-                      <div className="w-7 h-7 md:w-8 md:h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs md:text-sm font-medium bg-gray-200 text-gray-700">
+                      <div className="w-8 h-8 md:w-8 md:h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs md:text-sm font-medium bg-gray-200 text-gray-700 mt-1">
                         AI
                       </div>
                     )}
                     <div
                       className={cn(
-                        "max-w-[90%] px-3 md:px-4 py-2 md:py-3 rounded-2xl shadow-sm relative group border",
+                        "max-w-[85%] md:max-w-[90%] px-4 md:px-4 py-3 md:py-3 rounded-2xl shadow-sm relative group border touch-manipulation",
                         msg.role === "user"
                           ? "bg-white text-gray-800 border-gray-200 rounded-br-md self-end"
                           : "bg-gray-100 text-gray-800 border-gray-200 rounded-bl-md self-start"
@@ -525,12 +590,12 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                       {msg.role === 'assistant' && msg.content && !isSending && (
                         <button
                           onClick={() => handleCopy(msg.content, index)}
-                          className="absolute top-2 right-2 p-1.5 rounded-lg bg-gray-200 text-gray-600 hover:bg-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute top-2 right-2 p-2 md:p-1.5 rounded-lg bg-gray-200 text-gray-600 hover:bg-gray-300 opacity-0 group-hover:opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity min-h-[36px] min-w-[36px] md:min-h-auto md:min-w-auto flex items-center justify-center touch-manipulation"
                         >
                           {copiedMessageIndex === index ? (
-                            <CopyCheck className="w-3 h-3 text-green-600" />
+                            <CopyCheck className="w-4 h-4 md:w-3 md:h-3 text-green-600" />
                           ) : (
-                            <Copy className="w-3 h-3" />
+                            <Copy className="w-4 h-4 md:w-3 md:h-3" />
                           )}
                         </button>
                       )}
@@ -548,20 +613,20 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 20 }}
                     onClick={scrollToBottom}
-                    className="fixed bottom-24 md:bottom-32 right-4 bg-gray-800 text-white rounded-full p-3 shadow-lg hover:bg-gray-700 z-30"
+                    className="fixed bottom-20 md:bottom-32 right-4 bg-gray-800 text-white rounded-full p-3 shadow-lg hover:bg-gray-700 z-30 min-h-[48px] min-w-[48px] md:min-h-[44px] md:min-w-[44px] flex items-center justify-center touch-manipulation"
                   >
-                    <ArrowDown className="w-5 h-5" />
+                    <ArrowDown className="w-5 h-5 md:w-5 md:h-5" />
                   </motion.button>
                 )}
               </AnimatePresence>
             </div>
 
             {/* Input Area */}
-            <motion.div 
+            <motion.div
               initial={{ y: 50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.3 }}
-              className="border-t border-gray-200 bg-white p-4 md:p-6"
+              className="border-t border-gray-200 bg-white p-4 md:p-6 pb-6 md:pb-6"
             >
               {formLayout}
             </motion.div>
@@ -576,4 +641,5 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
 export default function ChatUIDefault() {
   return <ChatUI />;
 }
+
 

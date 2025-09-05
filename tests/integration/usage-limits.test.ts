@@ -109,7 +109,7 @@ describe('Usage Limits', () => {
       const result = await ensureSearchAllowedAndIncrement('user-123')
 
       expect(result.allowed).toBe(true)
-      expect(result.remaining).toBe(4)
+      expect(result.remaining).toBe(94)
     })
 
     it('should deny search for FREE user at limit', async () => {
@@ -127,7 +127,7 @@ describe('Usage Limits', () => {
         updated_at: '2024-01-01T00:00:00.000Z'
       })
 
-      // Mock usage row with 10 searches (at limit)
+      // Mock usage row with 100 searches (at limit)
       // @ts-ignore - Test mock override
       mockSupabase.from.mockReturnValue({
         upsert: vi.fn(() => ({ error: null as any })),
@@ -135,7 +135,7 @@ describe('Usage Limits', () => {
           eq: vi.fn(() => ({ 
             eq: vi.fn(() => ({
               single: vi.fn(() => ({ 
-                data: { searches: 10, user_id: 'user-123' }, 
+                data: { searches: 100, user_id: 'user-123' }, 
                 error: null as any 
               }))
             }))
@@ -315,23 +315,23 @@ describe('Usage Limits', () => {
       // @ts-ignore - Test mock override
       mockSupabase.from.mockReturnValue({
         upsert: vi.fn(() => ({ error: null as any })),
-        select: vi.fn(() => ({ 
-          eq: vi.fn(() => ({ 
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
             eq: vi.fn(() => ({
-              single: vi.fn(() => ({ 
-                data: { 
-                  prompt_dollars: 5.0, 
-                  prompt_input_tokens: 10000,
-                  user_id: 'user-123' 
-                }, 
-                error: null as any 
+              single: vi.fn(() => ({
+                data: {
+                  prompt_dollars: 0,
+                  prompt_input_tokens: 10, // Repurposed as prompt count
+                  user_id: 'user-123'
+                },
+                error: null as any
               }))
             }))
           }))
         })),
         // @ts-ignore - Test update mock
-        update: vi.fn(() => ({ 
-          eq: vi.fn(() => ({ 
+        update: vi.fn(() => ({
+          eq: vi.fn(() => ({
             eq: vi.fn(() => ({
               error: null as any
             }))
@@ -345,7 +345,8 @@ describe('Usage Limits', () => {
       })
 
       expect(result.allowed).toBe(true)
-      expect(result.remainingDollars).toBeGreaterThan(0)
+      // PRO limit is 100. Used 10, after this one it's 11. 100 - 11 = 89.
+      expect(result.remainingPrompts).toBe(89)
     })
 
     it('should deny prompt when budget exceeded', async () => {

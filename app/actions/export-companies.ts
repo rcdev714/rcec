@@ -3,6 +3,8 @@
 import * as XLSX from 'xlsx';
 import { fetchCompanies } from '@/lib/data/companies';
 import { Company } from '@/types/company';
+import { ensureExportAllowedAndIncrement } from '@/lib/usage';
+import { createClient } from '@/lib/supabase/server';
 
 // Define the search parameters interface to match the one in companies.ts
 interface ExportSearchParams {
@@ -100,6 +102,19 @@ async function fetchAllCompaniesInBatches(searchParams: ExportSearchParams, sess
 
 export async function exportCompaniesToExcel(searchParams: ExportSearchParams = {}, sessionId?: string) {
   try {
+    // Check rate limiting for exports
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      throw new Error('Authentication required for export');
+    }
+
+    const rateLimitResult = await ensureExportAllowedAndIncrement(user.id);
+    if (!rateLimitResult.allowed) {
+      throw new Error('Export limit reached. Please upgrade your plan or try again later.');
+    }
+
     // Fetch all companies in batches to bypass Supabase 1000 row limit
     const companies = await fetchAllCompaniesInBatches(searchParams, sessionId);
     

@@ -8,8 +8,8 @@ type Point = { date: string; searches: number; exports: number };
 export default function AnalyticsCard() {
   const [series, setSeries] = useState<Point[]>([]);
   const [range, setRange] = useState<'1d' | '7d' | '30d'>('7d');
-  const [monthlyCounts, setMonthlyCounts] = useState<{ searches: number; exports: number }>({ searches: 0, exports: 0 });
-  const [limits, setLimits] = useState<{ searches: number; exports: number }>({ searches: -1, exports: -1 });
+  const [monthlyCounts, setMonthlyCounts] = useState<{ searches: number; exports: number; prompts: number }>({ searches: 0, exports: 0, prompts: 0 });
+  const [limits, setLimits] = useState<{ searches: number; exports: number; prompts: number }>({ searches: -1, exports: -1, prompts: -1 });
 
   useEffect(() => {
     async function load() {
@@ -24,8 +24,16 @@ export default function AnalyticsCard() {
       const sum = await fetch('/api/usage/summary');
       if (sum.ok) {
         const data = await sum.json();
-        setMonthlyCounts({ searches: data.usage?.searches || 0, exports: data.usage?.exports || 0 });
-        setLimits({ searches: data.limits?.searches ?? -1, exports: data.limits?.exports ?? -1 });
+        setMonthlyCounts({
+          searches: data.usage?.searches || 0,
+          exports: data.usage?.exports || 0,
+          prompts: data.usage?.prompts || 0
+        });
+        setLimits({
+          searches: data.limits?.searches ?? -1,
+          exports: data.limits?.exports ?? -1,
+          prompts: data.limits?.prompts ?? -1
+        });
       }
     }
     load();
@@ -34,6 +42,7 @@ export default function AnalyticsCard() {
   const metrics = useMemo(() => ({
     searches: monthlyCounts.searches,
     exports: monthlyCounts.exports,
+    prompts: monthlyCounts.prompts,
   }), [monthlyCounts]);
 
   return (
@@ -45,13 +54,13 @@ export default function AnalyticsCard() {
             <button
               key={r}
               onClick={() => setRange(r)}
-              className={`px-2 py-1 rounded border ${range===r ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300'}`}
+              className={`px-2 py-1 rounded border ${range===r ? 'bg-gray-300 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300'}`}
             >{r}</button>
           ))}
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div className="p-3 rounded border border-gray-200 bg-white">
             <div className="text-xs text-muted-foreground">Búsquedas</div>
             <div className="text-xl font-semibold">
@@ -76,6 +85,20 @@ export default function AnalyticsCard() {
                 <div
                   className="h-2 bg-gray-900 rounded"
                   style={{ width: `${Math.min(100, (metrics.exports / limits.exports) * 100)}%` }}
+                />
+              </div>
+            )}
+          </div>
+          <div className="p-3 rounded border border-gray-200 bg-white">
+            <div className="text-xs text-muted-foreground">Prompts</div>
+            <div className="text-xl font-semibold">
+              {metrics.prompts}{limits.prompts === -1 ? '' : ` / ${limits.prompts}`}
+            </div>
+            {limits.prompts !== -1 && (
+              <div className="mt-2 w-full h-2 bg-gray-200 rounded">
+                <div
+                  className="h-2 bg-gray-900 rounded"
+                  style={{ width: `${Math.min(100, (metrics.prompts / limits.prompts) * 100)}%` }}
                 />
               </div>
             )}

@@ -14,11 +14,11 @@ export async function GET() {
     const subscription = await getUserSubscription(user.id);
     const plan = (subscription?.plan ?? 'FREE') as 'FREE' | 'PRO' | 'ENTERPRISE';
 
-    // Determine plan dollar and usage limits
-    const planDollarLimit = plan === 'ENTERPRISE' ? 200 : plan === 'PRO' ? 20 : 0;
+    // Determine plan limits
     const limits = {
-      searches: plan === 'FREE' ? 10 : -1,
-      exports: plan === 'FREE' ? 10 : plan === 'PRO' ? 100 : -1,
+      searches: plan === 'FREE' ? 100 : -1,
+      exports: plan === 'FREE' ? 10 : plan === 'PRO' ? 50 : -1,
+      prompts: plan === 'FREE' ? 10 : plan === 'PRO' ? 100 : 500,
     } as const;
 
     const { start, end } = getMonthlyPeriodForAnchor(user.created_at || new Date().toISOString());
@@ -44,9 +44,11 @@ export async function GET() {
 
     return NextResponse.json({
       plan,
-      planDollarLimit,
       limits,
-      usage,
+      usage: {
+        ...usage,
+        prompts: Math.floor(usage.prompt_input_tokens), // Use prompt_input_tokens as prompt count
+      },
       period: { start: start.toISOString(), end: end.toISOString() },
     });
   } catch (e) {

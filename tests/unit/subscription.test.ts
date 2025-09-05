@@ -64,6 +64,9 @@ describe('Subscription System', () => {
     })
 
     it('should handle database errors gracefully', async () => {
+      // Mock console.error to prevent logging during tests
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
       mockSupabase.from.mockReturnValue({
         select: vi.fn(() => ({
           eq: vi.fn(() => ({
@@ -73,7 +76,12 @@ describe('Subscription System', () => {
       })
 
       const result = await getUserSubscription('user-123')
+      
       expect(result).toBeNull()
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error fetching user subscription:', { message: 'Database error' });
+
+      // Restore original console.error
+      consoleErrorSpy.mockRestore();
     })
   })
 

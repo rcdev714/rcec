@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import ConversationManager from "@/lib/conversation-manager";
 import { HumanMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
 import { validateEnvironment } from "@/lib/env-validation";
+import { ensurePromptAllowedAndTrack, estimateTokensFromTextLength } from "@/lib/usage";
 
 // Use Node.js runtime for full compatibility with LangChain and streaming
 // Edge runtime has limitations with certain Node.js APIs
@@ -39,9 +40,31 @@ export async function POST(req: Request) {
     }
 
     const { message, conversationId, useLangGraph = true } = await req.json();
-    
+
     // Use user ID as conversation ID if not provided for user-specific memory
     const effectiveConversationId = conversationId || user.id;
+
+    // Check and track prompt usage before processing
+    const inputTokensEstimate = estimateTokensFromTextLength(message);
+    const promptCheck = await ensurePromptAllowedAndTrack(user.id, {
+      model: "gemini-2.5-flash", // Default model
+      inputTokensEstimate,
+    });
+
+    if (!promptCheck.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: "Rate limit exceeded",
+          message: "Has excedido tu límite mensual de prompts. Actualiza tu plan para continuar usando el chat.",
+          upgradeUrl: "/pricing",
+          remainingPrompts: promptCheck.remainingPrompts,
+        }),
+        {
+          status: 429,
+          headers: { "Content-Type": "application/json" }
+        }
+      );
+    }
 
     let stream: ReadableStream;
 

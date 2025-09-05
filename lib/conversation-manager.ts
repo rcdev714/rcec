@@ -16,12 +16,23 @@ class ConversationManager {
   private conversations: Map<string, ConversationItem> = new Map();
   private currentConversationId: string | null = null;
   private supabase = createClient();
+  private isInitialized = false;
+
+  private constructor() {
+    // No-op, initialization is now explicit
+  }
 
   static getInstance(): ConversationManager {
     if (!ConversationManager.instance) {
       ConversationManager.instance = new ConversationManager();
     }
     return ConversationManager.instance;
+  }
+
+  async initialize(): Promise<void> {
+    if (this.isInitialized) return;
+    await this.loadFromStorage();
+    this.isInitialized = true;
   }
 
   // Crear nueva conversación

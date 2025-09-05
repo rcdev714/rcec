@@ -57,7 +57,7 @@ export default function PlanCard() {
       </CardHeader>
       <CardContent className="flex gap-2">
         <Button variant="outline" size="sm" onClick={() => (window.location.href = '/pricing')}>Cambiar Plan</Button>
-        <Button variant="default" size="sm" className="ml-auto" onClick={() => (window.location.href = '/settings')}>Editar</Button>
+        <Button variant="default" size="sm" className="ml-auto" onClick={() => (window.location.href = '/settings')}>Congifuracion</Button>
       </CardContent>
     </Card>
   );
