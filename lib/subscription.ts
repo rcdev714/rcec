@@ -117,28 +117,28 @@ export function getSubscriptionStatus(subscription: UserSubscription | null): Su
 }
 
 // Feature access control
+const featureMap = {
+  // Free features
+  'basic_search': ['FREE', 'PRO', 'ENTERPRISE'],
+  'basic_support': ['FREE', 'PRO', 'ENTERPRISE'],
+
+  // Pro features
+  'unlimited_search': ['PRO', 'ENTERPRISE'],
+  'advanced_filtering': ['PRO', 'ENTERPRISE'],
+  'export_data': ['PRO', 'ENTERPRISE'],
+  'priority_support': ['PRO', 'ENTERPRISE'],
+  'linkedin_search': ['FREE', 'PRO', 'ENTERPRISE'],
+
+  // Enterprise features
+  'custom_integrations': ['ENTERPRISE'],
+  'dedicated_support': ['ENTERPRISE'],
+  'advanced_analytics': ['ENTERPRISE'],
+  'api_access': ['ENTERPRISE'],
+} as const;
+
 export function canAccessFeature(plan: 'FREE' | 'PRO' | 'ENTERPRISE', feature: string): boolean {
-  const featureMap = {
-    // Free features
-    'basic_search': ['FREE', 'PRO', 'ENTERPRISE'],
-    'basic_support': ['FREE', 'PRO', 'ENTERPRISE'],
-
-    // Pro features
-    'unlimited_search': ['PRO', 'ENTERPRISE'],
-    'advanced_filtering': ['PRO', 'ENTERPRISE'],
-    'export_data': ['PRO', 'ENTERPRISE'],
-    'priority_support': ['PRO', 'ENTERPRISE'],
-    'linkedin_search': ['PRO', 'ENTERPRISE'],
-
-    // Enterprise features
-    'custom_integrations': ['ENTERPRISE'],
-    'dedicated_support': ['ENTERPRISE'],
-    'advanced_analytics': ['ENTERPRISE'],
-    'api_access': ['ENTERPRISE'],
-  };
-
   const allowedPlans = featureMap[feature as keyof typeof featureMap];
-  return allowedPlans ? allowedPlans.includes(plan) : false;
+  return allowedPlans ? (allowedPlans as readonly string[]).includes(plan) : false;
 }
 
 // Usage limits

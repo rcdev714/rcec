@@ -8,19 +8,28 @@ import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 // Client-side feature access function (avoiding server imports)
-async function canAccessLinkedIn(plan: 'FREE' | 'PRO' | 'ENTERPRISE'): Promise<boolean> {
-  // Admin bypass: Allow LinkedIn access for admin users
-  try {
-    const response = await fetch('/api/admin/check');
-    if (response.ok) {
-      const data = await response.json();
-      if (data.isAdmin) return true;
-    }
-  } catch (error) {
-    console.warn('Admin check failed:', error);
-  }
+function canAccessFeature(plan: 'FREE' | 'PRO' | 'ENTERPRISE', feature: string): boolean {
+  const featureMap = {
+    // Free features
+    'basic_search': ['FREE', 'PRO', 'ENTERPRISE'],
+    'basic_support': ['FREE', 'PRO', 'ENTERPRISE'],
 
-  return plan === 'PRO' || plan === 'ENTERPRISE';
+    // Pro features
+    'unlimited_search': ['PRO', 'ENTERPRISE'],
+    'advanced_filtering': ['PRO', 'ENTERPRISE'],
+    'export_data': ['PRO', 'ENTERPRISE'],
+    'priority_support': ['PRO', 'ENTERPRISE'],
+    'linkedin_search': ['FREE', 'PRO', 'ENTERPRISE'],
+
+    // Enterprise features
+    'custom_integrations': ['ENTERPRISE'],
+    'dedicated_support': ['ENTERPRISE'],
+    'advanced_analytics': ['ENTERPRISE'],
+    'api_access': ['ENTERPRISE'],
+  } as const;
+
+  const allowedPlans = featureMap[feature as keyof typeof featureMap];
+  return allowedPlans ? (allowedPlans as readonly string[]).includes(plan) : false;
 }
 
 // Dynamically import the charts component to avoid SSR issues with Recharts
@@ -43,8 +52,8 @@ export default function CompanyHistoryCarousel({ history, ruc }: CompanyHistoryC
           const data = await response.json();
           const plan = data.subscription?.plan || 'FREE';
 
-          // Check LinkedIn access (including admin bypass)
-          const hasLinkedInAccess = await canAccessLinkedIn(plan);
+          // Check LinkedIn access using centralized feature access
+          const hasLinkedInAccess = canAccessFeature(plan, 'linkedin_search');
           setCanAccessLinkedInFeature(hasLinkedInAccess);
         }
       } catch (error) {
