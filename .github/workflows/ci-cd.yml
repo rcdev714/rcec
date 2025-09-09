@@ -156,14 +156,18 @@ jobs:
       - name: Deploy to Railway Staging
         id: deploy
         run: |
-          # Login to Railway using token (pipe to stdin)
-          echo "${{ secrets.RAILWAY_TOKEN }}" | railway login
+          # Set Railway token as environment variable
+          export RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}"
+          # Link to Railway project if project ID is provided
+          if [ -n "${{ secrets.RAILWAY_PROJECT_ID }}" ]; then
+            railway link ${{ secrets.RAILWAY_PROJECT_ID }}
+          fi
           # Deploy using service name instead of project ID
           railway up --service=${{ secrets.RAILWAY_SERVICE_NAME || 'web' }}
           # Wait for deployment to stabilize
           sleep 15
-          # Get deployment URL
-          url=$(railway status --json | jq -r '.deployments[0].url // ""')
+          # Get deployment URL (also need token for status command)
+          url=$(RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}" railway status --json | jq -r '.deployments[0].url // ""')
           if [ -z "$url" ]; then
             url="https://${{ secrets.RAILWAY_DOMAIN || 'your-app.railway.app' }}"
           fi
@@ -212,6 +216,10 @@ jobs:
       - name: Deploy to Railway Production
         id: deploy-prod
         run: |
-          echo "${{ secrets.RAILWAY_TOKEN }}" | railway login
+          export RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}"
+          # Link to Railway project if project ID is provided
+          if [ -n "${{ secrets.RAILWAY_PROJECT_ID }}" ]; then
+            railway link ${{ secrets.RAILWAY_PROJECT_ID }}
+          fi
           railway up --service=${{ secrets.RAILWAY_SERVICE_NAME || 'web' }}
           echo "✅ Production deployment completed"
