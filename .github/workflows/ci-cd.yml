@@ -151,15 +151,11 @@ jobs:
         run: npm ci
 
       - name: Install Railway CLI
-        run: |
-          curl -fsSL https://railway.app/install.sh | sh
-          export PATH="$HOME/.railway/bin:$PATH"
+        run: npm install -g @railway/cli
 
       - name: Deploy to Railway Staging
         id: deploy
         run: |
-          # Ensure Railway CLI is in PATH
-          export PATH="$HOME/.railway/bin:$PATH"
           # Link to Railway project if project ID is provided
           if [ -n "${{ secrets.RAILWAY_PROJECT_ID }}" ]; then
             railway link --project ${{ secrets.RAILWAY_PROJECT_ID }}
@@ -215,15 +211,11 @@ jobs:
         run: npm ci
 
       - name: Install Railway CLI
-        run: |
-          curl -fsSL https://railway.app/install.sh | sh
-          export PATH="$HOME/.railway/bin:$PATH"
+        run: npm install -g @railway/cli
 
       - name: Deploy to Railway Production
         id: deploy-prod
         run: |
-          # Ensure Railway CLI is in PATH
-          export PATH="$HOME/.railway/bin:$PATH"
           # Link to Railway project if project ID is provided
           if [ -n "${{ secrets.RAILWAY_PROJECT_ID }}" ]; then
             railway link --project ${{ secrets.RAILWAY_PROJECT_ID }}
