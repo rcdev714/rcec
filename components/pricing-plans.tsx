@@ -5,10 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckIcon } from '@heroicons/react/20/solid';
-// Removed server-side import to fix Next.js error
 import { UserSubscription } from '@/types/subscription';
+import { transformPlanForDisplay, getPlansWithLimitsClient } from '@/lib/plans-client';
 
-const plans = [
+// transformPlanForDisplay function is imported from plans-client.ts
+
+// Get fallback plans (defined outside component to avoid useEffect dependency issues)
+const getFallbackPlans = () => [
   {
     id: 'FREE',
     name: 'Gratuito',
@@ -19,10 +22,11 @@ const plans = [
       'Búsqueda manual limitada de empresas (100/mes)',
       'Acceso a funciones básicas',
       'Soporte básico',
-      'Acceso a la comunidad',
+      'Acceso a la comunidad'
     ],
     buttonText: 'Plan Actual',
     popular: false,
+    limits: { searches_per_month: 100, exports_per_month: 10, companies_per_export: 0, prompts_per_month: 10 },
   },
   {
     id: 'PRO',
@@ -36,10 +40,11 @@ const plans = [
       'Análisis inteligente de datos',
       'Exportación de datos (50/mes)',
       'Soporte prioritario',
-      'Búsqueda en LinkedIn',
+      'Búsqueda en LinkedIn'
     ],
     buttonText: 'Actualizar a Pro',
     popular: true,
+    limits: { searches_per_month: -1, exports_per_month: 50, companies_per_export: 1000, prompts_per_month: 100 },
   },
   {
     id: 'ENTERPRISE',
@@ -54,35 +59,63 @@ const plans = [
       'Exportaciones ilimitadas',
       'Búsqueda en LinkedIn',
       'Integraciones personalizadas',
-      'Soporte dedicado',
+      'Soporte dedicado'
     ],
     buttonText: 'Actualizar a Empresarial',
     popular: false,
+    limits: { searches_per_month: -1, exports_per_month: -1, companies_per_export: -1, prompts_per_month: 500 },
   },
 ];
 
 export default function PricingPlans() {
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
+  const [plans, setPlans] = useState<Array<{
+    id: string;
+    name: string;
+    price: number;
+    description: string;
+    features: string[];
+    buttonText: string;
+    popular: boolean;
+    limits: {
+      searches_per_month: number;
+      exports_per_month: number;
+      companies_per_export: number;
+      prompts_per_month: number;
+    };
+  }>>([]);
   const [loading, setLoading] = useState(true);
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchSubscription() {
+    async function fetchData() {
       try {
-        const response = await fetch('/api/subscriptions/status');
-        if (response.ok) {
-          const data = await response.json();
+        // Fetch subscription status
+        const subscriptionResponse = await fetch('/api/subscriptions/status');
+        if (subscriptionResponse.ok) {
+          const data = await subscriptionResponse.json();
           setSubscription(data.subscription);
         }
+
+        // Fetch plans with limits from database
+        const plansWithLimits = await getPlansWithLimitsClient();
+        const plansForDisplay = plansWithLimits.map(plan =>
+          transformPlanForDisplay(plan, plan.limits)
+        );
+
+        setPlans(plansForDisplay);
       } catch (error) {
-        console.error('Error fetching subscription:', error);
+        console.error('Error fetching data:', error);
+        // Fallback to hardcoded plans if database fails
+        setPlans(getFallbackPlans());
       } finally {
         setLoading(false);
       }
     }
 
-    fetchSubscription();
+    fetchData();
   }, []);
+
 
   const handlePlanSelect = async (planId: string) => {
     if (planId === 'FREE' || (subscription && planId === subscription.plan)) return;
@@ -151,43 +184,45 @@ export default function PricingPlans() {
     return plan.popular ? 'default' : 'outline';
   };
 
-  const isButtonDisabled = (plan: { id: string }) => {
-    return loading || processingPlan !== null || (plan.id === 'FREE' && subscription && subscription.plan === 'FREE');
+  const isButtonDisabled = (plan: { id: string }): boolean => {
+    return !!(loading || processingPlan !== null || (plan.id === 'FREE' && subscription && subscription.plan === 'FREE'));
   };
 
   return (
-    <div className="mt-12 space-y-4 sm:mt-16 sm:space-y-0 sm:grid sm:grid-cols-3 sm:gap-6 lg:max-w-4xl lg:mx-auto xl:max-w-none xl:mx-0">
+    <div className="mt-12 space-y-6 sm:mt-16 sm:space-y-0 sm:grid sm:grid-cols-3 sm:gap-8 lg:max-w-5xl lg:mx-auto">
       {plans.map((plan) => (
-        <Card key={plan.id} className={`relative ${plan.popular ? 'border-blue-500 shadow-lg' : ''}`}>
+        <Card key={plan.id} className="relative border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
           {plan.popular && (
-            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-              <Badge className="bg-blue-500 text-white">Más Popular</Badge>
+            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+              <Badge variant="secondary" className="bg-gray-800 text-white px-3 py-1 text-xs font-medium">
+                Más Popular
+              </Badge>
             </div>
           )}
-          
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
-            <div className="mt-4">
-              <span className="text-4xl font-bold">${plan.price}</span>
-              <span className="text-gray-600">/mes</span>
+
+          <CardHeader className="text-center pb-6">
+            <CardTitle className="text-xl font-semibold text-gray-900">{plan.name}</CardTitle>
+            <div className="mt-4 mb-2">
+              <span className="text-3xl font-bold text-gray-900">${plan.price}</span>
+              <span className="text-gray-500 text-sm">/mes</span>
             </div>
-            <p className="mt-2 text-gray-600">{plan.description}</p>
+            <p className="text-gray-600 text-sm leading-relaxed">{plan.description}</p>
           </CardHeader>
-          
-          <CardContent>
-            <ul className="space-y-3 mb-6">
-              {plan.features.map((feature, index) => (
+
+          <CardContent className="px-6 pb-6">
+            <ul className="space-y-3 mb-8">
+              {plan.features.map((feature: string, index: number) => (
                 <li key={index} className="flex items-start">
-                  <CheckIcon className="h-5 w-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
-                  <span className="text-sm text-gray-700">{feature}</span>
+                  <CheckIcon className="h-4 w-4 text-gray-600 mt-0.5 mr-3 flex-shrink-0" />
+                  <span className="text-sm text-gray-700 leading-relaxed">{feature}</span>
                 </li>
               ))}
             </ul>
-            
+
             <Button
-              className="w-full"
+              className="w-full h-11 text-sm font-medium"
               variant={getButtonVariant(plan)}
-              disabled={isButtonDisabled(plan) || false}
+              disabled={isButtonDisabled(plan)}
               onClick={() => {
                 if (subscription && plan.id === subscription.plan && plan.id !== 'FREE') {
                   handleManageSubscription();
@@ -196,12 +231,19 @@ export default function PricingPlans() {
                 }
               }}
             >
-              {processingPlan === plan.id ? 'Procesando...' : getButtonText(plan)}
+              {processingPlan === plan.id ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                  Procesando...
+                </div>
+              ) : (
+                getButtonText(plan)
+              )}
             </Button>
-            
+
             {subscription && plan.id === subscription.plan && (
-              <div className="mt-2 text-center">
-                <Badge variant="outline" className="text-green-600 border-green-600">
+              <div className="mt-3 text-center">
+                <Badge variant="outline" className="text-xs text-gray-600 border-gray-300 bg-gray-50">
                   Plan Activo
                 </Badge>
               </div>

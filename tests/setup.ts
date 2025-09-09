@@ -1,3 +1,4 @@
+/// <reference types="vitest/globals" />
 import '@testing-library/jest-dom'
 import { beforeAll, afterAll, afterEach, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
@@ -78,6 +79,24 @@ vi.mock('@/lib/supabase/client', () => ({
 }))
 
 // Mock Supabase server client with flexible types
+const mockSupabaseQueryBuilder = {
+  select: vi.fn().mockReturnThis(),
+  insert: vi.fn().mockReturnThis(),
+  update: vi.fn().mockReturnThis(),
+  delete: vi.fn().mockReturnThis(),
+  upsert: vi.fn().mockReturnThis(),
+  eq: vi.fn().mockReturnThis(),
+  gt: vi.fn().mockReturnThis(),
+  lt: vi.fn().mockReturnThis(),
+  gte: vi.fn().mockReturnThis(),
+  lte: vi.fn().mockReturnThis(),
+  in: vi.fn().mockReturnThis(),
+  order: vi.fn().mockReturnThis(),
+  limit: vi.fn().mockReturnThis(),
+  single: vi.fn().mockResolvedValue({ data: null, error: null }),
+  then: vi.fn(), // For promise-like behavior
+};
+
 vi.mock('@/lib/supabase/server', () => ({
   createClient: () => ({
     auth: {
@@ -86,34 +105,10 @@ vi.mock('@/lib/supabase/server', () => ({
       signUp: vi.fn(),
       signOut: vi.fn(),
     },
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          single: vi.fn(() => ({ data: null, error: null }))
-        }))
-      })),
-      insert: vi.fn(() => ({ data: [], error: null })),
-      update: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          select: vi.fn(() => ({
-            single: vi.fn(() => ({ data: {}, error: null }))
-          })),
-          error: null
-        }))
-      })),
-      delete: vi.fn(() => ({ data: [], error: null })),
-      upsert: vi.fn(() => ({ data: [], error: null })),
-      eq: vi.fn(() => ({ 
-        data: [], 
-        error: null,
-        select: vi.fn(() => ({
-          single: vi.fn(() => ({ data: {}, error: null }))
-        }))
-      })),
-      single: vi.fn(() => ({ data: null, error: null })),
-    })),
+    from: vi.fn(() => mockSupabaseQueryBuilder),
+    rpc: vi.fn(() => Promise.resolve({ data: null, error: null }))
   }),
-}))
+}));
 
 // Mock Stripe with comprehensive test setup
 vi.mock('@/lib/stripe/server', () => ({

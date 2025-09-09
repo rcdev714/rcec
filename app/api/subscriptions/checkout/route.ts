@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getStripe, SUBSCRIPTION_PLANS } from '@/lib/stripe/server';
+import { getStripe, getSubscriptionPlansForStripe } from '@/lib/stripe/server';
 import { createClient } from '@/lib/supabase/server';
 import { getUserSubscription } from '@/lib/subscription';
 
@@ -7,8 +7,9 @@ export async function POST(request: NextRequest) {
   try {
     const { planId } = await request.json();
     
-    // Validate the plan
-    if (!planId || !SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]) {
+    // Validate the plan - database-driven
+    const stripePlans = await getSubscriptionPlansForStripe();
+    if (!planId || !(planId in stripePlans)) {
       return NextResponse.json(
         { error: 'Invalid subscription plan' },
         { status: 400 }
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
+    const plan = stripePlans[planId as keyof typeof stripePlans];
     
     // Get existing subscription
     const existingSubscription = await getUserSubscription(user.id);

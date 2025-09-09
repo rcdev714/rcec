@@ -13,21 +13,29 @@ const mockSupabase = {
   from: vi.fn(() => ({
     // upsert pattern: upsert(data, options) -> { error }
     upsert: vi.fn(() => ({ error: null as any })),
-    
-    // select pattern: select(columns) -> eq(col, val) -> eq(col, val) -> single() -> { data, error }
+
+    // select pattern: select(columns) -> order(col) -> { data, error } OR select(columns) -> eq(col, val) -> eq(col, val) -> single() -> { data, error }
     select: vi.fn(() => ({
+      order: vi.fn(() => ({
+        data: [
+          { id: 'FREE', name: 'Free', price: 0, price_id: 'price_free', features: [], is_popular: false },
+          { id: 'PRO', name: 'Pro', price: 20, price_id: 'price_pro', features: [], is_popular: true },
+          { id: 'ENTERPRISE', name: 'Enterprise', price: 200, price_id: 'price_enterprise', features: [], is_popular: false }
+        ] as any,
+        error: null as any
+      })),
       eq: vi.fn(() => ({
         eq: vi.fn(() => ({
           single: vi.fn(() => ({ data: null as any, error: null as any }))
         }))
       }))
     })),
-    
+
     // update pattern: update(data) -> eq(col, val) -> eq(col, val) -> select() -> single() -> { data, error }
-    update: vi.fn(() => ({ 
-      eq: vi.fn(() => ({ 
+    update: vi.fn(() => ({
+      eq: vi.fn(() => ({
         eq: vi.fn(() => ({
-          select: vi.fn(() => ({ 
+          select: vi.fn(() => ({
             single: vi.fn(() => ({ data: {} as any, error: null as any }))
           }))
         }))
@@ -82,23 +90,31 @@ describe('Usage Limits', () => {
       // @ts-ignore - Test mock override
       mockSupabase.from.mockReturnValue({
         upsert: vi.fn(() => ({ error: null as any })),
-        select: vi.fn(() => ({ 
-          eq: vi.fn(() => ({ 
+        select: vi.fn(() => ({
+          order: vi.fn(() => ({
+            data: [
+              { id: 'FREE', name: 'Free', price: 0, price_id: 'price_free', features: [], is_popular: false },
+              { id: 'PRO', name: 'Pro', price: 20, price_id: 'price_pro', features: [], is_popular: true },
+              { id: 'ENTERPRISE', name: 'Enterprise', price: 200, price_id: 'price_enterprise', features: [], is_popular: false }
+            ] as any,
+            error: null as any
+          })),
+          eq: vi.fn(() => ({
             eq: vi.fn(() => ({
-              single: vi.fn(() => ({ 
-                data: { searches: 5, user_id: 'user-123' }, 
-                error: null as any 
+              single: vi.fn(() => ({
+                data: { searches: 5, user_id: 'user-123' },
+                error: null as any
               }))
             }))
           }))
         })),
-        update: vi.fn(() => ({ 
-          eq: vi.fn(() => ({ 
+        update: vi.fn(() => ({
+          eq: vi.fn(() => ({
             eq: vi.fn(() => ({
-              select: vi.fn(() => ({ 
-                single: vi.fn(() => ({ 
-                  data: { searches: 6 }, 
-                  error: null as any 
+              select: vi.fn(() => ({
+                single: vi.fn(() => ({
+                  data: { searches: 6 },
+                  error: null as any
                 }))
               }))
             }))
@@ -131,12 +147,20 @@ describe('Usage Limits', () => {
       // @ts-ignore - Test mock override
       mockSupabase.from.mockReturnValue({
         upsert: vi.fn(() => ({ error: null as any })),
-        select: vi.fn(() => ({ 
-          eq: vi.fn(() => ({ 
+        select: vi.fn(() => ({
+          order: vi.fn(() => ({
+            data: [
+              { id: 'FREE', name: 'Free', price: 0, price_id: 'price_free', features: [], is_popular: false },
+              { id: 'PRO', name: 'Pro', price: 20, price_id: 'price_pro', features: [], is_popular: true },
+              { id: 'ENTERPRISE', name: 'Enterprise', price: 200, price_id: 'price_enterprise', features: [], is_popular: false }
+            ] as any,
+            error: null as any
+          })),
+          eq: vi.fn(() => ({
             eq: vi.fn(() => ({
-              single: vi.fn(() => ({ 
-                data: { searches: 100, user_id: 'user-123' }, 
-                error: null as any 
+              single: vi.fn(() => ({
+                data: { searches: 100, user_id: 'user-123' },
+                error: null as any
               }))
             }))
           }))
@@ -167,23 +191,31 @@ describe('Usage Limits', () => {
       // @ts-ignore - Test mock override
       mockSupabase.from.mockReturnValue({
         upsert: vi.fn(() => ({ error: null as any })),
-        select: vi.fn(() => ({ 
-          eq: vi.fn(() => ({ 
+        select: vi.fn(() => ({
+          order: vi.fn(() => ({
+            data: [
+              { id: 'FREE', name: 'Free', price: 0, price_id: 'price_free', features: [], is_popular: false },
+              { id: 'PRO', name: 'Pro', price: 20, price_id: 'price_pro', features: [], is_popular: true },
+              { id: 'ENTERPRISE', name: 'Enterprise', price: 200, price_id: 'price_enterprise', features: [], is_popular: false }
+            ] as any,
+            error: null as any
+          })),
+          eq: vi.fn(() => ({
             eq: vi.fn(() => ({
-              single: vi.fn(() => ({ 
-                data: { searches: 100, user_id: 'user-123' }, 
-                error: null as any 
+              single: vi.fn(() => ({
+                data: { searches: 100, user_id: 'user-123' },
+                error: null as any
               }))
             }))
           }))
         })),
-        update: vi.fn(() => ({ 
-          eq: vi.fn(() => ({ 
+        update: vi.fn(() => ({
+          eq: vi.fn(() => ({
             eq: vi.fn(() => ({
-              select: vi.fn(() => ({ 
-                single: vi.fn(() => ({ 
-                  data: { searches: 101 }, 
-                  error: null as any 
+              select: vi.fn(() => ({
+                single: vi.fn(() => ({
+                  data: { searches: 101 },
+                  error: null as any
                 }))
               }))
             }))
@@ -217,23 +249,31 @@ describe('Usage Limits', () => {
       // @ts-ignore - Test mock override
       mockSupabase.from.mockReturnValue({
         upsert: vi.fn(() => ({ error: null as any })),
-        select: vi.fn(() => ({ 
-          eq: vi.fn(() => ({ 
+        select: vi.fn(() => ({
+          order: vi.fn(() => ({
+            data: [
+              { id: 'FREE', name: 'Free', price: 0, price_id: 'price_free', features: [], is_popular: false },
+              { id: 'PRO', name: 'Pro', price: 20, price_id: 'price_pro', features: [], is_popular: true },
+              { id: 'ENTERPRISE', name: 'Enterprise', price: 200, price_id: 'price_enterprise', features: [], is_popular: false }
+            ] as any,
+            error: null as any
+          })),
+          eq: vi.fn(() => ({
             eq: vi.fn(() => ({
-              single: vi.fn(() => ({ 
-                data: { exports: 0, user_id: 'user-123' }, 
-                error: null as any 
+              single: vi.fn(() => ({
+                data: { exports: 0, user_id: 'user-123' },
+                error: null as any
               }))
             }))
           }))
         })),
-        update: vi.fn(() => ({ 
-          eq: vi.fn(() => ({ 
+        update: vi.fn(() => ({
+          eq: vi.fn(() => ({
             eq: vi.fn(() => ({
-              select: vi.fn(() => ({ 
-                single: vi.fn(() => ({ 
-                  data: { exports: 1 }, 
-                  error: null as any 
+              select: vi.fn(() => ({
+                single: vi.fn(() => ({
+                  data: { exports: 1 },
+                  error: null as any
                 }))
               }))
             }))
@@ -265,23 +305,31 @@ describe('Usage Limits', () => {
       // @ts-ignore - Test mock override
       mockSupabase.from.mockReturnValue({
         upsert: vi.fn(() => ({ error: null as any })),
-        select: vi.fn(() => ({ 
-          eq: vi.fn(() => ({ 
+        select: vi.fn(() => ({
+          order: vi.fn(() => ({
+            data: [
+              { id: 'FREE', name: 'Free', price: 0, price_id: 'price_free', features: [], is_popular: false },
+              { id: 'PRO', name: 'Pro', price: 20, price_id: 'price_pro', features: [], is_popular: true },
+              { id: 'ENTERPRISE', name: 'Enterprise', price: 200, price_id: 'price_enterprise', features: [], is_popular: false }
+            ] as any,
+            error: null as any
+          })),
+          eq: vi.fn(() => ({
             eq: vi.fn(() => ({
-              single: vi.fn(() => ({ 
-                data: { exports: 25, user_id: 'user-123' }, 
-                error: null as any 
+              single: vi.fn(() => ({
+                data: { exports: 25, user_id: 'user-123' },
+                error: null as any
               }))
             }))
           }))
         })),
-        update: vi.fn(() => ({ 
-          eq: vi.fn(() => ({ 
+        update: vi.fn(() => ({
+          eq: vi.fn(() => ({
             eq: vi.fn(() => ({
-              select: vi.fn(() => ({ 
-                single: vi.fn(() => ({ 
-                  data: { exports: 26 }, 
-                  error: null as any 
+              select: vi.fn(() => ({
+                single: vi.fn(() => ({
+                  data: { exports: 26 },
+                  error: null as any
                 }))
               }))
             }))
@@ -316,6 +364,14 @@ describe('Usage Limits', () => {
       mockSupabase.from.mockReturnValue({
         upsert: vi.fn(() => ({ error: null as any })),
         select: vi.fn(() => ({
+          order: vi.fn(() => ({
+            data: [
+              { id: 'FREE', name: 'Free', price: 0, price_id: 'price_free', features: [], is_popular: false },
+              { id: 'PRO', name: 'Pro', price: 20, price_id: 'price_pro', features: [], is_popular: true },
+              { id: 'ENTERPRISE', name: 'Enterprise', price: 200, price_id: 'price_enterprise', features: [], is_popular: false }
+            ] as any,
+            error: null as any
+          })),
           eq: vi.fn(() => ({
             eq: vi.fn(() => ({
               single: vi.fn(() => ({
@@ -367,16 +423,24 @@ describe('Usage Limits', () => {
       // @ts-ignore - Test mock override
       mockSupabase.from.mockReturnValue({
         upsert: vi.fn(() => ({ error: null as any })),
-        select: vi.fn(() => ({ 
-          eq: vi.fn(() => ({ 
+        select: vi.fn(() => ({
+          order: vi.fn(() => ({
+            data: [
+              { id: 'FREE', name: 'Free', price: 0, price_id: 'price_free', features: [], is_popular: false },
+              { id: 'PRO', name: 'Pro', price: 20, price_id: 'price_pro', features: [], is_popular: true },
+              { id: 'ENTERPRISE', name: 'Enterprise', price: 200, price_id: 'price_enterprise', features: [], is_popular: false }
+            ] as any,
+            error: null as any
+          })),
+          eq: vi.fn(() => ({
             eq: vi.fn(() => ({
-              single: vi.fn(() => ({ 
-                data: { 
-                  prompt_dollars: 19.99, 
+              single: vi.fn(() => ({
+                data: {
+                  prompt_dollars: 19.99,
                   prompt_input_tokens: 50000000,
-                  user_id: 'user-123' 
-                }, 
-                error: null as any 
+                  user_id: 'user-123'
+                },
+                error: null as any
               }))
             }))
           }))

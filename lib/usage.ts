@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { getUserSubscription } from '@/lib/subscription';
+import { getPlansWithLimits } from '@/lib/plans';
 import { isAdmin } from '@/lib/admin';
 
 type Plan = 'FREE' | 'PRO' | 'ENTERPRISE';
@@ -93,8 +94,30 @@ async function getOrCreateUsageRow(userId: string, periodStart: Date, periodEnd:
   return data as UsageRecord;
 }
 
-function getLimits(plan: Plan) {
-  // Monthly limits
+async function getLimits(plan: Plan) {
+  try {
+    // Try to get limits from database-driven plans
+    const plansWithLimits = await getPlansWithLimits();
+    const planData = plansWithLimits.find(p => p.id === plan);
+
+    if (planData) {
+      return {
+        searches: planData.limits.searches_per_month,
+        exports: planData.limits.exports_per_month,
+        prompt_dollars: 0, // Keeping for backward compatibility
+        prompt_count: planData.limits.prompts_per_month,
+      } as const;
+    }
+  } catch (error) {
+    console.error('Error fetching plan limits from database:', error);
+  }
+
+  // Fallback to hardcoded limits if database fails
+  return getFallbackLimits(plan);
+}
+
+function getFallbackLimits(plan: Plan) {
+  // Monthly limits - fallback
   if (plan === 'FREE') {
     return {
       searches: 100,
@@ -136,7 +159,7 @@ export async function ensureSearchAllowedAndIncrement(userId: string): Promise<{
 
   const { start, end } = getMonthlyPeriodForAnchor(user.created_at || new Date().toISOString());
   const usage = await getOrCreateUsageRow(userId, start, end);
-  const limits = getLimits(plan);
+  const limits = await getLimits(plan);
 
   if (limits.searches !== -1 && usage.searches >= limits.searches) {
     return { allowed: false, remaining: 0 };
@@ -195,7 +218,7 @@ export async function ensureExportAllowedAndIncrement(userId: string): Promise<{
 
   const { start, end } = getMonthlyPeriodForAnchor(user.created_at || new Date().toISOString());
   const usage = await getOrCreateUsageRow(userId, start, end);
-  const limits = getLimits(plan);
+  const limits = await getLimits(plan);
 
   if (limits.exports !== -1 && usage.exports >= limits.exports) {
     return { allowed: false, remaining: 0 };
@@ -236,7 +259,7 @@ export async function ensurePromptAllowedAndTrack(
 
   const { start, end } = getMonthlyPeriodForAnchor(user.created_at || new Date().toISOString());
   const usage = await getOrCreateUsageRow(userId, start, end);
-  const limits = getLimits(plan);
+  const limits = await getLimits(plan);
 
   // Count-based limit for all plans
   const usedCount = Math.floor(usage.prompt_input_tokens); // repurpose prompt_input_tokens as counter

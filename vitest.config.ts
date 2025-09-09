@@ -27,15 +27,6 @@ export default defineConfig({
       ]
     },
     testTimeout: 30000,
-    hookTimeout: 10000,
-    // Improved test environment for CI/CD
-    pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: true
-      }
-    },
-    // Better error handling in CI environments
     bail: process.env.CI ? 1 : 0,
     reporters: process.env.CI ? ['verbose'] : ['default']
   },

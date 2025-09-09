@@ -1,4 +1,5 @@
 import Stripe from 'stripe';
+import { getSubscriptionPlans } from '@/lib/plans';
 
 // Lazily initialize Stripe to avoid build-time failures when env isn't loaded
 let stripeSingleton: Stripe | null = null;
@@ -25,6 +26,39 @@ export const stripe = new Proxy({} as Stripe, {
   },
 }) as unknown as Stripe;
 
+// Database-driven subscription plans
+export async function getSubscriptionPlansForStripe() {
+  try {
+    const plans = await getSubscriptionPlans();
+
+    // Transform database plans to Stripe format
+    const stripePlans: Record<string, {
+      name: string;
+      price: number;
+      priceId: string;
+      features: string[];
+      isPopular?: boolean;
+    }> = {};
+
+    plans.forEach(plan => {
+      stripePlans[plan.id] = {
+        name: plan.name,
+        price: plan.price,
+        priceId: plan.price_id,
+        features: plan.features,
+        isPopular: plan.is_popular,
+      };
+    });
+
+    return stripePlans;
+  } catch (error) {
+    console.error('Error fetching subscription plans for Stripe:', error);
+    // Fallback to environment variables if database fails
+    return getFallbackStripePlans();
+  }
+}
+
+// Backward compatibility - synchronous version (may be slower)
 export const SUBSCRIPTION_PLANS = {
   FREE: {
     name: 'Gratuito',
@@ -63,3 +97,13 @@ export const SUBSCRIPTION_PLANS = {
 } as const;
 
 export type SubscriptionPlan = keyof typeof SUBSCRIPTION_PLANS;
+
+// Fallback function for when database is unavailable
+function getFallbackStripePlans() {
+  console.warn('Using fallback Stripe plans due to database error');
+  return {
+    FREE: SUBSCRIPTION_PLANS.FREE,
+    PRO: SUBSCRIPTION_PLANS.PRO,
+    ENTERPRISE: SUBSCRIPTION_PLANS.ENTERPRISE,
+  };
+}

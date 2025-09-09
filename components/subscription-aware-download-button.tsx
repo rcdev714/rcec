@@ -28,6 +28,7 @@ export function SubscriptionAwareDownloadButton({
   const [progress, setProgress] = useState<ProgressState>({ fetched: 0, total: 0, isActive: false });
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [loadingSubscription, setLoadingSubscription] = useState(true);
+  const [canExport, setCanExport] = useState(false);
 
   // Check if any filters are applied
   const hasFilters = Object.values(searchParams).some(value => value && value.trim() !== '');
@@ -41,8 +42,15 @@ export function SubscriptionAwareDownloadButton({
       try {
         const userSubscription = await getUserSubscriptionClient();
         setSubscription(userSubscription);
+
+        if (userSubscription) {
+          const subscriptionStatus = getSubscriptionStatus(userSubscription);
+          const exportAccess = await canAccessFeature(subscriptionStatus.plan, 'export_data');
+          setCanExport(exportAccess);
+        }
       } catch (error) {
         console.error('Error loading subscription:', error);
+        setCanExport(false);
       } finally {
         setLoadingSubscription(false);
       }
@@ -76,8 +84,7 @@ export function SubscriptionAwareDownloadButton({
     };
   }, [isDownloading, sessionId, totalCount]);
 
-  const subscriptionStatus = getSubscriptionStatus(subscription);
-  const canExport = canAccessFeature(subscriptionStatus.plan, 'export_data');
+  const subscriptionStatus = subscription ? getSubscriptionStatus(subscription) : null;
 
   const handleDownload = async () => {
     if (isDownloading || !canExport) return;
@@ -184,7 +191,7 @@ export function SubscriptionAwareDownloadButton({
             <p>
               La exportación está disponible con el plan Pro o superior.
               <br />
-              <span className="font-medium">Plan actual: {subscriptionStatus.plan}</span>
+              <span className="font-medium">Plan actual: {subscriptionStatus?.plan || 'FREE'}</span>
             </p>
           </div>
         )}

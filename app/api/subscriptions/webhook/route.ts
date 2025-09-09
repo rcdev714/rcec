@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/server';
 import { createClient } from '@/lib/supabase/server';
+import { getPlanFromStripePriceId } from '@/lib/plans';
+import { updateUserSubscription } from '@/lib/subscription';
+import { logValidationError, logValidationSuccess } from '@/lib/subscription-validation';
 import Stripe from 'stripe';
 
 // Extended interface for Stripe subscription with period dates
@@ -195,22 +198,41 @@ async function handleStripeEvent(event: Stripe.Event) {
         return;
       }
 
-      // Update or create user subscription
-      const { error } = await supabase
-        .from('user_subscriptions')
-        .upsert({
-          user_id: userId,
+      // Update or create user subscription with validation
+      try {
+        const subscriptionData = {
           customer_id: session.customer as string,
           subscription_id: session.subscription as string,
-          plan: planId.toUpperCase(),
-          status: 'active',
+          plan: planId.toUpperCase() as 'FREE' | 'PRO' | 'ENTERPRISE',
+          status: 'active' as const,
           current_period_start: new Date().toISOString(),
           current_period_end: null, // Will be updated by subscription.created
-          updated_at: new Date().toISOString(),
-        });
+        };
 
-      if (error) {
+        // Try to update existing subscription first
+        const existingSubscription = await supabase
+          .from('user_subscriptions')
+          .select('*')
+          .eq('user_id', userId)
+          .single();
+
+        if (existingSubscription.data) {
+          // Update existing subscription
+          await updateUserSubscription(userId, subscriptionData);
+        } else {
+          // Create new subscription
+          const { createUserSubscription } = await import('@/lib/subscription');
+          await createUserSubscription(userId, subscriptionData);
+        }
+
+        logValidationSuccess('webhook_checkout_completed', { userId, plan: planId });
+      } catch (error) {
         console.error('Error updating subscription after checkout:', error);
+        logValidationError('webhook_checkout_completed', {
+          isValid: false,
+          errors: [error instanceof Error ? error.message : 'Unknown error'],
+          warnings: []
+        }, { userId, planId });
       }
       break;
     }
@@ -233,30 +255,36 @@ async function handleStripeEvent(event: Stripe.Event) {
         return;
       }
 
-      // Determine plan from price ID
-      let plan = 'FREE';
-      if (subscription.items.data[0]?.price.id === process.env.STRIPE_PRO_PRICE_ID) {
-        plan = 'PRO';
-      } else if (subscription.items.data[0]?.price.id === process.env.STRIPE_ENTERPRISE_PRICE_ID) {
-        plan = 'ENTERPRISE';
+      // Determine plan from price ID - database-driven
+      const priceId = subscription.items.data[0]?.price.id;
+      let plan = await getPlanFromStripePriceId(priceId || '');
+
+      if (!plan) {
+        console.error(`Unknown price ID: ${priceId}, defaulting to FREE plan`);
+        plan = 'FREE';
       }
 
-      const { error } = await supabase
-        .from('user_subscriptions')
-        .upsert({
-          user_id: userId,
+      // Update subscription with validation
+      try {
+        const subscriptionData = {
           customer_id: subscription.customer as string,
           subscription_id: subscription.id,
-          plan,
-          status: subscription.status,
+          plan: plan as 'FREE' | 'PRO' | 'ENTERPRISE',
+          status: subscription.status as 'active' | 'inactive' | 'cancelled' | 'past_due' | 'trialing',
           current_period_start: subscription.current_period_start ? new Date(subscription.current_period_start * 1000).toISOString() : null,
           current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null,
           cancel_at_period_end: subscription.cancel_at_period_end || false,
-          updated_at: new Date().toISOString(),
-        });
+        };
 
-      if (error) {
+        await updateUserSubscription(userId, subscriptionData);
+        logValidationSuccess('webhook_subscription_updated', { userId, plan, status: subscription.status });
+      } catch (error) {
         console.error('Error updating subscription:', error);
+        logValidationError('webhook_subscription_updated', {
+          isValid: false,
+          errors: [error instanceof Error ? error.message : 'Unknown error'],
+          warnings: []
+        }, { userId, plan, status: subscription.status });
       }
       break;
     }

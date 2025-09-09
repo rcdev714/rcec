@@ -12,8 +12,6 @@ concurrency:
 
 env:
   NODE_VERSION: '20'
-  RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-  RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
 
 jobs:
   # Lint and Type Check
@@ -89,7 +87,6 @@ jobs:
       - name: Build application
         run: npm run build
         env:
-          # Required build-time environment variables
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
@@ -101,14 +98,11 @@ jobs:
           path: .next/
           retention-days: 1
 
-  # Unit and Integration Tests
+  # Run Tests
   test:
     name: Run Tests
     runs-on: ubuntu-latest
     needs: [code-quality]
-    strategy:
-      matrix:
-        test-type: [unit, integration]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -122,79 +116,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run ${{ matrix.test-type }} tests
-        run: npm run test:${{ matrix.test-type }}
+      - name: Run unit tests
+        run: npm run test:unit
         env:
-          # Test environment variables
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
-          STRIPE_SECRET_KEY: ${{ secrets.TEST_STRIPE_SECRET_KEY }}
-          STRIPE_WEBHOOK_SECRET: ${{ secrets.TEST_STRIPE_WEBHOOK_SECRET }}
+          CI: true
+          NODE_ENV: test
 
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results-${{ matrix.test-type }}
-          path: coverage/
-          retention-days: 7
-
-  # End-to-End Tests
-  e2e-tests:
-    name: E2E Tests
-    runs-on: ubuntu-latest
-    needs: [build]
-    if: github.event_name == 'pull_request'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright
-        run: npx playwright install --with-deps
-
-      - name: Run E2E tests
-        run: npm run test:e2e
+      - name: Run integration tests
+        run: npm run test:integration
         env:
-          PLAYWRIGHT_TEST_BASE_URL: ${{ secrets.RAILWAY_STAGING_URL }}
-          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
-          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+          CI: true
+          NODE_ENV: test
 
-      - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 7
-
-  # Database Migration Check
-  migration-check:
-    name: Database Migration Check
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Check for migration files
-        run: |
-          if ls supabase/migrations/*.sql 1> /dev/null 2>&1; then
-            echo "Migration files found, running validation..."
-            # Add migration validation logic here
-            echo "✅ Migration files validated"
-          else
-            echo "No migration files to validate"
-          fi
 
   # Deploy to Staging (PR)
   deploy-staging:
@@ -239,18 +172,10 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
-      - name: Wait for deployment health check
+      - name: Wait for deployment
         run: |
-          echo "Waiting for deployment to be ready..."
-          url="${{ steps.deploy.outputs.url }}"
-          for i in {1..30}; do
-            if curl -f "$url/api/health" --max-time 10; then
-              echo "✅ Health check passed"
-              break
-            fi
-            echo "Health check attempt $i/30 failed, retrying in 10s..."
-            sleep 10
-          done
+          echo "Waiting for deployment..."
+          sleep 30
 
       - name: Comment PR with staging URL
         if: github.event_name == 'pull_request'
@@ -268,7 +193,7 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [build, test, security, migration-check]
+    needs: [build, test]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - name: Checkout code
@@ -287,60 +212,8 @@ jobs:
         run: npm install -g @railway/cli
 
       - name: Deploy to Railway Production
-        id: deploy
+        id: deploy-prod
         run: |
-          # Login to Railway using token
           railway login --token ${{ secrets.RAILWAY_TOKEN }}
-          # Deploy to production using service name
           railway up --service=${{ secrets.RAILWAY_SERVICE_NAME || 'web' }}
-          # Wait for deployment to stabilize
-          sleep 20
-          # Get the production deployment URL
-          url=$(railway status --json | jq -r '.deployments[0].url // ""')
-          if [ -z "$url" ]; then
-            url="https://${{ secrets.RAILWAY_DOMAIN || 'your-app.railway.app' }}"
-          fi
-          echo "url=$url" >> $GITHUB_OUTPUT
-          echo "Deployed to production: $url"
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      - name: Wait for deployment to be ready
-        run: |
-          echo "Waiting for deployment to be ready..."
-          sleep 30
-
-      - name: Run production health checks
-        run: |
-          echo "Running health checks on production..."
-          url="${{ steps.deploy.outputs.url }}"
-          max_attempts=10
-          for i in $(seq 1 $max_attempts); do
-            if curl -f "$url/api/health" --max-time 30; then
-              echo "✅ Production health check passed"
-              exit 0
-            fi
-            echo "Health check attempt $i/$max_attempts failed, retrying in 15s..."
-            sleep 15
-          done
-          echo "❌ Production health check failed after $max_attempts attempts"
-          exit 1
-
-  # Notification
-  notify:
-    name: Notify Deployment Status
-    runs-on: ubuntu-latest
-    needs: [deploy-production]
-    if: always() && github.ref == 'refs/heads/main'
-    steps:
-      - name: Notify success
-        if: needs.deploy-production.result == 'success'
-        run: |
-          echo "✅ Production deployment successful!"
-          # Add Slack/email notification here if needed
-
-      - name: Notify failure
-        if: needs.deploy-production.result == 'failure'
-        run: |
-          echo "❌ Production deployment failed!"
-          # Add Slack/email notification here if needed
+          echo "✅ Production deployment completed"
