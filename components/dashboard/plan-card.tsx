@@ -15,7 +15,7 @@ interface UsageSummary {
 
 export default function PlanCard() {
   const [summary, setSummary] = useState<UsageSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
@@ -48,16 +48,11 @@ export default function PlanCard() {
             </Badge>
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-xs text-muted-foreground">Gasto este mes</div>
-          <div className="text-sm font-medium">
-            {loading || !summary ? '$0' : `$${summary.usage.prompt_dollars.toFixed(2)} / $${summary.planDollarLimit}`}
-          </div>
-        </div>
+        {/* Removed monetary spend display; usage is action-based */}
       </CardHeader>
       <CardContent className="flex gap-2">
         <Button variant="outline" size="sm" onClick={() => (window.location.href = '/pricing')}>Cambiar Plan</Button>
-        <Button variant="default" size="sm" className="ml-auto" onClick={() => (window.location.href = '/settings')}>Congifuracion</Button>
+        <Button variant="default" size="sm" className="ml-auto" onClick={() => (window.location.href = '/settings')}>Configuración</Button>
       </CardContent>
     </Card>
   );

@@ -52,6 +52,7 @@ scripts-data
 #Tests files
 scripts-tests
 documentation-md
+test-results
 
 imagenes_app
 .cursor

@@ -5,7 +5,6 @@ import { Company } from "@/types/company";
 import { CompanyCard } from "@/components/company-card";
 import { ChevronLeft, ChevronRight, LinkedinIcon, Building2, User, Phone } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import dynamic from "next/dynamic";
 // Client-side feature access function (avoiding server imports)
 function canAccessFeature(plan: 'FREE' | 'PRO' | 'ENTERPRISE', feature: string): boolean {
@@ -102,13 +101,6 @@ export default function CompanyHistoryCarousel({ history, ruc }: CompanyHistoryC
         <header className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <Link href="/" className="inline-block">
-              <Image 
-                src="/image.png" 
-                alt="UNIBROKERS Logo" 
-                width={140} 
-                height={42} 
-                className="h-8 w-auto" 
-              />
             </Link>
             <Link 
               href="/companies" 

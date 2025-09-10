@@ -86,19 +86,29 @@ export async function PUT(request: Request) {
 
     if (existingProfile) {
       // Update existing profile
+      const updatePayload: Record<string, unknown> = {
+        first_name,
+        last_name,
+        phone,
+        company_name,
+        company_ruc,
+        position,
+        updated_at: new Date().toISOString()
+      };
+
+      // Only update user_type if a valid value is provided; avoid NULLing a NOT NULL column
+      if (typeof user_type === 'string' && (user_type === 'individual' || user_type === 'enterprise')) {
+        updatePayload.user_type = user_type;
+      }
+
+      // Only update enterprise_role if explicitly provided
+      if (typeof enterprise_role === 'string') {
+        updatePayload.enterprise_role = enterprise_role;
+      }
+
       const { data, error: updateError } = await supabase
         .from('user_profiles')
-        .update({
-          first_name,
-          last_name,
-          phone,
-          company_name,
-          company_ruc,
-          position,
-          user_type,
-          enterprise_role,
-          updated_at: new Date().toISOString()
-        })
+        .update(updatePayload)
         .eq('user_id', user.id)
         .select()
         .single();
@@ -107,19 +117,27 @@ export async function PUT(request: Request) {
       error = updateError;
     } else {
       // Create new profile
+      const insertPayload: Record<string, unknown> = {
+        user_id: user.id,
+        first_name,
+        last_name,
+        phone,
+        company_name,
+        company_ruc,
+        position,
+        // Ensure NOT NULL + CHECK constraint is satisfied on first insert
+        user_type: (typeof user_type === 'string' && (user_type === 'individual' || user_type === 'enterprise'))
+          ? user_type
+          : 'individual'
+      };
+
+      if (typeof enterprise_role === 'string') {
+        insertPayload.enterprise_role = enterprise_role;
+      }
+
       const { data, error: insertError } = await supabase
         .from('user_profiles')
-        .insert({
-          user_id: user.id,
-          first_name,
-          last_name,
-          phone,
-          company_name,
-          company_ruc,
-          position,
-          user_type,
-          enterprise_role
-        })
+        .insert(insertPayload)
         .select()
         .single();
       

@@ -32,9 +32,10 @@ function getSubscriptionStatus(subscription: UserSubscription | null): Subscript
 }
 
 export default function SubscriptionStatus() {
-  const [, setSubscription] = useState<UserSubscription | null>(null);
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [status, setStatus] = useState<SubscriptionStatusType | null>(null);
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<{ start?: string; end?: string } | null>(null);
 
   useEffect(() => {
     async function fetchSubscription() {
@@ -53,6 +54,19 @@ export default function SubscriptionStatus() {
     }
 
     fetchSubscription();
+    // Also fetch usage summary for reliable period start/end (based on anchor)
+    async function fetchPeriod() {
+      try {
+        const sum = await fetch('/api/usage/summary');
+        if (sum.ok) {
+          const data = await sum.json();
+          setPeriod({ start: data?.period?.start, end: data?.period?.end });
+        }
+      } catch {
+        // noop
+      }
+    }
+    fetchPeriod();
   }, []);
 
   const handleManageSubscription = async () => {
@@ -182,13 +196,19 @@ export default function SubscriptionStatus() {
           </Badge>
         </div>
 
-        {status.currentPeriodEnd && (
+        {(subscription?.current_period_start || period?.start) && (
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">
-              {status.cancelAtPeriodEnd ? 'Expira:' : 'Se renueva:'}
-            </span>
+            <span className="text-sm font-medium">Inicio del período</span>
             <span className="text-sm text-gray-600">
-              {new Date(status.currentPeriodEnd).toLocaleDateString()}
+              {new Date((subscription?.current_period_start || period?.start) as string).toLocaleDateString()}
+            </span>
+          </div>
+        )}
+        {(subscription?.current_period_end || period?.end) && (
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Reinicio (1 mes)</span>
+            <span className="text-sm text-gray-600">
+              {new Date((subscription?.current_period_end || period?.end) as string).toLocaleDateString()}
             </span>
           </div>
         )}

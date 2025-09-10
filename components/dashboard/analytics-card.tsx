@@ -6,21 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 type Point = { date: string; searches: number; exports: number };
 
 export default function AnalyticsCard() {
-  const [series, setSeries] = useState<Point[]>([]);
-  const [range, setRange] = useState<'1d' | '7d' | '30d'>('7d');
+  const [_series] = useState<Point[]>([]);
+  // Keep internal series if we later add tiny sparklines; not shown now
   const [monthlyCounts, setMonthlyCounts] = useState<{ searches: number; exports: number; prompts: number }>({ searches: 0, exports: 0, prompts: 0 });
   const [limits, setLimits] = useState<{ searches: number; exports: number; prompts: number }>({ searches: -1, exports: -1, prompts: -1 });
 
   useEffect(() => {
     async function load() {
-      const days = range === '1d' ? 1 : range === '7d' ? 7 : 30;
-      // Fetch timeseries for sparkline
-      const ts = await fetch(`/api/usage/timeseries?days=${days}`);
-      if (ts.ok) {
-        const data = await ts.json();
-        setSeries(data.data as Point[]);
-      }
-      // Fetch monthly summary for accurate counters
+      // Monthly summary for accurate counters (tracked in lib/usage.ts)
       const sum = await fetch('/api/usage/summary');
       if (sum.ok) {
         const data = await sum.json();
@@ -37,7 +30,7 @@ export default function AnalyticsCard() {
       }
     }
     load();
-  }, [range]);
+  }, []);
 
   const metrics = useMemo(() => ({
     searches: monthlyCounts.searches,
@@ -45,91 +38,58 @@ export default function AnalyticsCard() {
     prompts: monthlyCounts.prompts,
   }), [monthlyCounts]);
 
+  const renderBullet = (label: string, value: number, limit: number) => {
+    if (limit === -1) {
+      return (
+        <div className="p-4 rounded border border-gray-200 bg-white">
+          <div className="text-sm text-muted-foreground">{label}</div>
+          <div className="text-2xl font-semibold">{value}</div>
+        </div>
+      );
+    }
+
+    const percent = Math.min(100, (value / limit) * 100);
+    const isWarning = percent >= 70 && percent < 90;
+    const isDanger = percent >= 90;
+
+    return (
+      <div className="p-4 rounded border border-gray-200 bg-white">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">{label}</div>
+          <div className="text-base text-muted-foreground">{value} / {limit}</div>
+        </div>
+        <div className="mt-3">
+          <div className="relative w-full h-4 rounded bg-gray-100 border border-gray-200 overflow-hidden">
+            {/* Qualitative ticks at 70% and 90% */}
+            <div className="absolute top-0 bottom-0 w-px bg-gray-300" style={{ left: '70%' }} />
+            <div className="absolute top-0 bottom-0 w-px bg-gray-300" style={{ left: '90%' }} />
+            {/* Primary measure */}
+            <div
+              className={`h-full rounded-r ${isDanger ? 'bg-red-600' : isWarning ? 'bg-yellow-500' : 'bg-gray-900'}`}
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+          <div className="mt-2 flex items-center justify-between text-[12px] text-muted-foreground">
+            <span>0%</span>
+            <span>70%</span>
+            <span>90%</span>
+            <span>100%</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Card className="bg-white border border-gray-200 shadow-sm">
       <CardHeader className="flex items-center justify-between flex-row">
         <CardTitle className="text-base">Tus analíticas</CardTitle>
-        <div className="flex gap-1 text-xs">
-          {(['1d','7d','30d'] as const).map((r) => (
-            <button
-              key={r}
-              onClick={() => setRange(r)}
-              className={`px-2 py-1 rounded border ${range===r ? 'bg-gray-300 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300'}`}
-            >{r}</button>
-          ))}
-        </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="p-3 rounded border border-gray-200 bg-white">
-            <div className="text-xs text-muted-foreground">Búsquedas</div>
-            <div className="text-xl font-semibold">
-              {metrics.searches}{limits.searches === -1 ? '' : ` / ${limits.searches}`}
-            </div>
-            {limits.searches !== -1 && (
-              <div className="mt-2 w-full h-2 bg-gray-200 rounded">
-                <div
-                  className="h-2 bg-gray-900 rounded"
-                  style={{ width: `${Math.min(100, (metrics.searches / limits.searches) * 100)}%` }}
-                />
-              </div>
-            )}
-          </div>
-          <div className="p-3 rounded border border-gray-200 bg-white">
-            <div className="text-xs text-muted-foreground">Exportaciones</div>
-            <div className="text-xl font-semibold">
-              {metrics.exports}{limits.exports === -1 ? '' : ` / ${limits.exports}`}
-            </div>
-            {limits.exports !== -1 && (
-              <div className="mt-2 w-full h-2 bg-gray-200 rounded">
-                <div
-                  className="h-2 bg-gray-900 rounded"
-                  style={{ width: `${Math.min(100, (metrics.exports / limits.exports) * 100)}%` }}
-                />
-              </div>
-            )}
-          </div>
-          <div className="p-3 rounded border border-gray-200 bg-white">
-            <div className="text-xs text-muted-foreground">Prompts</div>
-            <div className="text-xl font-semibold">
-              {metrics.prompts}{limits.prompts === -1 ? '' : ` / ${limits.prompts}`}
-            </div>
-            {limits.prompts !== -1 && (
-              <div className="mt-2 w-full h-2 bg-gray-200 rounded">
-                <div
-                  className="h-2 bg-gray-900 rounded"
-                  style={{ width: `${Math.min(100, (metrics.prompts / limits.prompts) * 100)}%` }}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="mt-6 h-40 w-full bg-gray-50 border border-gray-200 rounded relative overflow-hidden">
-          {series.length > 1 && (
-            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 300 160" preserveAspectRatio="none">
-              {(() => {
-                const pad = 8;
-                const w = 300; const h = 160;
-                const maxY = Math.max(1, ...series.map(p => p.searches));
-                const step = (w - pad * 2) / (series.length - 1);
-                const pts = series.map((p, i) => {
-                  const x = pad + i * step;
-                  const y = h - pad - (p.searches / maxY) * (h - pad * 2);
-                  return `${x},${y}`;
-                }).join(' ');
-                return (
-                  <g>
-                    <polyline points={pts} fill="none" stroke="#1f2937" strokeWidth="2" />
-                    {series.map((p, i) => {
-                      const x = pad + i * step;
-                      const y = h - pad - (p.searches / maxY) * (h - pad * 2);
-                      return <circle key={i} cx={x} cy={y} r="2" fill="#1f2937" />
-                    })}
-                  </g>
-                );
-              })()}
-            </svg>
-          )}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          {renderBullet('Búsquedas', metrics.searches, limits.searches)}
+          {renderBullet('Exportaciones', metrics.exports, limits.exports)}
+          {renderBullet('Prompts', metrics.prompts, limits.prompts)}
         </div>
       </CardContent>
     </Card>

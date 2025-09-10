@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 interface AuthLayoutProps {
@@ -14,13 +13,6 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
         {/* Logo */}
         <div className="mb-8">
           <Link href="/" className="inline-block">
-            <Image
-              src="/image.png"
-              alt="UNIBROKERS Logo"
-              width={160}
-              height={48}
-              className="h-8 w-auto"
-            />
           </Link>
         </div>
         

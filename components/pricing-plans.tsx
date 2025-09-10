@@ -194,9 +194,7 @@ export default function PricingPlans() {
         <Card key={plan.id} className="relative border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
           {plan.popular && (
             <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-              <Badge variant="secondary" className="bg-gray-800 text-white px-3 py-1 text-xs font-medium">
-                Más Popular
-              </Badge>
+              
             </div>
           )}
 
