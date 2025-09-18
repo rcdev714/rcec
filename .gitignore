@@ -57,4 +57,9 @@ test-results
 imagenes_app
 .cursor
 
-playwright-report
+./playwright-report
+
+
+test-results
+
+dev.log
