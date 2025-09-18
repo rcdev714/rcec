@@ -173,13 +173,6 @@
   }
   
   /* Fix any remaining yellow text issues */
-  h1, h2, h3, h4, h5, h6 {
-    color: rgb(37 37 37) !important;
-  }
-  
-  p, div {
-    color: inherit !important;
-  }
   span {
     color: inherit;
   }
@@ -220,22 +213,6 @@
     color: white !important;
   }
   
-  /* Secondary/outline buttons */
-  button[class*="border"],
-  button[class*="outline"],
-  a[class*="border"] {
-    color: rgb(37 37 37) !important;
-    border-color: rgb(37 37 37) !important;
-  }
-  
-  /* Override any conflicting button text colors */
-  button span,
-  a span,
-  button div,
-  a div {
-    color: inherit !important;
-  }
-  
   /* Specific override for primary button text */
   .bg-primary.text-primary-foreground,
   a.bg-primary,
@@ -269,13 +246,6 @@
   .text-yellow-700,
   .text-yellow-800,
   .text-yellow-900 {
-    color: rgb(37 37 37) !important;
-  }
-  
-  /* Force proper typography colors */
-  .font-bold,
-  .font-semibold,
-  .font-medium {
     color: rgb(37 37 37) !important;
   }
   

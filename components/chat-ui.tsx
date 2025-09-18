@@ -297,70 +297,96 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let assistantResponse = "";
+      let buffer = "";
+      let assistantResponseText = ""; // To store text content without search results
+      
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value);
+        if (done) {
+          if (process.env.NODE_ENV === 'development') console.log("Stream finished.");
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        if (process.env.NODE_ENV === 'development') console.log(`Chunk received. Buffer size: ${buffer.length}`);
+
+        const startTag = '[SEARCH_RESULTS]';
+        const endTag = '[/SEARCH_RESULTS]';
         
-        // Check if this chunk contains search results
-        if (chunk.includes('[SEARCH_RESULTS]') && chunk.includes('[/SEARCH_RESULTS]')) {
-          const startTag = '[SEARCH_RESULTS]';
-          const endTag = '[/SEARCH_RESULTS]';
-          const startIndex = chunk.indexOf(startTag);
-          const endIndex = chunk.indexOf(endTag);
-          
-          if (startIndex !== -1 && endIndex !== -1) {
-            const beforeResults = chunk.substring(0, startIndex);
-            const resultsJson = chunk.substring(startIndex + startTag.length, endIndex);
-            const afterResults = chunk.substring(endIndex + endTag.length);
+        // Continuously process the buffer for complete search result blocks
+        let searchResultBlockFound;
+        do {
+          searchResultBlockFound = false;
+          const startIndex = buffer.indexOf(startTag);
+          const endIndex = buffer.indexOf(endTag);
+
+          if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+            searchResultBlockFound = true;
+            if (process.env.NODE_ENV === 'development') console.log("Found complete search result block in buffer.");
             
-            assistantResponse += beforeResults + afterResults;
+            const textBefore = buffer.substring(0, startIndex);
+            const jsonStr = buffer.substring(startIndex + startTag.length, endIndex);
             
+            assistantResponseText += textBefore;
+            buffer = buffer.substring(endIndex + endTag.length);
+
             try {
-              const searchResult = JSON.parse(resultsJson);
+              const searchResult = JSON.parse(jsonStr);
               finalSearchResult = searchResult;
+
+              if (process.env.NODE_ENV === 'development') console.log("Successfully parsed search results:", searchResult);
+              
               setMessages((prev) => {
                 const newMessages = [...prev];
                 const lastMessage = newMessages[newMessages.length - 1];
-                if (lastMessage.role === "assistant") {
-                  lastMessage.content = assistantResponse;
+                if (lastMessage?.role === "assistant") {
+                  lastMessage.content = assistantResponseText;
                   lastMessage.searchResult = searchResult;
                   lastMessage.metadata = { type: 'company_results' };
                 }
                 return newMessages;
               });
             } catch (e) {
-              if (process.env.NODE_ENV !== 'production') {
-                console.warn('Failed to parse search results:', e);
-              }
-              assistantResponse += chunk;
+              console.error("Failed to parse search results JSON:", e, "JSON string was:", jsonStr);
+              assistantResponseText += `${startTag}${jsonStr}${endTag}`;
             }
-          } else {
-            assistantResponse += chunk;
           }
-        } else {
-          assistantResponse += chunk;
-        }
+        } while (searchResultBlockFound);
         
+        // Update UI with processed text and remaining buffer (which is streaming text)
         setMessages((prev) => {
           const newMessages = [...prev];
           const lastMessage = newMessages[newMessages.length - 1];
-          if (lastMessage.role === "assistant") {
-            lastMessage.content = assistantResponse;
+          if (lastMessage?.role === "assistant") {
+            lastMessage.content = assistantResponseText + buffer;
           }
           return newMessages;
         });
       }
+      
+      assistantResponseText += buffer; // Add any remaining text from buffer
+
+      // Final update for UI consistency
+      setMessages((prev) => {
+          const newMessages = [...prev];
+          const lastMessage = newMessages[newMessages.length - 1];
+          if (lastMessage?.role === 'assistant') {
+              lastMessage.content = assistantResponseText;
+          }
+          return newMessages;
+      });
 
       // Persist the final assistant message to the database
       if (currentConvId) {
+        if (process.env.NODE_ENV === 'development') {
+            console.log("Persisting final message. Content:", assistantResponseText, "Search Result:", finalSearchResult);
+        }
         await conversationManager.addMessage(currentConvId, {
           id: '', // DB generates
           role: 'assistant',
-          content: assistantResponse,
+          content: assistantResponseText,
           metadata: {
             type: finalSearchResult ? 'company_results' : 'text',
             searchResult: finalSearchResult,

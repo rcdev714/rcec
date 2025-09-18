@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { ArrowRight, Database, Brain, Target } from "lucide-react";
 import { FaLinkedin } from "react-icons/fa";
+import Image from "next/image";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -42,15 +43,23 @@ export default async function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100"></div>
+      <section className="relative overflow-hidden bg-black">
+        <Image
+          src="/HeroImage.jpeg"
+          alt="Hero Background"
+          fill
+          className="object-contain object-center"
+        />
+        <div className="absolute inset-0 bg-black bg-opacity-20" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
           <div className="text-center">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white">
               Encuentra Empresas Ecuatorianas con Inteligencia Artificial
             </h1>
-            <p className="mt-6 text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-              
+            <p className="mt-6 text-lg sm:text-xl text-white max-w-3xl mx-auto leading-relaxed">
+              Nuestra plataforma utiliza inteligencia artificial para analizar
+              millones de registros públicos y ayudarte a encontrar las empresas
+              que necesitas para tu negocio.
             </p>
             
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -62,6 +71,11 @@ export default async function Home() {
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
                   </Link>
+                  <Link href="/pricing">
+                    <Button size="lg" variant="outline" className="px-8 py-3 text-lg">
+                      Ver planes
+                    </Button>
+                  </Link>
                 </>
               ) : (
                 <>
@@ -69,6 +83,11 @@ export default async function Home() {
                     <Button size="lg" variant="secondary" className="px-8 py-3 text-lg">
                       Encontrar Empresas
                       <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </Link>
+                  <Link href="/pricing">
+                    <Button size="lg" variant="outline" className="px-8 py-3 text-lg">
+                      Ver planes
                     </Button>
                   </Link>
                 </>
