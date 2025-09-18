@@ -104,3 +104,23 @@ Please file feedback and issues over on the [Supabase GitHub org](https://github
 - [Cookie-based Auth and the Next.js 13 App Router (free course)](https://youtube.com/playlist?list=PL5S4mPUpp4OtMhpnp93EFSo42iQ40XjbF)
 - [Supabase Auth and the Next.js App Router](https://github.com/supabase/supabase/tree/master/examples/auth/nextjs)
 # rcec
+\n+## LangSmith (Tracing & Observability)
+\n+Enable tracing and visualization for LangGraph/LangChain runs:
+\n+- Install dependency (already added): `langsmith`
+- Set environment variables (e.g., in `.env.local`):
+\n+```
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=your_key
+# Optional
+LANGSMITH_PROJECT=rcec-chat
+LANGSMITH_ENDPOINT=https://api.smith.langchain.com
+LANGSMITH_HIDE_INPUTS=false
+LANGSMITH_HIDE_OUTPUTS=false
+# In serverless, you can force synchronous flush at request end
+LANGSMITH_TRACING_BACKGROUND=false
+```
+\n+Code wiring:
+- Tracing helper: `lib/langsmith.ts` (client, `LangChainTracer`, flush)
+- LangGraph agent: `lib/chat-agent-langgraph.ts` (callbacks, tags, metadata, flush)
+- Fallback agent: `lib/chat-agent.ts` (callbacks + flush)
+- API route: `app/api/chat/route.ts` passes `userId` and `conversationId` to runs

@@ -1,5 +1,7 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { HumanMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
+import { RunnableConfig } from "@langchain/core/runnables";
+import { getLangChainTracer, flushLangsmith, langsmithEnabled } from "./langsmith";
 
 // Types for memory management
 interface ConversationMemory {
@@ -193,7 +195,13 @@ async function chatWithMemory(message: string, conversationId: string = 'default
   
   // Stream response from Gemini
   const aiModel = getModel();
-  const stream = await aiModel.stream(conversationMessages);
+  const config: RunnableConfig = {
+    callbacks: langsmithEnabled ? [getLangChainTracer(process.env.LANGSMITH_PROJECT || "rcec-chat")] : undefined,
+    tags: ["memory-agent"],
+    metadata: { conversationId },
+    runName: "RCEC Chat (Memory)",
+  };
+  const stream = await aiModel.stream(conversationMessages, config);
   
   // Collect the complete response for memory storage
   let assistantResponse = '';
@@ -210,6 +218,9 @@ async function chatWithMemory(message: string, conversationId: string = 'default
         const assistantMessage = new AIMessage(assistantResponse);
         await manageMemory(conversationId, assistantMessage);
         
+        if (langsmithEnabled) {
+          await flushLangsmith();
+        }
         controller.close();
       } catch (error) {
         controller.error(error);

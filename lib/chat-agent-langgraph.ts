@@ -3,6 +3,7 @@ import { HumanMessage, BaseMessage } from "@langchain/core/messages";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { companyTools } from "./tools/company-tools";
 import { CompanySearchResult } from "@/types/chat";
+import { getLangChainTracer, flushLangsmith, langsmithEnabled } from "./langsmith";
 
 // System prompt for the company search assistant (Spanish)
 const SYSTEM_PROMPT = `Eres un asistente de IA especializado en ayudar a usuarios a buscar empresas en Ecuador. Tienes acceso a una base de datos completa de empresas con información financiera y empresarial detallada.
@@ -101,7 +102,8 @@ function getLangGraphAgent() {
 // Enhanced chat function with LangGraph
 export async function chatWithLangGraph(
   message: string, 
-  conversationHistory: BaseMessage[] = []
+  conversationHistory: BaseMessage[] = [],
+  options?: { userId?: string; conversationId?: string; projectName?: string; runName?: string }
 ): Promise<ReadableStream> {
   const userMessage = new HumanMessage(message);
   
@@ -116,9 +118,21 @@ export async function chatWithLangGraph(
         let searchResult: CompanySearchResult | undefined;
         
         // Execute the React agent
-        const result = await getLangGraphAgent().invoke({
-          messages: initialMessages,
-        });
+        const tracer = getLangChainTracer(options?.projectName);
+        const result = await getLangGraphAgent().invoke(
+          {
+            messages: initialMessages,
+          },
+          {
+            callbacks: langsmithEnabled ? [tracer] : undefined,
+            tags: ["langgraph", "react-agent"],
+            metadata: {
+              userId: options?.userId,
+              conversationId: options?.conversationId,
+            },
+            runName: options?.runName || "RCEC LangGraph Chat",
+          }
+        );
         
         // Get the final AI response
         if (result && result.messages && Array.isArray(result.messages)) {
@@ -160,6 +174,9 @@ export async function chatWithLangGraph(
         // Send the final response directly (no chunking to avoid controller issues)
         const responseText = finalResponse + (searchResult ? `\n\n[SEARCH_RESULTS]${JSON.stringify(searchResult)}[/SEARCH_RESULTS]` : '');
         controller.enqueue(new TextEncoder().encode(responseText));
+        if (langsmithEnabled) {
+          await flushLangsmith();
+        }
         controller.close();
         
       } catch (error) {

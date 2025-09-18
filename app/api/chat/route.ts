@@ -83,7 +83,12 @@ export async function POST(req: Request) {
         );
       }
 
-      stream = await chatWithLangGraph(message, conversationHistory);
+      stream = await chatWithLangGraph(message, conversationHistory, {
+        userId: user.id,
+        conversationId: effectiveConversationId,
+        projectName: process.env.LANGSMITH_PROJECT || "rcec-chat",
+        runName: "RCEC Chat (LangGraph)",
+      });
     } else {
       // Fallback to original memory-based agent
       const statsBefore = getConversationStats(effectiveConversationId);
