@@ -52,14 +52,14 @@ scripts-data
 #Tests files
 scripts-tests
 documentation-md
-test-results
+/test-results/
 
 imagenes_app
 .cursor
 
-./playwright-report
+\/playwright-report/
 
 
-test-results
+
 
 dev.log
