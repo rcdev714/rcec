@@ -260,7 +260,9 @@ export default function EditOfferingPage() {
       <div className="w-full max-w-2xl px-4">
         <div className="mb-6">
           <h1 className="text-2xl font-bold">Editar Servicio</h1>
-          <p className="text-gray-500 mt-1">Modifica los detalles de tu servicio.</p>
+          <p className="text-gray-600 mt-1">
+            Actualiza la información, precios y documentación de tu servicio. Los cambios se reflejarán en el enlace público que compartes con empresas.
+          </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-2">

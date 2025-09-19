@@ -47,10 +47,10 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
 
   const allSuggestions = useMemo(() => [
     'Enseñame empresas del guayas con mas de 1000 empleados',
-    'Busca empresas de almenos 100 empleados con almenos 1000 en ingresos',
-    'Exporta una lista de empresas de construcción en Pichincha',
-    'Encuentra el RUC de la empresa Unibrokers',
-    'Dame los datos de la empresa con el ruc 1792848830001'
+    'Redacta un correo para ofrecer mis servicios',
+    'Cuales son las empresas con mayores ingresos en pichincha?',
+    'Encuentra el RUC de una empresa',
+    'Dame los datos de la empresa con el RUC ...'
   ], []);
 
   // Efecto para seleccionar sugerencias dinámicas al montar
@@ -531,7 +531,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                   Agente
                 </h1>
                 <p className="text-gray-600 text-sm md:text-base max-w-md mx-auto">
-                  Chat inteligente con acceso a toda la información de las empresas de Ecuador
+                  Conversa en lenguaje natural para encontrar empresas. Pregunta por informacion financiera, personas de la organizacion, ubicación, tamaño o cualquier otra informacion que esta disponible en el filtrado manual de empresas.
                 </p>
               </div>
 

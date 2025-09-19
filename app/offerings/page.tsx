@@ -112,15 +112,22 @@ export default function OfferingsPage() {
   }
 
   return (
-    <div className="p-4 md:p-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold px-4">Mis Servicios</h1>
-        <Link href="/offerings/new" passHref>
-          <button className="bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 border border-gray-400 rounded-full shadow flex items-center text-sm">
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Añadir Servicio
-          </button>
-        </Link>
+    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      <div className="mb-6 px-2 md:px-4">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight bg-gradient-to-br from-gray-900 via-gray-700 to-gray-400 bg-clip-text text-transparent">Catálogo de Servicios</h1>
+            <p className="text-gray-600 text-sm md:text-base mt-1">
+              Gestiona tu portafolio con herramientas de clase mundial.
+            </p>
+          </div>
+          <Link href="/offerings/new" passHref>
+            <button className="bg-black text-white font-medium py-2 px-4 rounded-md shadow hover:bg-gray-800 transition-colors flex items-center text-sm">
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Añadir Servicio
+            </button>
+          </Link>
+        </div>
       </div>
 
       {offerings.length === 0 ? (
@@ -133,7 +140,7 @@ export default function OfferingsPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-6">
           {offerings.map((offering) => (
             <OfferingCard
               key={offering.id}

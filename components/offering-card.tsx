@@ -4,11 +4,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserOffering } from '@/types/user-offering';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
-import { TrashIcon, PencilIcon, GlobeAltIcon, DocumentIcon, ChatBubbleLeftRightIcon, CalendarDaysIcon, BanknotesIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, PencilIcon, GlobeAltIcon, DocumentIcon, ChatBubbleLeftRightIcon, CalendarDaysIcon, BanknotesIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
 interface OfferingCardProps {
   offering: UserOffering;
@@ -25,6 +25,15 @@ export default function OfferingCard({ offering, onUpdate: _onUpdate, onDelete }
   const router = useRouter();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const normalizedWebsiteUrl = typedOffering.website_url
+    ? (typedOffering.website_url.startsWith('http') ? typedOffering.website_url : `https://${typedOffering.website_url}`)
+    : undefined;
+  const firstSocialUrl = typedOffering.social_media_links && typedOffering.social_media_links.length > 0
+    ? typedOffering.social_media_links[0]?.url
+    : undefined;
+  const firstDocUrl = typedOffering.documentation_urls && typedOffering.documentation_urls.length > 0
+    ? typedOffering.documentation_urls[0]?.url
+    : undefined;
 
   const handleEdit = () => {
     router.push(`/offerings/${offering.id}/edit`);
@@ -135,13 +144,13 @@ export default function OfferingCard({ offering, onUpdate: _onUpdate, onDelete }
 
   return (
     <>
-      <Card className="group hover:shadow-md transition-shadow bg-white text-gray-900">
+      <Card className="group bg-white text-gray-900 hover:shadow-lg hover:border-gray-300 transition-all duration-200 overflow-hidden">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <CardTitle className="text-lg mb-1">{typedOffering.offering_name}</CardTitle>
+              <CardTitle className="text-lg mb-1 truncate">{typedOffering.offering_name}</CardTitle>
               {typedOffering.industry && typedOffering.industry.trim() && (
-                <p className="text-sm text-gray-600 font-medium">{typedOffering.industry}</p>
+                <Badge variant="light-outline" className="text-[10px]">{typedOffering.industry}</Badge>
               )}
             </div>
             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -210,33 +219,52 @@ export default function OfferingCard({ offering, onUpdate: _onUpdate, onDelete }
             <div className="flex items-center gap-2">
               <BanknotesIcon className="h-4 w-4 text-green-600" />
               <span className="text-sm font-semibold text-green-700">{priceDisplay}</span>
-              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                {paymentTypeDisplay}
-              </span>
+              <Badge variant="light-outline" className="text-[10px]">{paymentTypeDisplay}</Badge>
             </div>
           )}
 
           {/* Contact & Resources Info */}
           <div className="grid grid-cols-2 gap-3 text-xs">
-            {typedOffering.website_url && (
-              <div className="flex items-center gap-1">
+            {normalizedWebsiteUrl && (
+              <a
+                href={normalizedWebsiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 hover:underline"
+                aria-label="Abrir sitio web"
+              >
                 <GlobeAltIcon className="h-3 w-3 text-blue-500" />
                 <span className="text-gray-600">Sitio web</span>
-              </div>
+                <ArrowTopRightOnSquareIcon className="h-3 w-3 text-gray-400" />
+              </a>
             )}
 
             {typedOffering.social_media_links && typedOffering.social_media_links.length > 0 && (
-              <div className="flex items-center gap-1">
+              <a
+                href={firstSocialUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 hover:underline"
+                aria-label="Abrir redes sociales"
+              >
                 <ChatBubbleLeftRightIcon className="h-3 w-3 text-purple-500" />
                 <span className="text-gray-600">{typedOffering.social_media_links.length} redes</span>
-              </div>
+                <ArrowTopRightOnSquareIcon className="h-3 w-3 text-gray-400" />
+              </a>
             )}
 
             {typedOffering.documentation_urls && typedOffering.documentation_urls.length > 0 && (
-              <div className="flex items-center gap-1">
+              <a
+                href={firstDocUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 hover:underline"
+                aria-label="Abrir documentación"
+              >
                 <DocumentIcon className="h-3 w-3 text-orange-500" />
                 <span className="text-gray-600">{typedOffering.documentation_urls.length} docs</span>
-              </div>
+                <ArrowTopRightOnSquareIcon className="h-3 w-3 text-gray-400" />
+              </a>
             )}
 
             {formattedDate && (
@@ -268,6 +296,35 @@ export default function OfferingCard({ offering, onUpdate: _onUpdate, onDelete }
             </div>
           )}
         </CardContent>
+        <CardFooter className="pt-0">
+          <div className="flex w-full flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0">
+            <div className="flex gap-2 flex-wrap">
+              {normalizedWebsiteUrl && (
+                <Button size="sm" variant="secondary" asChild>
+                  <a href={normalizedWebsiteUrl} target="_blank" rel="noopener noreferrer">
+                    <GlobeAltIcon className="h-4 w-4" />
+                    Visitar sitio
+                  </a>
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2 flex-wrap sm:justify-end">
+              <Button size="sm" variant="outline" onClick={handleEdit} title="Editar servicio">
+                <PencilIcon className="h-4 w-4" />
+                Editar
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setIsDeleteModalOpen(true)}
+                title="Eliminar servicio"
+              >
+                <TrashIcon className="h-4 w-4" />
+                Eliminar
+              </Button>
+            </div>
+          </div>
+        </CardFooter>
       </Card>
     </>
   );
