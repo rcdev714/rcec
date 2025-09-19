@@ -35,14 +35,14 @@ export default function PlanCard() {
   const planLabel = (p: string) => (p === 'FREE' ? 'Gratuito' : p === 'PRO' ? 'Pro' : 'Empresarial');
 
   return (
-    <Card className="bg-white border border-gray-200 shadow-sm">
+    <Card className="bg-white border border-gray-200 shadow-sm text-gray-900">
       <CardHeader className="flex items-center justify-between flex-row">
         <div>
           <CardTitle className="text-base">Plan</CardTitle>
           <div className="mt-1">
             <Badge className={
               summary?.plan === 'PRO' ? 'bg-blue-100 text-blue-800' :
-              summary?.plan === 'ENTERPRISE' ? 'bg-purple-100 text-purple-800' : 'light-outline'
+              summary?.plan === 'ENTERPRISE' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
             }>
               {summary ? planLabel(summary.plan) : '—'}
             </Badge>

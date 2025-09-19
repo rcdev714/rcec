@@ -71,17 +71,17 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
   };
 
   return (
-    <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+    <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-6 text-gray-900">
       {/* Header */}
       <div className="flex items-center space-x-2">
-        <Filter size={16} className="text-muted-foreground" />
-        <h3 className="font-medium text-foreground">Filtros</h3>
+        <Filter size={16} className="text-gray-500" />
+        <h3 className="font-medium text-gray-900">Filtros</h3>
       </div>
 
       {/* Quick Filters */}
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="nombre" className="text-sm font-medium text-foreground">
+          <Label htmlFor="nombre" className="text-sm font-medium text-gray-900">
             Nombre de empresa
           </Label>
           <Input
@@ -91,12 +91,12 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
             value={filters.nombre as string}
             onChange={handleFilterChange}
             placeholder="Buscar por nombre..."
-            className="bg-background border-border"
+            className="bg-white border-gray-300"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="ruc" className="text-sm font-medium text-foreground">
+          <Label htmlFor="ruc" className="text-sm font-medium text-gray-900">
             RUC
           </Label>
           <Input
@@ -106,12 +106,12 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
             value={filters.ruc as string}
             onChange={handleFilterChange}
             placeholder="Número de RUC..."
-            className="bg-background border-border"
+            className="bg-white border-gray-300"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="provincia" className="text-sm font-medium text-foreground">
+          <Label htmlFor="provincia" className="text-sm font-medium text-gray-900">
             Provincia
           </Label>
           <select
@@ -119,7 +119,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
             name="provincia"
             value={filters.provincia as string}
             onChange={handleSelectChange}
-            className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
           >
             <option value="">Todas las provincias</option>
             <option value="AZUAY">Azuay</option>
@@ -151,7 +151,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label htmlFor="anio" className="text-sm font-medium text-foreground">
+            <Label htmlFor="anio" className="text-sm font-medium text-gray-900">
               Año fiscal
             </Label>
             <select
@@ -159,7 +159,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
               name="anio"
               value={filters.anio as string}
               onChange={handleSelectChange}
-              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
             >
               <option value="">Todos los años</option>
               <option value="2024">2024</option>
@@ -182,7 +182,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
             </select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="nEmpleadosMin" className="text-sm font-medium text-foreground">
+            <Label htmlFor="nEmpleadosMin" className="text-sm font-medium text-gray-900">
               Min. empleados
             </Label>
             <Input
@@ -192,7 +192,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
               value={filters.nEmpleadosMin as string}
               onChange={handleFilterChange}
               placeholder="0"
-              className="bg-background border-border"
+              className="bg-white border-gray-300"
             />
           </div>
         </div>
@@ -201,7 +201,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
       {/* Advanced Filters Toggle */}
       <button
         onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-        className="flex items-center justify-between w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        className="flex items-center justify-between w-full py-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
       >
         <span>Filtros financieros</span>
         {showAdvancedFilters ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -209,9 +209,9 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
 
       {/* Advanced Filters */}
       {showAdvancedFilters && (
-        <div className="space-y-4 pt-2 border-t border-border">
+        <div className="space-y-4 pt-2 border-t border-gray-200">
           <div className="space-y-2">
-            <Label htmlFor="nombreComercial" className="text-sm font-medium text-foreground">
+            <Label htmlFor="nombreComercial" className="text-sm font-medium text-gray-900">
               Nombre comercial
             </Label>
             <Input
@@ -221,109 +221,109 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
               value={filters.nombreComercial as string}
               onChange={handleFilterChange}
               placeholder="Nombre comercial..."
-              className="bg-background border-border"
+              className="bg-white border-gray-300"
             />
           </div>
 
           <div className="space-y-3">
-            <h4 className="text-sm font-medium text-foreground">Rangos financieros</h4>
+            <h4 className="text-sm font-medium text-gray-900">Rangos financieros</h4>
             
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Min. ingresos ventas</Label>
+                <Label className="text-xs text-gray-500">Min. ingresos ventas</Label>
                 <Input
                   type="number"
                   name="ingresosVentasMin"
                   value={filters.ingresosVentasMin as string}
                   onChange={handleFilterChange}
                   placeholder="0"
-                  className="bg-background border-border text-sm"
+                  className="bg-white border-gray-300 text-sm"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Max. ingresos ventas</Label>
+                <Label className="text-xs text-gray-500">Max. ingresos ventas</Label>
                 <Input
                   type="number"
                   name="ingresosVentasMax"
                   value={filters.ingresosVentasMax as string}
                   onChange={handleFilterChange}
                   placeholder="∞"
-                  className="bg-background border-border text-sm"
+                  className="bg-white border-gray-300 text-sm"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Min. activos</Label>
+                <Label className="text-xs text-gray-500">Min. activos</Label>
                 <Input
                   type="number"
                   name="activosMin"
                   value={filters.activosMin as string}
                   onChange={handleFilterChange}
                   placeholder="0"
-                  className="bg-background border-border text-sm"
+                  className="bg-white border-gray-300 text-sm"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Max. activos</Label>
+                <Label className="text-xs text-gray-500">Max. activos</Label>
                 <Input
                   type="number"
                   name="activosMax"
                   value={filters.activosMax as string}
                   onChange={handleFilterChange}
                   placeholder="∞"
-                  className="bg-background border-border text-sm"
+                  className="bg-white border-gray-300 text-sm"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Min. patrimonio</Label>
+                <Label className="text-xs text-gray-500">Min. patrimonio</Label>
                 <Input
                   type="number"
                   name="patrimonioMin"
                   value={filters.patrimonioMin as string}
                   onChange={handleFilterChange}
                   placeholder="0"
-                  className="bg-background border-border text-sm"
+                  className="bg-white border-gray-300 text-sm"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Max. patrimonio</Label>
+                <Label className="text-xs text-gray-500">Max. patrimonio</Label>
                 <Input
                   type="number"
                   name="patrimonioMax"
                   value={filters.patrimonioMax as string}
                   onChange={handleFilterChange}
                   placeholder="∞"
-                  className="bg-background border-border text-sm"
+                  className="bg-white border-gray-300 text-sm"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Min. utilidad neta</Label>
+                <Label className="text-xs text-gray-500">Min. utilidad neta</Label>
                 <Input
                   type="number"
                   name="utilidadNetaMin"
                   value={filters.utilidadNetaMin as string}
                   onChange={handleFilterChange}
                   placeholder="0"
-                  className="bg-background border-border text-sm"
+                  className="bg-white border-gray-300 text-sm"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Max. utilidad neta</Label>
+                <Label className="text-xs text-gray-500">Max. utilidad neta</Label>
                 <Input
                   type="number"
                   name="utilidadNetaMax"
                   value={filters.utilidadNetaMax as string}
                   onChange={handleFilterChange}
                   placeholder="∞"
-                  className="bg-background border-border text-sm"
+                  className="bg-white border-gray-300 text-sm"
                 />
               </div>
             </div>
@@ -350,11 +350,11 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
       </div>
 
       {/* Results Count */}
-      <div className="text-center pt-2 border-t border-border">
+      <div className="text-center pt-2 border-t border-gray-200">
         {applyError && (
           <p className="text-xs text-destructive mb-1">{applyError}</p>
         )}
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-gray-500">
           {companyCount.toLocaleString()} empresa{companyCount !== 1 ? 's' : ''} encontrada{companyCount !== 1 ? 's' : ''}
         </p>
       </div>

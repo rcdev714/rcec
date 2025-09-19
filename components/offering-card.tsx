@@ -135,7 +135,7 @@ export default function OfferingCard({ offering, onUpdate: _onUpdate, onDelete }
 
   return (
     <>
-      <Card className="group hover:shadow-md transition-shadow">
+      <Card className="group hover:shadow-md transition-shadow bg-white text-gray-900">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex-1">

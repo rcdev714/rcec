@@ -72,12 +72,7 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
       {/* Main content area */}
       <div className="flex-1 min-w-0">
         {/* Download Excel Button */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-4">
-            <h2 className="text-lg font-semibold text-foreground">
-              {totalCount > 0 ? `${totalCount.toLocaleString()} empresas encontradas` : 'Resultados'}
-            </h2>
-          </div>
+        <div className="flex justify-end items-center mb-6">
           <DownloadExcelButton 
             searchParams={initialFilters}
             totalCount={totalCount}

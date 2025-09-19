@@ -122,7 +122,7 @@ export function DownloadExcelButton({ searchParams, totalCount, className }: Dow
           disabled={isDownloading || totalCount === 0}
           variant="outline"
           size="sm"
-          className="flex items-center gap-2 h-8 px-3 text-sm"
+          className="flex items-center gap-2 h-8 px-3 text-sm text-gray-900 border-gray-300 hover:bg-gray-100"
         >
           {isDownloading ? (
             <Loader2 className="h-3 w-3 animate-spin" />

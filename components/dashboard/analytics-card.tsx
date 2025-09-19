@@ -42,7 +42,7 @@ export default function AnalyticsCard() {
     if (limit === -1) {
       return (
         <div className="p-4 rounded border border-gray-200 bg-white">
-          <div className="text-sm text-muted-foreground">{label}</div>
+          <div className="text-sm text-gray-500">{label}</div>
           <div className="text-2xl font-semibold">{value}</div>
         </div>
       );
@@ -55,8 +55,8 @@ export default function AnalyticsCard() {
     return (
       <div className="p-4 rounded border border-gray-200 bg-white">
         <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">{label}</div>
-          <div className="text-base text-muted-foreground">{value} / {limit}</div>
+          <div className="text-sm text-gray-500">{label}</div>
+          <div className="text-base text-gray-500">{value} / {limit}</div>
         </div>
         <div className="mt-3">
           <div className="relative w-full h-4 rounded bg-gray-100 border border-gray-200 overflow-hidden">
@@ -69,7 +69,7 @@ export default function AnalyticsCard() {
               style={{ width: `${percent}%` }}
             />
           </div>
-          <div className="mt-2 flex items-center justify-between text-[12px] text-muted-foreground">
+          <div className="mt-2 flex items-center justify-between text-[12px] text-gray-500">
             <span>0%</span>
             <span>70%</span>
             <span>90%</span>
@@ -81,7 +81,7 @@ export default function AnalyticsCard() {
   };
 
   return (
-    <Card className="bg-white border border-gray-200 shadow-sm">
+    <Card className="bg-white border border-gray-200 shadow-sm text-gray-900">
       <CardHeader className="flex items-center justify-between flex-row">
         <CardTitle className="text-base">Tus analíticas</CardTitle>
       </CardHeader>

@@ -6,7 +6,7 @@ import { FileText, Sparkles, Building, Package } from "lucide-react";
 
 export default function DashboardPage() {
   return (
-    <div className="min-h-screen bg-white p-6">
+    <div className="min-h-screen bg-white text-gray-900 p-6">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex items-end justify-between mb-4">

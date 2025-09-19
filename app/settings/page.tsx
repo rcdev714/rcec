@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import SubscriptionStatus from '@/components/subscription-status';
 import { UserSettings } from '@/types/user-profile';
+import { User, Building2, CreditCard, Settings } from 'lucide-react';
+import UserAvatar from '@/components/user-avatar';
 
 export default function SettingsPage() {
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
@@ -113,203 +115,315 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
-        <h1 className="text-3xl font-bold text-gray-900">Configuración</h1>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Información Personal</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="animate-pulse space-y-4">
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            {/* Loading Header */}
+            <div className="mb-8">
+              <div className="flex items-center gap-3 mb-2">
+                <Settings className="h-6 w-6 text-gray-600" />
+                <h1 className="text-3xl font-semibold text-gray-900">Configuración</h1>
               </div>
-            </CardContent>
-          </Card>
+              <div className="h-4 bg-gray-200 rounded w-80 animate-pulse"></div>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 space-y-6">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <User className="h-5 w-5 text-gray-600" />
+                      <CardTitle>Información Personal</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="animate-pulse space-y-6">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="h-11 bg-gray-200 rounded"></div>
+                        <div className="h-11 bg-gray-200 rounded"></div>
+                      </div>
+                      <div className="h-11 bg-gray-200 rounded"></div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="h-11 bg-gray-200 rounded"></div>
+                        <div className="h-11 bg-gray-200 rounded"></div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              <div className="lg:col-span-1 space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="h-5 w-5 text-gray-600" />
+                      Suscripción
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="animate-pulse space-y-4">
+                      <div className="h-8 bg-gray-200 rounded"></div>
+                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Configuración</h1>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Personal Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Información Personal</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="firstName">Nombre</Label>
-                  <Input
-                    id="firstName"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="Tu nombre"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="lastName">Apellido</Label>
-                  <Input
-                    id="lastName"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Tu apellido"
-                  />
-                </div>
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-5xl mx-auto">
+          {/* Page Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 mb-2">
+                <Settings className="h-6 w-6 text-gray-600" />
+                <h1 className="text-3xl font-semibold text-gray-900">Configuración</h1>
               </div>
-
-              <div>
-                <Label htmlFor="email">Correo Electrónico</Label>
-                <Input
-                  id="email"
-                  value={userSettings?.email || ''}
-                  disabled
-                  className="bg-gray-50"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Para cambiar tu correo, contacta soporte
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="phone">Teléfono</Label>
-                <Input
-                  id="phone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+593 99 999 9999"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="position">Cargo/Posición</Label>
-                <Input
-                  id="position"
-                  value={position}
-                  onChange={(e) => setPosition(e.target.value)}
-                  placeholder="Tu cargo o posición"
-                />
-              </div>
-
-              {message && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-                  <p className="text-sm text-green-800">{message}</p>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <div className="text-sm font-medium text-gray-900">
+                    {(firstName || lastName)
+                      ? `${firstName} ${lastName}`.trim()
+                      : (userSettings?.email || 'Usuario')}
+                  </div>
+                  {userSettings?.email && (
+                    <div className="text-xs text-gray-500">{userSettings.email}</div>
+                  )}
                 </div>
-              )}
+                <UserAvatar />
+              </div>
+            </div>
+            <p className="text-gray-600 mt-2">Gestiona tu perfil personal, información de empresa y suscripción</p>
+          </div>
 
-              {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                  <p className="text-sm text-red-800">{error}</p>
-                </div>
-              )}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Main Content */}
+            <div className="space-y-8">
+              <div id="account">
+              {/* Personal Information */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <User className="h-5 w-5 text-gray-600" />
+                    <CardTitle>Información Personal</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Actualiza tu información personal y de contacto
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="firstName" className="text-sm font-medium text-gray-700">Nombre</Label>
+                        <Input
+                          id="firstName"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          placeholder="Tu nombre"
+                          className="h-11"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="lastName" className="text-sm font-medium text-gray-700">Apellido</Label>
+                        <Input
+                          id="lastName"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          placeholder="Tu apellido"
+                          className="h-11"
+                        />
+                      </div>
+                    </div>
 
-              <Button type="submit" disabled={saving} className="w-full">
-                {saving ? 'Guardando...' : 'Guardar Cambios'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-sm font-medium text-gray-700">Correo Electrónico</Label>
+                      <Input
+                        id="email"
+                        value={userSettings?.email || ''}
+                        disabled
+                        className="bg-gray-50 h-11"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Para cambiar tu correo, contacta soporte
+                      </p>
+                    </div>
 
-        {/* Company Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Información de Empresa</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="companyName">Nombre de la Empresa</Label>
-              <Input
-                id="companyName"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                placeholder="Nombre de tu empresa"
-              />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="phone" className="text-sm font-medium text-gray-700">Teléfono</Label>
+                        <Input
+                          id="phone"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          placeholder="+593 99 999 9999"
+                          className="h-11"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="position" className="text-sm font-medium text-gray-700">Cargo/Posición</Label>
+                        <Input
+                          id="position"
+                          value={position}
+                          onChange={(e) => setPosition(e.target.value)}
+                          placeholder="Tu cargo o posición"
+                          className="h-11"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Company Information Section */}
+                    <div id="company" className="border-t pt-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Building2 className="h-5 w-5 text-gray-600" />
+                        <h3 className="text-lg font-semibold text-gray-900">Información de Empresa</h3>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Información sobre la empresa donde trabajas
+                      </p>
+                      
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="companyName" className="text-sm font-medium text-gray-700">Nombre de la Empresa</Label>
+                          <Input
+                            id="companyName"
+                            value={companyName}
+                            onChange={(e) => setCompanyName(e.target.value)}
+                            placeholder="Nombre de tu empresa"
+                            className="h-11"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="companyRuc" className="text-sm font-medium text-gray-700">RUC de la Empresa</Label>
+                          <Input
+                            id="companyRuc"
+                            value={companyRuc}
+                            onChange={(e) => setCompanyRuc(e.target.value)}
+                            placeholder="1234567890123"
+                            maxLength={13}
+                            className="h-11"
+                          />
+                          <p className="text-xs text-gray-500">
+                            RUC de 13 dígitos de tu empresa
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-gray-700">Tipo de Usuario</Label>
+                            <div className="h-11 px-3 flex items-center bg-gray-50 border border-gray-200 rounded-md">
+                              <Badge variant="outline" className="bg-white">
+                                {userSettings?.user_type === 'enterprise' ? 'Empresarial' : 'Individual'}
+                              </Badge>
+                            </div>
+                          </div>
+                          
+                          {userSettings?.enterprise_role && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium text-gray-700">Rol Empresarial</Label>
+                              <div className="h-11 px-3 flex items-center bg-gray-50 border border-gray-200 rounded-md">
+                                <Badge variant="outline" className="bg-white">
+                                  {userSettings.enterprise_role}
+                                </Badge>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Messages */}
+                    {message && (
+                      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                          <p className="text-sm text-green-800 font-medium">{message}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {error && (
+                      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 bg-red-500 rounded-full"></div>
+                          <p className="text-sm text-red-800 font-medium">{error}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Submit Button */}
+                    <div className="flex justify-end pt-4">
+                      <Button type="submit" disabled={saving} className="px-8 h-11">
+                        {saving ? 'Guardando...' : 'Guardar Cambios'}
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+              </div>
             </div>
 
-            <div>
-              <Label htmlFor="companyRuc">RUC de la Empresa</Label>
-              <Input
-                id="companyRuc"
-                value={companyRuc}
-                onChange={(e) => setCompanyRuc(e.target.value)}
-                placeholder="1234567890123"
-                maxLength={13}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                RUC de 13 dígitos de tu empresa
-              </p>
-            </div>
-
-            <div className="pt-4 border-t">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Tipo de Usuario:</span>
-                <Badge variant="outline">
-                  {userSettings?.user_type === 'enterprise' ? 'Empresarial' : 'Individual'}
-                </Badge>
+            {/* Right column with Subscription and Billing as sections */}
+            <div className="flex-1 space-y-8">
+              <div id="subscription">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="h-5 w-5 text-gray-600" />
+                      Suscripción
+                    </CardTitle>
+                    <CardDescription>Estado actual de tu plan</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <SubscriptionStatus />
+                  </CardContent>
+                </Card>
               </div>
-              
-              {userSettings?.enterprise_role && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Rol Empresarial:</span>
-                  <Badge variant="outline">{userSettings.enterprise_role}</Badge>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Subscription Status */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Estado de Suscripción</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SubscriptionStatus />
-          </CardContent>
-        </Card>
-
-        {/* Payment Management */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Gestión de Pagos</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-gray-600">
-              Gestiona tu información de facturación, historial de pagos y métodos de pago.
-            </p>
-            
-            <div className="flex gap-4">
-              <Button 
-                onClick={handleManagePayment}
-                variant="outline"
-                disabled={userSettings?.subscription_plan === 'FREE'}
-              >
-                Portal de Facturación
-              </Button>
-              
-              <Button 
-                onClick={() => window.location.href = '/pricing'}
-                variant="default"
-              >
-                {userSettings?.subscription_plan === 'FREE' ? 'Actualizar Plan' : 'Cambiar Plan'}
-              </Button>
+              <div id="billing">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Gestión de Pagos</CardTitle>
+                    <CardDescription>Administra tu facturación y métodos de pago</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                      <Button
+                        onClick={handleManagePayment}
+                        variant="outline"
+                        disabled={userSettings?.subscription_plan === 'FREE'}
+                        className="h-11"
+                      >
+                        Portal de Facturación
+                      </Button>
+                      <Button
+                        onClick={() => (window.location.href = '/pricing')}
+                        variant="default"
+                        className="h-11"
+                      >
+                        {userSettings?.subscription_plan === 'FREE' ? 'Actualizar Plan' : 'Cambiar Plan'}
+                      </Button>
+                    </div>
+                    {userSettings?.subscription_plan === 'FREE' && (
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-xs text-blue-700">
+                          El portal de facturación está disponible solo para suscripciones de pago.
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </div>
-            
-            {userSettings?.subscription_plan === 'FREE' && (
-              <p className="text-xs text-gray-500">
-                El portal de facturación está disponible solo para suscripciones de pago.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

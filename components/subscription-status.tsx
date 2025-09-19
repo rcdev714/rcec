@@ -90,7 +90,7 @@ export default function SubscriptionStatus() {
   const getStatusColor = (planStatus: string) => {
     switch (planStatus) {
       case 'active':
-        return 'bg-black text-white'; // Changed to black background, white text
+        return 'bg-green-100 text-green-800';
       case 'trialing':
         return 'bg-blue-100 text-blue-800';
       case 'past_due':
@@ -98,9 +98,9 @@ export default function SubscriptionStatus() {
       case 'cancelled':
         return 'bg-red-100 text-red-800';
       case 'inactive':
-        return 'light-outline';
+        return 'bg-gray-100 text-gray-800';
       default:
-        return 'light-outline';
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -111,9 +111,9 @@ export default function SubscriptionStatus() {
       case 'ENTERPRISE':
         return 'bg-purple-100 text-purple-800';
       case 'FREE':
-        return 'light-outline'; // Use the new variant
+        return 'bg-gray-100 text-gray-800';
       default:
-        return 'light-outline'; // Use the new variant
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -177,7 +177,7 @@ export default function SubscriptionStatus() {
   }
 
   return (
-    <Card>
+    <Card className="bg-white text-gray-900 border-gray-200 shadow-sm">
       <CardHeader>
         <CardTitle>Subscription Status</CardTitle>
       </CardHeader>
@@ -191,7 +191,7 @@ export default function SubscriptionStatus() {
         
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium">Estado:</span>
-          <Badge variant={getStatusColor(status.status) as "default" | "secondary" | "destructive" | "outline" | "light-outline" | "status-active"}>
+          <Badge className={getStatusColor(status.status)}>
             {translateStatus(status.status)}
           </Badge>
         </div>

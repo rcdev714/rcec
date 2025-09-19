@@ -248,19 +248,19 @@ export default function EditOfferingPage() {
   };
 
   if (user === null || isLoadingData) {
-    return <div className="min-h-screen bg-background flex justify-center items-center">Cargando...</div>;
+    return <div className="min-h-screen bg-white text-gray-900 flex justify-center items-center">Cargando...</div>;
   }
 
   if (!offering) {
-    return <div className="min-h-screen bg-background flex justify-center items-center">Servicio no encontrado</div>;
+    return <div className="min-h-screen bg-white text-gray-900 flex justify-center items-center">Servicio no encontrado</div>;
   }
 
   return (
-    <div className="min-h-screen bg-background flex justify-center py-8">
+    <div className="min-h-screen bg-white text-gray-900 flex justify-center py-8">
       <div className="w-full max-w-2xl px-4">
         <div className="mb-6">
           <h1 className="text-2xl font-bold">Editar Servicio</h1>
-          <p className="text-muted-foreground mt-1">Modifica los detalles de tu servicio.</p>
+          <p className="text-gray-500 mt-1">Modifica los detalles de tu servicio.</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-2">
