@@ -6,15 +6,15 @@ export async function GET() {
     // Check database connectivity with a simple query
     const supabase = await createClient()
     
-    // Use a simpler database check that doesn't rely on specific tables
+    // Use a simple check against a publicly exposed table via PostgREST
     const { error: dbError } = await supabase
-      .from('information_schema.tables')
-      .select('table_name')
+      .from('subscription_plans')
+      .select('id')
       .limit(1)
     
     // If information_schema fails, try a basic connection check
     if (dbError) {
-      console.warn('Information schema check failed, trying basic connection:', dbError)
+      console.warn('Database connectivity check failed, trying basic auth check:', dbError)
       
       // Fallback to a basic auth check which should always work
       const { error: authError } = await supabase.auth.getUser()
