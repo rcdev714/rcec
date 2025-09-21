@@ -7,8 +7,10 @@ import { UserOffering } from '@/types/user-offering';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { TrashIcon, PencilIcon, GlobeAltIcon, DocumentIcon, ChatBubbleLeftRightIcon, CalendarDaysIcon, BanknotesIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { Input } from '@/components/ui/input';
 
 interface OfferingCardProps {
   offering: UserOffering;
@@ -25,6 +27,13 @@ export default function OfferingCard({ offering, onUpdate: _onUpdate, onDelete }
   const router = useRouter();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [contactName, setContactName] = useState<string>(offering.public_contact_name || '');
+  const [contactEmail, setContactEmail] = useState<string>(offering.public_contact_email || '');
+  const [contactPhone, setContactPhone] = useState<string>(offering.public_contact_phone || '');
+  const [companyName, setCompanyName] = useState<string>(offering.public_company_name || '');
+  const [isPublic, setIsPublic] = useState<boolean>(Boolean(typedOffering.is_public));
   const normalizedWebsiteUrl = typedOffering.website_url
     ? (typedOffering.website_url.startsWith('http') ? typedOffering.website_url : `https://${typedOffering.website_url}`)
     : undefined;
@@ -50,6 +59,75 @@ export default function OfferingCard({ offering, onUpdate: _onUpdate, onDelete }
       setIsLoading(false);
     }
   };
+
+  const toggleShare = async () => {
+    setIsLoading(true);
+    try {
+      const action = isPublic ? 'disable' : 'enable';
+      const res = await fetch('/api/user-offerings/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: offering.id, action })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Share toggle failed');
+      setIsPublic(!isPublic);
+      if (data.shareUrl) setShareUrl(data.shareUrl);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const enableShare = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/user-offerings/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: offering.id,
+          action: 'enable',
+          contact: {
+            public_contact_name: contactName || null,
+            public_contact_email: contactEmail || null,
+            public_contact_phone: contactPhone || null,
+            public_company_name: companyName || null,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to enable share');
+      setShareUrl(data.shareUrl);
+      setIsShareModalOpen(true);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const disableShare = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/user-offerings/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: offering.id, action: 'disable' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to disable share');
+      setShareUrl(null);
+      setIsShareModalOpen(false);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // rotate disabled per product decision: one link per offering
 
   // Helper function to format price display
   const getPriceDisplay = () => {
@@ -147,64 +225,23 @@ export default function OfferingCard({ offering, onUpdate: _onUpdate, onDelete }
       <Card className="group bg-white text-gray-900 hover:shadow-lg hover:border-gray-300 transition-all duration-200 overflow-hidden">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <CardTitle className="text-lg mb-1 truncate">{typedOffering.offering_name}</CardTitle>
-              {typedOffering.industry && typedOffering.industry.trim() && (
-                <Badge variant="light-outline" className="text-[10px]">{typedOffering.industry}</Badge>
-              )}
-            </div>
-            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleEdit}
-                className="h-8 w-8 p-0"
-                title="Editar servicio"
-              >
-                <PencilIcon className="h-4 w-4" />
-              </Button>
-
-              <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                    title="Eliminar servicio"
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Eliminar Servicio</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <p className="text-sm text-gray-700">
-                      ¿Estás seguro de que quieres eliminar el servicio &quot;{typedOffering.offering_name}&quot;?
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Esta acción no se puede deshacer.
-                    </p>
-                    <div className="flex gap-2 justify-end">
-                      <Button
-                        variant="outline"
-                        onClick={() => setIsDeleteModalOpen(false)}
-                        disabled={isLoading}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        onClick={handleDelete}
-                        disabled={isLoading}
-                      >
-                        {isLoading ? 'Eliminando...' : 'Eliminar'}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-lg mb-2 truncate">{typedOffering.offering_name}</CardTitle>
+              <div className="flex items-center gap-2">
+                {typedOffering.industry && typedOffering.industry.trim() && (
+                  <Badge variant="outline" className="text-[10px] text-gray-600">{typedOffering.industry}</Badge>
+                )}
+                <div className={`px-2 py-1 rounded-full text-xs border ${
+                  isPublic
+                    ? 'bg-green-50 text-green-700 border-green-200'
+                    : 'bg-gray-50 text-gray-600 border-gray-200'
+                }`}>
+                  <span className="inline-flex items-center gap-1">
+                    <GlobeAltIcon className="h-3 w-3" />
+                    {isPublic ? 'Público' : 'Privado'}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -219,58 +256,42 @@ export default function OfferingCard({ offering, onUpdate: _onUpdate, onDelete }
             <div className="flex items-center gap-2">
               <BanknotesIcon className="h-4 w-4 text-green-600" />
               <span className="text-sm font-semibold text-green-700">{priceDisplay}</span>
-              <Badge variant="light-outline" className="text-[10px]">{paymentTypeDisplay}</Badge>
+              <Badge variant="outline" className="text-[10px] text-gray-600">{paymentTypeDisplay}</Badge>
             </div>
           )}
 
-          {/* Contact & Resources Info */}
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            {normalizedWebsiteUrl && (
-              <a
-                href={normalizedWebsiteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 hover:underline"
-                aria-label="Abrir sitio web"
-              >
-                <GlobeAltIcon className="h-3 w-3 text-blue-500" />
-                <span className="text-gray-600">Sitio web</span>
-                <ArrowTopRightOnSquareIcon className="h-3 w-3 text-gray-400" />
-              </a>
-            )}
-
-            {typedOffering.social_media_links && typedOffering.social_media_links.length > 0 && (
-              <a
-                href={firstSocialUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 hover:underline"
-                aria-label="Abrir redes sociales"
-              >
-                <ChatBubbleLeftRightIcon className="h-3 w-3 text-purple-500" />
-                <span className="text-gray-600">{typedOffering.social_media_links.length} redes</span>
-                <ArrowTopRightOnSquareIcon className="h-3 w-3 text-gray-400" />
-              </a>
-            )}
-
-            {typedOffering.documentation_urls && typedOffering.documentation_urls.length > 0 && (
-              <a
-                href={firstDocUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 hover:underline"
-                aria-label="Abrir documentación"
-              >
-                <DocumentIcon className="h-3 w-3 text-orange-500" />
-                <span className="text-gray-600">{typedOffering.documentation_urls.length} docs</span>
-                <ArrowTopRightOnSquareIcon className="h-3 w-3 text-gray-400" />
-              </a>
-            )}
-
+          {/* Links and Date */}
+          <div className="flex items-center justify-between text-xs gap-2">
+            <div className="flex items-center gap-3 flex-wrap min-w-0">
+              {typedOffering.social_media_links && typedOffering.social_media_links.length > 0 && (
+                <a
+                  href={firstSocialUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-gray-600 hover:text-blue-600 transition-colors"
+                  aria-label="Ver redes sociales"
+                >
+                  <ChatBubbleLeftRightIcon className="h-3 w-3" />
+                  <span>{typedOffering.social_media_links.length} redes</span>
+                </a>
+              )}
+              {typedOffering.documentation_urls && typedOffering.documentation_urls.length > 0 && (
+                <a
+                  href={firstDocUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-gray-600 hover:text-indigo-600 transition-colors"
+                  aria-label="Ver documentación"
+                >
+                  <DocumentIcon className="h-3 w-3" />
+                  <span>{typedOffering.documentation_urls.length} docs</span>
+                </a>
+              )}
+            </div>
             {formattedDate && (
-              <div className="flex items-center gap-1">
-                <CalendarDaysIcon className="h-3 w-3 text-gray-500" />
-                <span className="text-gray-600">{formattedDate}</span>
+              <div className="flex items-center gap-1 text-gray-500 whitespace-nowrap">
+                <CalendarDaysIcon className="h-3 w-3" />
+                <span>{formattedDate}</span>
               </div>
             )}
           </div>
@@ -278,52 +299,152 @@ export default function OfferingCard({ offering, onUpdate: _onUpdate, onDelete }
           {/* Industry Targets */}
           {typedOffering.industry_targets && typedOffering.industry_targets.length > 0 && (
             <div className="pt-3 border-t border-gray-100">
-              <div className="bg-white border border-gray-200 rounded-lg p-3">
-                <p className="text-xs font-medium text-gray-700 mb-2">Industria de Servicio</p>
-                <div className="flex flex-wrap gap-1">
-                  {typedOffering.industry_targets.slice(0, 3).map((target) => (
-                    <Badge key={target} variant="secondary" className="text-xs">
-                      {target}
-                    </Badge>
-                  ))}
-                  {typedOffering.industry_targets.length > 3 && (
-                    <Badge variant="outline" className="text-xs">
-                      +{typedOffering.industry_targets.length - 3} más
-                    </Badge>
-                  )}
-                </div>
+              <p className="text-xs font-medium text-gray-700 mb-2">Dirigido a:</p>
+              <div className="flex flex-wrap gap-1">
+                {typedOffering.industry_targets.slice(0, 4).map((target) => (
+                  <Badge key={target} variant="secondary" className="text-xs">
+                    {target}
+                  </Badge>
+                ))}
+                {typedOffering.industry_targets.length > 4 && (
+                  <Badge variant="outline" className="text-xs">
+                    +{typedOffering.industry_targets.length - 4} más
+                  </Badge>
+                )}
               </div>
             </div>
           )}
         </CardContent>
-        <CardFooter className="pt-0">
-          <div className="flex w-full flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0">
+        <CardFooter className="pt-4 border-t border-gray-100">
+          <div className="flex w-full items-center justify-between gap-3 flex-wrap">
             <div className="flex gap-2 flex-wrap">
               {normalizedWebsiteUrl && (
-                <Button size="sm" variant="secondary" asChild>
-                  <a href={normalizedWebsiteUrl} target="_blank" rel="noopener noreferrer">
-                    <GlobeAltIcon className="h-4 w-4" />
-                    Visitar sitio
+                <Button size="sm" variant="ghost" asChild>
+                  <a href={normalizedWebsiteUrl} target="_blank" rel="noopener noreferrer" className="text-xs">
+                    <ArrowTopRightOnSquareIcon className="h-3 w-3" />
+                    Visitar
                   </a>
                 </Button>
               )}
             </div>
-            <div className="flex gap-2 flex-wrap sm:justify-end">
-              <Button size="sm" variant="outline" onClick={handleEdit} title="Editar servicio">
-                <PencilIcon className="h-4 w-4" />
+            
+            <div className="flex items-center gap-1 flex-wrap">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="ghost" className="text-xs">
+                    <GlobeAltIcon className="h-3 w-3" />
+                    {isPublic ? 'Compartido' : 'Compartir'}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {isPublic ? (
+                    <>
+                      <DropdownMenuItem onClick={() => setIsShareModalOpen(true)}>
+                        Ver enlace público
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={toggleShare}>
+                        Cambiar a privado
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <DropdownMenuItem onClick={() => setIsShareModalOpen(true)}>
+                      Configurar y compartir
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
+              <Button size="sm" variant="ghost" onClick={handleEdit} className="text-xs">
+                <PencilIcon className="h-3 w-3" />
                 Editar
               </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => setIsDeleteModalOpen(true)}
-                title="Eliminar servicio"
-              >
-                <TrashIcon className="h-4 w-4" />
-                Eliminar
-              </Button>
+              
+              <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="ghost" className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50">
+                    <TrashIcon className="h-3 w-3" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Eliminar servicio</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <p className="text-sm text-gray-700">
+                      ¿Estás seguro de que quieres eliminar &quot;{typedOffering.offering_name}&quot;?
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Esta acción no se puede deshacer.
+                    </p>
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)} disabled={isLoading}>
+                        Cancelar
+                      </Button>
+                      <Button variant="destructive" onClick={handleDelete} disabled={isLoading}>
+                        {isLoading ? 'Eliminando...' : 'Eliminar'}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
+          
+          {/* Share Modal */}
+          <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Compartir servicio</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <Input 
+                    placeholder="Nombre de empresa"
+                    value={companyName} 
+                    onChange={(e) => setCompanyName(e.target.value)} 
+                  />
+                  <Input 
+                    placeholder="Nombre de contacto"
+                    value={contactName} 
+                    onChange={(e) => setContactName(e.target.value)} 
+                  />
+                  <Input 
+                    placeholder="Email de contacto"
+                    value={contactEmail} 
+                    onChange={(e) => setContactEmail(e.target.value)} 
+                  />
+                  <Input 
+                    placeholder="Teléfono de contacto"
+                    value={contactPhone} 
+                    onChange={(e) => setContactPhone(e.target.value)} 
+                  />
+                </div>
+                
+                {shareUrl && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Enlace público</label>
+                    <Input 
+                      readOnly 
+                      value={shareUrl} 
+                      onFocus={(e) => e.currentTarget.select()}
+                      className="font-mono text-xs"
+                    />
+                  </div>
+                )}
+                
+                <div className="flex gap-2 justify-end pt-2">
+                  {isPublic && (
+                    <Button variant="outline" onClick={disableShare} disabled={isLoading}>
+                      Desactivar
+                    </Button>
+                  )}
+                  <Button onClick={enableShare} disabled={isLoading}>
+                    {isLoading ? 'Configurando...' : (isPublic ? 'Actualizar' : 'Activar')}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </CardFooter>
       </Card>
     </>

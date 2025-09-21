@@ -124,14 +124,33 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { id, offering_name, description, industry, payment_type, price_plans, industry_targets, website_url, social_media_links, documentation_urls } = body;
+    const {
+      id,
+      offering_name,
+      description,
+      industry,
+      payment_type,
+      price_plans,
+      industry_targets,
+      website_url,
+      social_media_links,
+      documentation_urls,
+      // public contact fields
+      public_company_name,
+      public_contact_name,
+      public_contact_email,
+      public_contact_phone,
+    } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Offering ID is required' }, { status: 400 });
     }
 
-    if (!offering_name || !offering_name.trim()) {
-      return NextResponse.json({ error: 'Offering name is required' }, { status: 400 });
+    // If offering_name is provided, validate; allow partial updates without it
+    if (Object.prototype.hasOwnProperty.call(body, 'offering_name')) {
+      if (!offering_name || !offering_name.trim()) {
+        return NextResponse.json({ error: 'Offering name is required' }, { status: 400 });
+      }
     }
 
     // Verify the offering belongs to the user
@@ -146,21 +165,26 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Offering not found or access denied' }, { status: 404 });
     }
 
-    // Update the offering
+    // Build updates object from provided keys only (partial updates allowed)
+    const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (Object.prototype.hasOwnProperty.call(body, 'offering_name')) updates.offering_name = offering_name.trim();
+    if (Object.prototype.hasOwnProperty.call(body, 'description')) updates.description = description?.trim() || null;
+    if (Object.prototype.hasOwnProperty.call(body, 'industry')) updates.industry = industry?.trim() || null;
+    if (Object.prototype.hasOwnProperty.call(body, 'payment_type')) updates.payment_type = payment_type || null;
+    if (Object.prototype.hasOwnProperty.call(body, 'price_plans')) updates.price_plans = price_plans || null;
+    if (Object.prototype.hasOwnProperty.call(body, 'industry_targets')) updates.industry_targets = industry_targets || [];
+    if (Object.prototype.hasOwnProperty.call(body, 'website_url')) updates.website_url = website_url?.trim() || null;
+    if (Object.prototype.hasOwnProperty.call(body, 'social_media_links')) updates.social_media_links = social_media_links || [];
+    if (Object.prototype.hasOwnProperty.call(body, 'documentation_urls')) updates.documentation_urls = documentation_urls || [];
+    // public contact fields
+    if (Object.prototype.hasOwnProperty.call(body, 'public_company_name')) updates.public_company_name = public_company_name || null;
+    if (Object.prototype.hasOwnProperty.call(body, 'public_contact_name')) updates.public_contact_name = public_contact_name || null;
+    if (Object.prototype.hasOwnProperty.call(body, 'public_contact_email')) updates.public_contact_email = public_contact_email || null;
+    if (Object.prototype.hasOwnProperty.call(body, 'public_contact_phone')) updates.public_contact_phone = public_contact_phone || null;
+
     const { data: updatedOffering, error: updateError } = await supabase
       .from('user_offerings')
-      .update({
-        offering_name: offering_name.trim(),
-        description: description?.trim() || null,
-        industry: industry?.trim() || null,
-        payment_type: payment_type || null,
-        price_plans: price_plans || null,
-        industry_targets: industry_targets || [],
-        website_url: website_url?.trim() || null,
-        social_media_links: social_media_links || [],
-        documentation_urls: documentation_urls || [],
-        updated_at: new Date().toISOString(),
-      })
+      .update(updates)
       .eq('id', id)
       .eq('user_id', user.id)
       .select()

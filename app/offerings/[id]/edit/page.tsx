@@ -5,10 +5,15 @@ import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { GlobeAltIcon } from "@heroicons/react/24/outline";
+
+export const dynamic = "force-dynamic";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { UserOffering } from "@/types/user-offering";
 import { User } from "@supabase/supabase-js";
+// removed duplicate Input import
 
 interface SocialMediaLinkInput {
   platform: string;
@@ -54,6 +59,13 @@ export default function EditOfferingPage() {
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [publicCompanyName, setPublicCompanyName] = useState("");
+  const [publicContactName, setPublicContactName] = useState("");
+  const [publicContactEmail, setPublicContactEmail] = useState("");
+  const [publicContactPhone, setPublicContactPhone] = useState("");
+  const [isPublic, setIsPublic] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchUserAndOffering = async () => {
@@ -134,6 +146,22 @@ export default function EditOfferingPage() {
             ? currentOffering.documentation_urls
             : [{ url: '', description: '' }]
         );
+
+        // Initialize public contact fields if present
+        setPublicCompanyName(currentOffering.public_company_name || "");
+        setPublicContactName(currentOffering.public_contact_name || "");
+        setPublicContactEmail(currentOffering.public_contact_email || "");
+        setPublicContactPhone(currentOffering.public_contact_phone || "");
+        const extendedOffering = currentOffering as UserOffering & {
+          is_public?: boolean;
+          public_slug?: string | null;
+        };
+        const nowPublic = Boolean(extendedOffering.is_public);
+        setIsPublic(nowPublic);
+        if (nowPublic && extendedOffering.public_slug) {
+          const origin = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || '');
+          setShareUrl(`${origin}/s/${extendedOffering.public_slug}`);
+        }
 
       } catch (err) {
         console.error('Error fetching offering:', err);
@@ -258,11 +286,63 @@ export default function EditOfferingPage() {
   return (
     <div className="min-h-screen bg-white text-gray-900 flex justify-center py-8">
       <div className="w-full max-w-2xl px-4">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold">Editar Servicio</h1>
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Editar Servicio</h1>
           <p className="text-gray-600 mt-1">
             Actualiza la información, precios y documentación de tu servicio. Los cambios se reflejarán en el enlace público que compartes con empresas.
           </p>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className={`px-2 py-1 rounded-full text-xs border transition ${
+                  isPublic
+                    ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                    : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                }`}
+                title="Visibilidad"
+              >
+                <span className="inline-flex items-center gap-1">
+                  <GlobeAltIcon className="h-3 w-3" />
+                  {isPublic ? 'Público' : 'Privado'}
+                </span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {isPublic ? (
+                <DropdownMenuItem
+                  onClick={async () => {
+                    setIsSharing(true);
+                    try {
+                      const res = await fetch('/api/user-offerings/share', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: offeringId, action: 'disable' })
+                      });
+                      await res.json();
+                      setIsPublic(false);
+                      setShareUrl(null);
+                    } finally { setIsSharing(false); }
+                  }}
+                >Cambiar a Privado</DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  onClick={async () => {
+                    setIsSharing(true);
+                    try {
+                      const res = await fetch('/api/user-offerings/share', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: offeringId, action: 'enable' })
+                      });
+                      const data = await res.json();
+                      if (res.ok) {
+                        setIsPublic(true);
+                        setShareUrl(data.shareUrl);
+                      }
+                    } finally { setIsSharing(false); }
+                  }}
+                >Cambiar a Público</DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-2">
@@ -524,6 +604,111 @@ export default function EditOfferingPage() {
             </Button>
           </div>
         </form>
+        <div className="mt-10 border-t pt-6">
+          <h2 className="text-xl font-semibold mb-2">Enlace público</h2>
+          <p className="text-sm text-gray-600 mb-4">Comparte tu servicio con empresas. Controla la información de contacto pública.</p>
+          <div className="grid gap-3">
+            <div className="grid gap-2">
+              <Label>Empresa</Label>
+              <Input value={publicCompanyName} onChange={(e) => setPublicCompanyName(e.target.value)} onBlur={async () => {
+                await fetch('/api/user-offerings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: offeringId, public_company_name: publicCompanyName }) });
+              }} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Nombre de contacto</Label>
+              <Input value={publicContactName} onChange={(e) => setPublicContactName(e.target.value)} onBlur={async () => {
+                await fetch('/api/user-offerings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: offeringId, public_contact_name: publicContactName }) });
+              }} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Email</Label>
+              <Input value={publicContactEmail} onChange={(e) => setPublicContactEmail(e.target.value)} onBlur={async () => {
+                await fetch('/api/user-offerings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: offeringId, public_contact_email: publicContactEmail }) });
+              }} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Teléfono</Label>
+              <Input value={publicContactPhone} onChange={(e) => setPublicContactPhone(e.target.value)} onBlur={async () => {
+                await fetch('/api/user-offerings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: offeringId, public_contact_phone: publicContactPhone }) });
+              }} />
+            </div>
+            <div className="grid gap-2">
+              <Label>URL pública</Label>
+              <div className="flex gap-2">
+                <Input readOnly value={shareUrl || ''} placeholder="Activa el enlace para generar una URL" onFocus={(e) => e.currentTarget.select()} />
+                {!isPublic ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={isSharing}
+                    onClick={async () => {
+                      setIsSharing(true);
+                      try {
+                        const res = await fetch('/api/user-offerings/share', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            id: offeringId,
+                            action: 'enable',
+                            contact: {
+                              public_company_name: publicCompanyName || null,
+                              public_contact_name: publicContactName || null,
+                              public_contact_email: publicContactEmail || null,
+                              public_contact_phone: publicContactPhone || null,
+                            }
+                          })
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || 'Failed to enable share');
+                        setShareUrl(data.shareUrl);
+                        setIsPublic(true);
+                      } finally {
+                        setIsSharing(false);
+                      }
+                    }}
+                  >
+                    Activar
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        if (shareUrl) navigator.clipboard?.writeText(shareUrl).catch(() => {});
+                      }}
+                    >
+                      Copiar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isSharing}
+                      onClick={async () => {
+                        setIsSharing(true);
+                        try {
+                          const res = await fetch('/api/user-offerings/share', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: offeringId, action: 'disable' })
+                          });
+                          await res.json();
+                          setShareUrl(null);
+                          setIsPublic(false);
+                        } finally {
+                          setIsSharing(false);
+                        }
+                      }}
+                    >
+                      Desactivar
+                    </Button>
+                    {/* rotate disabled: single stable URL per offering */}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

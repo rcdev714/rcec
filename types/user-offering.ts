@@ -21,4 +21,14 @@ export interface UserOffering {
   documentation_urls?: DocumentationUrl[];
   created_at?: string;
   updated_at?: string;
+  // Public sharing fields
+  is_public?: boolean;
+  public_slug?: string | null;
+  public_revoked_at?: string | null;
+  public_contact_name?: string | null;
+  public_contact_email?: string | null;
+  public_contact_phone?: string | null;
+  public_company_name?: string | null;
+  // Payment type captured in DB with constraint
+  payment_type?: 'one-time' | 'subscription' | null;
 }

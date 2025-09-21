@@ -1,6 +1,8 @@
 
 'use client';
 
+export const dynamic = "force-dynamic";
+
 import { useState, useEffect } from 'react';
 import { UserOffering } from '@/types/user-offering';
 import OfferingCard from '@/components/offering-card';
