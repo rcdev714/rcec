@@ -41,10 +41,17 @@ export async function getSubscriptionPlansForStripe() {
     }> = {};
 
     plans.forEach(plan => {
+      // Allow environment variables to override DB price IDs in production
+      const envOverride =
+        plan.id === 'FREE' ? process.env.STRIPE_FREE_PRICE_ID :
+        plan.id === 'PRO' ? process.env.STRIPE_PRO_PRICE_ID :
+        plan.id === 'ENTERPRISE' ? process.env.STRIPE_ENTERPRISE_PRICE_ID :
+        undefined
+
       stripePlans[plan.id] = {
         name: plan.name,
         price: plan.price,
-        priceId: plan.price_id,
+        priceId: envOverride || plan.price_id,
         features: plan.features,
         isPopular: plan.is_popular,
       };

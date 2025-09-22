@@ -1,6 +1,19 @@
 import { createServerClient } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
 
+// Minimal types to satisfy linting without changing Supabase logic
+type MinimalUser = { id: string }
+type RefreshTokenError = { status?: number; code?: string; message?: unknown }
+
+function isRefreshTokenMissingError(err: unknown): boolean {
+  const e = err as RefreshTokenError
+  return (
+    e?.status === 400 &&
+    (e?.code === 'refresh_token_not_found' ||
+      (typeof e?.message === 'string' && e.message.includes('Refresh Token Not Found')))
+  )
+}
+
 export async function updateSession(request: NextRequest) {
   // Create an unmodified response
   let response = NextResponse.next({
@@ -36,9 +49,16 @@ export async function updateSession(request: NextRequest) {
   // supabase.auth.getUser(). A simple mistake could make it very hard to debug
   // issues with users being randomly logged out.
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Gracefully handle missing/invalid refresh tokens to avoid noisy logs
+  let user: MinimalUser | null = null
+  try {
+    const result = await supabase.auth.getUser()
+    user = result.data.user
+  } catch (err) {
+    if (!isRefreshTokenMissingError(err)) {
+      console.error('Error fetching user in middleware:', err)
+    }
+  }
 
   // Define public paths that don't require authentication
   const publicPaths = ['/', '/dashboard', '/pricing', '/auth/confirm', '/auth/sign-up-success']
