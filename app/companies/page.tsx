@@ -24,6 +24,11 @@ interface CompaniesPageProps {
     utilidadNetaMin?: string;
     utilidadNetaMax?: string;
     nombreComercial?: string;
+    // Optional sorting and gating flags
+    sortBy?: 'completitud' | 'ingresos_ventas' | 'n_empleados' | 'utilidad_neta' | 'activos' | 'anio';
+    sortDir?: 'asc' | 'desc';
+    requireIngresos?: string;
+    requireEmpleados?: string;
   }>;
 }
 
