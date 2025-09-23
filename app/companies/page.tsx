@@ -39,6 +39,7 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
   }
 
   const { page: pageStr, ruc, nombre, provincia, anio, nEmpleadosMin, nEmpleadosMax, ingresosVentasMin, ingresosVentasMax, activosMin, activosMax, patrimonioMin, patrimonioMax, utilidadAnImpMin, utilidadAnImpMax, utilidadNetaMin, utilidadNetaMax, nombreComercial } = await searchParams;
+  const { sortBy, sortDir, requireIngresos, requireEmpleados } = await searchParams;
 
   const page = parseInt(pageStr || "1", 10);
 
@@ -62,12 +63,16 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
     utilidadNetaMin,
     utilidadNetaMax,
     nombreComercial,
+    sortBy,
+    sortDir,
+    requireIngresos,
+    requireEmpleados,
   });
   const totalPages = Math.ceil(totalCount / 12);
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
-      <div className="max-w-7xl mx-auto px-2 py-4">
+      <div className="max-w-full mx-0 px-6 py-4">
         {/* Header with logo and auth */}
         <div className="mb-4 px-6">
           <h1 className="text-2xl font-semibold mb-2">Empresas</h1>

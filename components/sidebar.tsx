@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Package, Building, CreditCard, Settings, Sparkles, FileText } from "lucide-react";
+import { Home, Package, Building, CreditCard, Settings, Sparkles, FileText, LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import UserAvatar from "./user-avatar";
 
@@ -12,11 +12,11 @@ const Sidebar = () => {
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/dashboard", icon: <Home size={20} />, label: "Consola" },
-    { href: "/chat", icon: <Sparkles size={20} />, label: "Asistente" },
-    { href: "/offerings", icon: <Package size={20} />, label: "Servicios" },
-    { href: "/companies", icon: <Building size={20} />, label: "Empresas" },
-    { href: "/pricing", icon: <CreditCard size={20} />, label: "Suscripción" },
+    { href: "/dashboard", icon: Home, label: "Consola" },
+    { href: "/chat", icon: Sparkles, label: "Asistente" },
+    { href: "/offerings", icon: Package, label: "Servicios" },
+    { href: "/companies", icon: Building, label: "Empresas" },
+    { href: "/pricing", icon: CreditCard, label: "Suscripción" },
   ];
 
   return (
@@ -42,23 +42,38 @@ const Sidebar = () => {
         <ul className="space-y-6">
           {navItems.map((item) => {
             const isActive = pathname.startsWith(item.href);
+            const Icon = item.icon as LucideIcon;
             return (
               <li key={item.label}>
                 <Link
                   href={item.href}
                   className={cn(
-                    "flex items-center justify-center p-2 rounded-md transition-colors duration-200",
-                    "text-gray-500 hover:bg-gray-100 hover:text-gray-900",
-                    isActive && "bg-gray-100 text-gray-900 font-medium"
+                    "group relative flex items-center justify-center p-2 rounded-md transition-colors duration-200",
+                    "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                    isActive && "bg-gray-100 text-gray-900 font-medium border border-gray-200"
                   )}
                 >
+                  <span
+                    className={cn(
+                      "absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-r-full opacity-0 transition-all duration-200",
+                      isExpanded ? "" : "",
+                      isActive ? "opacity-100 bg-gray-900" : "group-hover:opacity-100 bg-gray-300"
+                    )}
+                  />
                   <div className={cn("flex items-center", isExpanded ? "" : "w-full justify-center")}>
-                    {item.icon}
+                    <Icon
+                      size={20}
+                      className={cn(
+                        "transition-colors transform duration-200",
+                        isActive ? "text-gray-900 scale-105" : "text-gray-500 group-hover:text-gray-900 group-hover:scale-105"
+                      )}
+                    />
                   </div>
                   <span
                     className={cn(
-                      "overflow-hidden transition-all duration-200 whitespace-nowrap",
-                      isExpanded ? "w-auto ml-3" : "w-0"
+                      "overflow-hidden transition-all duration-200 whitespace-nowrap text-gray-700 group-hover:text-gray-900",
+                      isExpanded ? "w-auto ml-3" : "w-0",
+                      isActive && "text-gray-900"
                     )}
                   >
                     {item.label}
@@ -74,17 +89,30 @@ const Sidebar = () => {
         <Link
           href="/docs"
           className={cn(
-            "flex items-center p-2 rounded-md transition-colors duration-200",
-            "text-gray-500 hover:bg-gray-100 hover:text-gray-900",
-            pathname.startsWith("/docs") && "bg-gray-100 text-gray-900 font-medium",
+            "group relative flex items-center p-2 rounded-md transition-colors duration-200",
+            "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+            pathname.startsWith("/docs") && "bg-gray-100 text-gray-900 font-medium border border-gray-200",
             isExpanded ? "justify-start" : "justify-center"
           )}
         >
-          <FileText size={20} />
           <span
             className={cn(
-              "overflow-hidden transition-all duration-200 whitespace-nowrap",
-              isExpanded ? "w-auto ml-3" : "w-0"
+              "absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-r-full opacity-0 transition-all duration-200",
+              pathname.startsWith("/docs") ? "opacity-100 bg-gray-900" : "group-hover:opacity-100 bg-gray-300"
+            )}
+          />
+          <FileText
+            size={20}
+            className={cn(
+              "transition-colors transform duration-200",
+              pathname.startsWith("/docs") ? "text-gray-900 scale-105" : "text-gray-500 group-hover:text-gray-900 group-hover:scale-105"
+            )}
+          />
+          <span
+            className={cn(
+              "overflow-hidden transition-all duration-200 whitespace-nowrap text-gray-700 group-hover:text-gray-900",
+              isExpanded ? "w-auto ml-3" : "w-0",
+              pathname.startsWith("/docs") && "text-gray-900"
             )}
           >
             Documentación
@@ -93,17 +121,30 @@ const Sidebar = () => {
         <Link
           href="/settings"
           className={cn(
-            "flex items-center p-2 rounded-md transition-colors duration-200",
-            "text-gray-500 hover:bg-gray-100 hover:text-gray-900",
-            pathname.startsWith("/settings") && "bg-gray-100 text-gray-900 font-medium",
+            "group relative flex items-center p-2 rounded-md transition-colors duration-200",
+            "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+            pathname.startsWith("/settings") && "bg-gray-100 text-gray-900 font-medium border border-gray-200",
             isExpanded ? "justify-start" : "justify-center"
           )}
         >
-          <Settings size={20} />
           <span
             className={cn(
-              "overflow-hidden transition-all duration-200 whitespace-nowrap",
-              isExpanded ? "w-auto ml-3" : "w-0"
+              "absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-r-full opacity-0 transition-all duration-200",
+              pathname.startsWith("/settings") ? "opacity-100 bg-gray-900" : "group-hover:opacity-100 bg-gray-300"
+            )}
+          />
+          <Settings
+            size={20}
+            className={cn(
+              "transition-colors transform duration-200",
+              pathname.startsWith("/settings") ? "text-gray-900 scale-105" : "text-gray-500 group-hover:text-gray-900 group-hover:scale-105"
+            )}
+          />
+          <span
+            className={cn(
+              "overflow-hidden transition-all duration-200 whitespace-nowrap text-gray-700 group-hover:text-gray-900",
+              isExpanded ? "w-auto ml-3" : "w-0",
+              pathname.startsWith("/settings") && "text-gray-900"
             )}
           >
             Configuración

@@ -23,6 +23,11 @@ interface SearchParams {
   utilidadNetaMin?: string;
   utilidadNetaMax?: string;
   nombreComercial?: string;
+  // New optional sorting and gating flags (string-encoded for URL compatibility)
+  sortBy?: 'completitud' | 'ingresos_ventas' | 'n_empleados' | 'utilidad_neta' | 'activos' | 'anio';
+  sortDir?: 'asc' | 'desc';
+  requireIngresos?: string;
+  requireEmpleados?: string;
 }
 
 // Define the structure of the paginated response.
@@ -152,12 +157,35 @@ export async function fetchCompanies(params: SearchParams & { exportAll?: boolea
     query = query.lte("utilidad_neta", parseFloat(params.utilidadNetaMax));
   }
 
+  // Gating flags: exclude rows missing key fields when requested
+  if (params.requireIngresos === 'true') {
+    query = query.not('ingresos_ventas', 'is', null);
+  }
+  if (params.requireEmpleados === 'true') {
+    query = query.not('n_empleados', 'is', null);
+  }
+
   // Apply sorting and pagination to the final query.
-  // This order must match our database indexes for optimal
-  // performance.
-  let finalQuery = query
-    .order("expediente", { ascending: true })
-    .order("id", { ascending: true });
+  // Prefer explicit sortBy/sortDir; otherwise default to relevance/completeness downstream
+  let finalQuery = query;
+  const sortBy = params.sortBy as string | undefined;
+  const sortDir = (params.sortDir as 'asc' | 'desc' | undefined) || 'desc';
+
+  if (sortBy && ['ingresos_ventas','n_empleados','utilidad_neta','activos','anio'].includes(sortBy)) {
+    // Primary sort
+    finalQuery = finalQuery.order(sortBy, { ascending: sortDir === 'asc', nullsFirst: false });
+    // Secondary: prefer recent year
+    if (sortBy !== 'anio') {
+      finalQuery = finalQuery.order('anio', { ascending: false, nullsFirst: true });
+    }
+    // Stable tie-breaker
+    finalQuery = finalQuery.order('id', { ascending: true });
+  } else {
+    // Default stable ordering if no explicit sort provided
+    finalQuery = finalQuery
+      .order("expediente", { ascending: true })
+      .order("id", { ascending: true });
+  }
 
   // Only apply pagination if not exporting all data
   if (!params.exportAll) {

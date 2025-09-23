@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { ChevronDown, ChevronUp, Filter } from 'lucide-react';
+import { Filter } from 'lucide-react';
 
 interface CompanyFilterProps {
   initialFilters: { [key: string]: string | string[] | undefined };
@@ -14,7 +14,6 @@ interface CompanyFilterProps {
 
 export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: CompanyFilterProps) {
   const [filters, setFilters] = useState(initialFilters);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
   const [applyError, setApplyError] = useState<string | null>(null);
 
@@ -37,6 +36,8 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
       [name]: value,
     }));
   };
+
+  // Note: checkbox gating removed to simplify UI and reduce vertical space
 
   const handleApply = async () => {
     try {
@@ -76,6 +77,47 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
       <div className="flex items-center space-x-2">
         <Filter size={16} className="text-gray-500" />
         <h3 className="font-medium text-gray-900">Filtros</h3>
+      </div>
+
+      {/* Sorting controls (top for quick access) */}
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label htmlFor="sortBy" className="text-sm font-medium text-gray-900">
+              Ordenar por
+            </Label>
+            <select
+              id="sortBy"
+              name="sortBy"
+              value={(filters.sortBy as string) || ''}
+              onChange={handleSelectChange}
+              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            >
+              <option value="">Relevancia (completitud)</option>
+              <option value="ingresos_ventas">Ingresos</option>
+              <option value="n_empleados">Empleados</option>
+              <option value="utilidad_neta">Utilidad neta</option>
+              <option value="activos">Activos</option>
+              <option value="anio">Año</option>
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="sortDir" className="text-sm font-medium text-gray-900">
+              Dirección
+            </Label>
+            <select
+              id="sortDir"
+              name="sortDir"
+              value={(filters.sortDir as string) || ''}
+              onChange={handleSelectChange}
+              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            >
+              <option value="">Predeterminado</option>
+              <option value="desc">Descendente</option>
+              <option value="asc">Ascendente</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Quick Filters */}
@@ -196,140 +238,130 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
             />
           </div>
         </div>
+
+        {/* Max empleados */}
+        <div className="space-y-2">
+          <Label htmlFor="nEmpleadosMax" className="text-sm font-medium text-gray-900">
+            Max. empleados
+          </Label>
+          <Input
+            type="number"
+            id="nEmpleadosMax"
+            name="nEmpleadosMax"
+            value={filters.nEmpleadosMax as string}
+            onChange={handleFilterChange}
+            placeholder="∞"
+            className="bg-white border-gray-300"
+          />
+        </div>
       </div>
 
-      {/* Advanced Filters Toggle */}
-      <button
-        onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-        className="flex items-center justify-between w-full py-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
-      >
-        <span>Filtros financieros</span>
-        {showAdvancedFilters ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-      </button>
-
       {/* Advanced Filters */}
-      {showAdvancedFilters && (
-        <div className="space-y-4 pt-2 border-t border-gray-200">
-          <div className="space-y-2">
-            <Label htmlFor="nombreComercial" className="text-sm font-medium text-gray-900">
-              Nombre comercial
-            </Label>
-            <Input
-              type="text"
-              id="nombreComercial"
-              name="nombreComercial"
-              value={filters.nombreComercial as string}
-              onChange={handleFilterChange}
-              placeholder="Nombre comercial..."
-              className="bg-white border-gray-300"
-            />
+      <div className="space-y-4 pt-2 border-t border-gray-200">
+        
+        <div className="space-y-3">
+          
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label className="text-xs text-gray-500">Min. ingresos ventas</Label>
+              <Input
+                type="number"
+                name="ingresosVentasMin"
+                value={filters.ingresosVentasMin as string}
+                onChange={handleFilterChange}
+                placeholder="0"
+                className="bg-white border-gray-300 text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-gray-500">Max. ingresos ventas</Label>
+              <Input
+                type="number"
+                name="ingresosVentasMax"
+                value={filters.ingresosVentasMax as string}
+                onChange={handleFilterChange}
+                placeholder="∞"
+                className="bg-white border-gray-300 text-sm"
+              />
+            </div>
           </div>
 
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium text-gray-900">Rangos financieros</h4>
-            
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-500">Min. ingresos ventas</Label>
-                <Input
-                  type="number"
-                  name="ingresosVentasMin"
-                  value={filters.ingresosVentasMin as string}
-                  onChange={handleFilterChange}
-                  placeholder="0"
-                  className="bg-white border-gray-300 text-sm"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-500">Max. ingresos ventas</Label>
-                <Input
-                  type="number"
-                  name="ingresosVentasMax"
-                  value={filters.ingresosVentasMax as string}
-                  onChange={handleFilterChange}
-                  placeholder="∞"
-                  className="bg-white border-gray-300 text-sm"
-                />
-              </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label className="text-xs text-gray-500">Min. activos</Label>
+              <Input
+                type="number"
+                name="activosMin"
+                value={filters.activosMin as string}
+                onChange={handleFilterChange}
+                placeholder="0"
+                className="bg-white border-gray-300 text-sm"
+              />
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-500">Min. activos</Label>
-                <Input
-                  type="number"
-                  name="activosMin"
-                  value={filters.activosMin as string}
-                  onChange={handleFilterChange}
-                  placeholder="0"
-                  className="bg-white border-gray-300 text-sm"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-500">Max. activos</Label>
-                <Input
-                  type="number"
-                  name="activosMax"
-                  value={filters.activosMax as string}
-                  onChange={handleFilterChange}
-                  placeholder="∞"
-                  className="bg-white border-gray-300 text-sm"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-gray-500">Max. activos</Label>
+              <Input
+                type="number"
+                name="activosMax"
+                value={filters.activosMax as string}
+                onChange={handleFilterChange}
+                placeholder="∞"
+                className="bg-white border-gray-300 text-sm"
+              />
             </div>
+          </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-500">Min. patrimonio</Label>
-                <Input
-                  type="number"
-                  name="patrimonioMin"
-                  value={filters.patrimonioMin as string}
-                  onChange={handleFilterChange}
-                  placeholder="0"
-                  className="bg-white border-gray-300 text-sm"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-500">Max. patrimonio</Label>
-                <Input
-                  type="number"
-                  name="patrimonioMax"
-                  value={filters.patrimonioMax as string}
-                  onChange={handleFilterChange}
-                  placeholder="∞"
-                  className="bg-white border-gray-300 text-sm"
-                />
-              </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label className="text-xs text-gray-500">Min. patrimonio</Label>
+              <Input
+                type="number"
+                name="patrimonioMin"
+                value={filters.patrimonioMin as string}
+                onChange={handleFilterChange}
+                placeholder="0"
+                className="bg-white border-gray-300 text-sm"
+              />
             </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-gray-500">Max. patrimonio</Label>
+              <Input
+                type="number"
+                name="patrimonioMax"
+                value={filters.patrimonioMax as string}
+                onChange={handleFilterChange}
+                placeholder="∞"
+                className="bg-white border-gray-300 text-sm"
+              />
+            </div>
+          </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-500">Min. utilidad neta</Label>
-                <Input
-                  type="number"
-                  name="utilidadNetaMin"
-                  value={filters.utilidadNetaMin as string}
-                  onChange={handleFilterChange}
-                  placeholder="0"
-                  className="bg-white border-gray-300 text-sm"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-500">Max. utilidad neta</Label>
-                <Input
-                  type="number"
-                  name="utilidadNetaMax"
-                  value={filters.utilidadNetaMax as string}
-                  onChange={handleFilterChange}
-                  placeholder="∞"
-                  className="bg-white border-gray-300 text-sm"
-                />
-              </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label className="text-xs text-gray-500">Min. utilidad neta</Label>
+              <Input
+                type="number"
+                name="utilidadNetaMin"
+                value={filters.utilidadNetaMin as string}
+                onChange={handleFilterChange}
+                placeholder="0"
+                className="bg-white border-gray-300 text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-gray-500">Max. utilidad neta</Label>
+              <Input
+                type="number"
+                name="utilidadNetaMax"
+                value={filters.utilidadNetaMax as string}
+                onChange={handleFilterChange}
+                placeholder="∞"
+                className="bg-white border-gray-300 text-sm"
+              />
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Action Buttons */}
       <div className="flex gap-2 pt-2 justify-center">

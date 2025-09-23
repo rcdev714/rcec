@@ -54,12 +54,16 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
     nombreComercial: searchParams.get('nombreComercial') || '',
     nombre: searchParams.get('nombre') || '',
     anio: searchParams.get('anio') || '',
+    sortBy: searchParams.get('sortBy') || '',
+    sortDir: searchParams.get('sortDir') || '',
+    requireIngresos: searchParams.get('requireIngresos') || '',
+    requireEmpleados: searchParams.get('requireEmpleados') || '',
   };
 
   return (
-    <div className="flex gap-8">
+    <div className="flex gap-6">
       {/* Sidebar with filters */}
-      <div className="w-80 flex-shrink-0">
+      <div className="w-96 flex-shrink-0">
         <div className="sticky top-8">
           <CompanyFilter
             initialFilters={initialFilters}

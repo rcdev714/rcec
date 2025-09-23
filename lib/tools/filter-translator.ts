@@ -29,6 +29,9 @@ export class FilterTranslator {
     // Extract specific company names or RUC
     this.extractCompanyIdentifiers(lowerQuery, filters);
 
+    // Extract sort intent and gating flags
+    this.extractSortIntent(lowerQuery, filters);
+
     return filters;
   }
 
@@ -57,6 +60,90 @@ export class FilterTranslator {
           break;
         }
       }
+    }
+  }
+
+  /**
+   * Detect sorting preferences from natural language and set sortBy/sortDir and gating flags
+   */
+  private static extractSortIntent(query: string, filters: SearchFilters): void {
+    // Default direction when a "más/mayores/highest/most" intent is present
+    let detectedSortDir: 'asc' | 'desc' | undefined;
+
+    const descCues = [
+      'más ', // e.g., "más ingresos", "más empleados"
+      'mayores',
+      'mayor ',
+      'highest',
+      'most',
+      'top ',
+      'más altos',
+      'más altas',
+      'más grande',
+      'larger',
+    ];
+    const ascCues = [
+      'menos ',
+      'menor ',
+      'menores',
+      'lowest',
+      'least',
+      'más bajos',
+      'más bajas',
+    ];
+
+    if (ascCues.some(cue => query.includes(cue))) {
+      detectedSortDir = 'asc';
+    } else if (descCues.some(cue => query.includes(cue))) {
+      detectedSortDir = 'desc';
+    }
+
+    // Revenue / sales intent
+    const revenueSortCues = [
+      'ingresos', 'ventas', 'facturación', 'revenue', 'sales'
+    ];
+    if (revenueSortCues.some(cue => query.includes(cue)) &&
+        ['más ', 'mayor ', 'mayores', 'highest', 'most', 'lowest', 'least', 'más altos', 'más bajas', 'más bajos'].some(c => query.includes(c))) {
+      filters.sortBy = 'ingresos_ventas';
+      filters.sortDir = detectedSortDir || 'desc';
+      // When sorting by ingresos, prefer records that actually have ingresos
+      filters.requireIngresos = 'true';
+      return;
+    }
+
+    // Employees intent
+    const employeesSortCues = [
+      'empleados', 'trabajadores', 'headcount', 'staff', 'número de empleados', 'numero de empleados'
+    ];
+    if (employeesSortCues.some(cue => query.includes(cue)) &&
+        ['más ', 'mayor ', 'mayores', 'highest', 'most', 'lowest', 'least'].some(c => query.includes(c))) {
+      filters.sortBy = 'n_empleados';
+      filters.sortDir = detectedSortDir || 'desc';
+      filters.requireEmpleados = 'true';
+      return;
+    }
+
+    // Profit intent
+    const profitCues = ['utilidad', 'ganancia', 'profit', 'earnings'];
+    if (profitCues.some(cue => query.includes(cue)) &&
+        ['más ', 'mayor ', 'mayores', 'highest', 'most', 'lowest', 'least'].some(c => query.includes(c))) {
+      filters.sortBy = 'utilidad_neta';
+      filters.sortDir = detectedSortDir || 'desc';
+      return;
+    }
+
+    // Explicit directives like "ordenar por X asc|desc"
+    const orderByMatch = query.match(/ordenar\s+por\s+(ingresos|ventas|empleados|utilidad|activos|año|anio)\s*(asc|desc)?/);
+    if (orderByMatch) {
+      const field = orderByMatch[1];
+      const dir = orderByMatch[2] as 'asc' | 'desc' | undefined;
+      const mapping: Record<string, SearchFilters['sortBy']> = {
+        ingresos: 'ingresos_ventas', ventas: 'ingresos_ventas', empleados: 'n_empleados', utilidad: 'utilidad_neta', activos: 'activos', año: 'anio', anio: 'anio'
+      };
+      filters.sortBy = mapping[field] || 'completitud';
+      filters.sortDir = dir || 'desc';
+      if (filters.sortBy === 'ingresos_ventas') filters.requireIngresos = 'true';
+      if (filters.sortBy === 'n_empleados') filters.requireEmpleados = 'true';
     }
   }
 
@@ -351,6 +438,24 @@ export class FilterTranslator {
       parts.push(`con RUC ${filters.ruc}`);
     }
 
+    // Sorting summary
+    if (filters.sortBy) {
+      if (filters.sortBy === 'completitud') {
+        parts.push('ordenadas por relevancia');
+      } else {
+        const dirLabel = filters.sortDir === 'asc' ? 'ascendente' : 'descendente';
+        const fieldMap: Record<string, string> = {
+          ingresos_ventas: 'ingresos',
+          n_empleados: 'número de empleados',
+          utilidad_neta: 'utilidad neta',
+          activos: 'activos',
+          anio: 'año',
+        };
+        const fieldLabel = fieldMap[filters.sortBy] || filters.sortBy;
+        parts.push(`ordenadas por ${fieldLabel} (${dirLabel})`);
+      }
+    }
+
     return parts.length > 0 ? `Empresas ${parts.join(', ')}` : 'Todas las empresas';
   }
 
@@ -391,6 +496,23 @@ export class FilterTranslator {
           validated[field] = value.toString();
         }
       }
+    }
+
+    // Validate sort fields
+    const allowedSortBy: Array<NonNullable<SearchFilters['sortBy']>> = ['completitud','ingresos_ventas','n_empleados','utilidad_neta','activos','anio'];
+    if (filters.sortBy && allowedSortBy.includes(filters.sortBy)) {
+      validated.sortBy = filters.sortBy;
+    }
+    if (filters.sortDir && (filters.sortDir === 'asc' || filters.sortDir === 'desc')) {
+      validated.sortDir = filters.sortDir;
+    }
+
+    // Normalize gating flags as 'true' string or undefined
+    if (filters.requireIngresos === 'true') {
+      validated.requireIngresos = 'true';
+    }
+    if (filters.requireEmpleados === 'true') {
+      validated.requireEmpleados = 'true';
     }
 
     return validated;

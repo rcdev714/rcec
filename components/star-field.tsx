@@ -111,7 +111,7 @@ export function StarField({ className }: StarFieldProps) {
   }, []);
 
   const createStarField = (scene: THREE.Scene) => {
-    const starCount =10000; // Number of stars (more for density with smaller particles)
+    const starCount = 25000; // Number of stars (more for density with smaller particles)
     const positions = new Float32Array(starCount * 3);
     const colors = new Float32Array(starCount * 3);
     const sizes = new Float32Array(starCount);
@@ -215,24 +215,38 @@ export function StarField({ className }: StarFieldProps) {
     const animate = (time: number) => {
       if (!sceneRef.current || !rendererRef.current || !cameraRef.current || !starsRef.current) return;
 
-      // Update shader time for twinkling
-      if (starsRef.current.material instanceof THREE.ShaderMaterial) {
-        starsRef.current.material.uniforms.time.value = time * 0.001;
+      try {
+        // Update shader time for twinkling
+        if (starsRef.current.material instanceof THREE.ShaderMaterial) {
+          starsRef.current.material.uniforms.time.value = time * 0.001;
+        }
+
+        // Earth rotation effect - rotate around offset axis (bottom left)
+        const rotationSpeed = 0.0005; // Slow rotation
+        starsRef.current.rotation.y += rotationSpeed;
+
+        // Add slight wobble for more natural movement
+        starsRef.current.rotation.x = Math.sin(time * 0.0002) * 0.05;
+        starsRef.current.rotation.z = Math.cos(time * 0.0003) * 0.03;
+
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      } catch (error) {
+        console.error("Error in animation loop:", error);
+        // Stop the animation loop if an error occurs
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+        }
+        setIsAnimating(false);
       }
-
-      // Earth rotation effect - rotate around offset axis (bottom left)
-      const rotationSpeed = 0.0005; // Slow rotation
-      starsRef.current.rotation.y += rotationSpeed;
-
-      // Add slight wobble for more natural movement
-      starsRef.current.rotation.x = Math.sin(time * 0.0002) * 0.05;
-      starsRef.current.rotation.z = Math.cos(time * 0.0003) * 0.03;
-
-      rendererRef.current.render(sceneRef.current, cameraRef.current);
-      animationFrameRef.current = requestAnimationFrame(animate);
+      
+      if (isAnimating) {
+        animationFrameRef.current = requestAnimationFrame(animate);
+      }
     };
 
-    animationFrameRef.current = requestAnimationFrame(animate);
+    if (isAnimating) {
+      animationFrameRef.current = requestAnimationFrame(animate);
+    }
 
     return () => {
       if (animationFrameRef.current) {

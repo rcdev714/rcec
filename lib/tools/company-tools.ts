@@ -48,12 +48,13 @@ export const searchCompaniesTool = tool(
         ...validatedFilters,
         page: actualPage.toString(),
         pageSize: actualLimit,
-      };
+      } as SearchFilters & { page: string; pageSize: number };
       
       const { companies, totalCount } = await fetchCompanies(searchParams);
       
-      // Sort companies by data completeness and relevance
-      const sortedCompanies = sortByRelevanceAndCompleteness(companies);
+      // Respect explicit server-side sort when present; otherwise fall back to relevance/completeness
+      const shouldPreserveServerOrder = !!validatedFilters.sortBy && validatedFilters.sortBy !== 'completitud';
+      const sortedCompanies = shouldPreserveServerOrder ? companies : sortByRelevanceAndCompleteness(companies);
       
       // Get completeness statistics
       const stats = getCompletenessStats(sortedCompanies);
@@ -72,7 +73,7 @@ export const searchCompaniesTool = tool(
       return {
         success: true,
         result,
-        summary: `Encontré ${totalCount} empresas que coinciden con: ${filterSummary}. Los resultados se ordenan por relevancia, priorizando empresas con información de contacto completa y datos financieros recientes.`,
+        summary: `Encontré ${totalCount} empresas que coinciden con: ${filterSummary}.` + (!shouldPreserveServerOrder ? ' Los resultados se ordenan por relevancia, priorizando empresas con información de contacto completa y datos financieros recientes.' : ''),
         showingResults: `Mostrando ${sortedCompanies.length} de ${totalCount} resultados. Cargar más mostrará el siguiente grupo de empresas relevantes.`,
         appliedFilters: validatedFilters,
         dataQuality: stats,

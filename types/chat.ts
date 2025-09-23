@@ -18,6 +18,12 @@ export interface SearchFilters {
   utilidadNetaMin?: string;
   utilidadNetaMax?: string;
   nombreComercial?: string;
+  // New sorting and gating controls
+  sortBy?: 'completitud' | 'ingresos_ventas' | 'n_empleados' | 'utilidad_neta' | 'activos' | 'anio';
+  sortDir?: 'asc' | 'desc';
+  // Flags encoded as strings for URL compatibility: 'true' | ''
+  requireIngresos?: string;
+  requireEmpleados?: string;
 }
 
 export interface CompanySearchResult {
