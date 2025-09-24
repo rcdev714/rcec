@@ -1,7 +1,6 @@
 import { updateSession } from "@/lib/supabase/middleware";
 import { type NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
-import { handleSessionInMiddleware } from "@/lib/session-manager";
 
 // Define security headers
 const securityHeaders = {
@@ -105,13 +104,6 @@ export async function middleware(request: NextRequest) {
       console.error('Rate limiting error:', error);
       // Continue without rate limiting if there's an error
     }
-  }
-
-  // Enhanced session validation
-  const sessionCheck = await handleSessionInMiddleware(request);
-  if (sessionCheck) {
-    // Session check returned a redirect response
-    return sessionCheck;
   }
 
   // Create response with security headers
