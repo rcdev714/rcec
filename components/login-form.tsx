@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { loginSchema, type LoginInput } from "@/lib/validation-schemas";
 
 export function LoginForm({
   className,
@@ -29,12 +30,25 @@ export function LoginForm({
     setError(null);
 
     try {
+      // Validate input data
+      const validationResult = loginSchema.safeParse({ email, password });
+
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        setError(firstError.message);
+        return;
+      }
+
+      const validatedData: LoginInput = validationResult.data;
+
+      // Rate limiting is handled server-side in middleware
+
       const supabase = createClient();
-      
+
       // Sign in with email and password
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
+        email: validatedData.email,
+        password: validatedData.password,
       });
 
       if (signInError) {
@@ -44,6 +58,8 @@ export function LoginForm({
           setError("Credenciales inválidas. Por favor, verifica tu correo y contraseña.");
         } else if (signInError.message.includes("Email not confirmed")) {
           setError("Tu correo electrónico no ha sido confirmado. Por favor, revisa tu bandeja de entrada.");
+        } else if (signInError.message.includes("Too many requests")) {
+          setError("Demasiados intentos. Por favor, espera antes de intentar nuevamente.");
         } else {
           setError(signInError.message);
         }
@@ -58,9 +74,9 @@ export function LoginForm({
       if (process.env.NODE_ENV !== 'production') {
         console.log("Login successful, redirecting to /dashboard");
       }
-      
+
       router.push("/dashboard");
-      
+
     } catch (error: unknown) {
       console.error("Unexpected error:", error);
       setError(error instanceof Error ? error.message : "Ocurrió un error inesperado");

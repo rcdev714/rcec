@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Card as UICard } from "@/components/ui/card";
+import { signUpSchema, type SignUpInput } from "@/lib/validation-schemas";
 
 export function SignUpForm({
   className,
@@ -43,27 +44,42 @@ export function SignUpForm({
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    const supabase = createClient();
     setIsLoading(true);
     setError(null);
 
-    if (password !== repeatPassword) {
-      setError("Las contraseñas no coinciden");
-      setIsLoading(false);
-      return;
-    }
+    try {
+      // Prepare validation data
+      const roleToSave = userType === "enterprise"
+        ? (enterpriseRole === "Otro" ? customRole : enterpriseRole)
+        : null;
 
-    // Validate enterprise role if user type is enterprise
-    if (userType === "enterprise") {
-      const roleToSave = enterpriseRole === "Otro" ? customRole : enterpriseRole;
-      if (!roleToSave) {
-        setError("Por favor selecciona o ingresa tu rol empresarial");
-        setIsLoading(false);
+      // Validate input data
+      const validationResult = signUpSchema.safeParse({
+        email,
+        password,
+        confirmPassword: repeatPassword
+      });
+
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        setError(firstError.message);
         return;
       }
-    }
 
-    try {
+      const validatedData: SignUpInput = validationResult.data;
+
+      // Validate enterprise role if user type is enterprise
+      if (userType === "enterprise") {
+        if (!roleToSave) {
+          setError("Por favor selecciona o ingresa tu rol empresarial");
+          return;
+        }
+      }
+
+      // Rate limiting is handled server-side in middleware
+
+      const supabase = createClient();
+
       // Since email confirmation is disabled in Supabase settings,
       // we no longer need to specify an email redirect URL.
       // const redirectUrl = process.env.NEXT_PUBLIC_SITE_URL
@@ -72,14 +88,9 @@ export function SignUpForm({
       //     ? 'https://unibrokers.netlify.app/auth/confirm'
       //     : `${window.location.origin}/auth/confirm`;
 
-      // Prepare role data
-      const roleToSave = userType === "enterprise" 
-        ? (enterpriseRole === "Otro" ? customRole : enterpriseRole)
-        : null;
-
       const { error } = await supabase.auth.signUp({
-        email,
-        password,
+        email: validatedData.email,
+        password: validatedData.password,
         options: {
           // emailRedirectTo: redirectUrl,
           data: {
@@ -88,14 +99,28 @@ export function SignUpForm({
           },
         },
       });
-      if (error) throw error;
+
+      if (error) {
+        console.error("Sign up error:", error);
+        if (error.message.includes("User already registered")) {
+          setError("Ya existe una cuenta con este correo electrónico. Intenta iniciar sesión en su lugar.");
+        } else if (error.message.includes("Password should be at least")) {
+          setError("La contraseña debe tener al menos 8 caracteres.");
+        } else if (error.message.includes("Too many requests")) {
+          setError("Demasiados intentos. Por favor, espera antes de intentar nuevamente.");
+        } else {
+          setError(error.message);
+        }
+        return;
+      }
 
       // The profile creation is now handled by a database trigger (create_user_profile)
       // on the auth.users table, so this client-side insertion is no longer needed.
 
-      router.push("/dashboard");
+      router.push("/auth/sign-up-success");
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      console.error("Unexpected error:", error);
+      setError(error instanceof Error ? error.message : "Ocurrió un error inesperado");
     } finally {
       setIsLoading(false);
     }
