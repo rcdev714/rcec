@@ -5,6 +5,7 @@ import ConversationManager from "@/lib/conversation-manager";
 import { HumanMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
 import { validateEnvironment } from "@/lib/env-validation";
 import { ensurePromptAllowedAndTrack, estimateTokensFromTextLength } from "@/lib/usage";
+import { chatMessageSchema, validateRequest } from "@/lib/validation-schemas";
 
 // Use Node.js runtime for full compatibility with LangChain and streaming
 // Edge runtime has limitations with certain Node.js APIs
@@ -39,13 +40,33 @@ export async function POST(req: Request) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const { message, conversationId, useLangGraph = true } = await req.json();
+    const body = await req.json();
+
+    // Validate request body
+    const validation = validateRequest(chatMessageSchema, body);
+    if (!validation.success) {
+      return new Response(
+        JSON.stringify({
+          error: "Invalid request data",
+          details: validation.errors.map(err => ({
+            field: err.path.join('.'),
+            message: err.message
+          }))
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        }
+      );
+    }
+
+    const { message, conversationId, useLangGraph = true } = validation.data;
 
     // Use user ID as conversation ID if not provided for user-specific memory
     const effectiveConversationId = conversationId || user.id;
 
     // Check and track prompt usage before processing
-    const inputTokensEstimate = estimateTokensFromTextLength(message);
+    const inputTokensEstimate = estimateTokensFromTextLength(message.length);
     const promptCheck = await ensurePromptAllowedAndTrack(user.id, {
       model: "gemini-2.5-flash", // Default model
       inputTokensEstimate,
