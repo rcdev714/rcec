@@ -59,7 +59,7 @@ export default async function PublicOfferingPage({ params }: { params: Promise<{
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white text-gray-900">
         <header className="w-full border-b border-gray-200 bg-white/80 backdrop-blur">
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-            <Link href="/" className="font-semibold">Acquira</Link>
+            <Link href="/" className="font-semibold">Camella</Link>
             <AuthButton />
           </div>
         </header>
@@ -115,7 +115,7 @@ export default async function PublicOfferingPage({ params }: { params: Promise<{
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white text-gray-900">
       <header className="w-full border-b border-gray-200 bg-white/80 backdrop-blur">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/" className="font-semibold">Acquira</Link>
+          <Link href="/" className="font-semibold">Camella</Link>
           <AuthButton />
         </div>
       </header>

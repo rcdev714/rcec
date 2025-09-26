@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Home, Package, Building, CreditCard, Settings, Sparkles, FileText, LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -28,15 +29,14 @@ const Sidebar = () => {
         isExpanded ? "w-48" : "w-16"
       )}
     >
-      {isExpanded ? (
-        <div className="flex items-center justify-center h-16 text-xl font-semibold text-gray-700">
-          Acquira
+      <div className="flex items-center justify-center h-16 p-2">
+        <div className={cn("flex items-center gap-2", isExpanded ? "" : "justify-center") }>
+          <Image src="/logo.svg" alt="Camella Logo" width={40} height={40} />
+          {isExpanded && (
+            <span className="text-gray-900 font-semibold tracking-tight">Camella</span>
+          )}
         </div>
-      ) : (
-        <div className="flex items-center justify-center h-16 text-xl font-bold text-gray-700">
-          A
-        </div>
-      )}
+      </div>
 
       <nav className="flex-grow px-2 py-6">
         <ul className="space-y-6">

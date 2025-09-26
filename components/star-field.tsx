@@ -111,7 +111,7 @@ export function StarField({ className }: StarFieldProps) {
   }, []);
 
   const createStarField = (scene: THREE.Scene) => {
-    const starCount = 25000; // Number of stars (more for density with smaller particles)
+    const starCount = 3000; // Number of stars (further reduced for optimal performance)
     const positions = new Float32Array(starCount * 3);
     const colors = new Float32Array(starCount * 3);
     const sizes = new Float32Array(starCount);
@@ -148,7 +148,7 @@ export function StarField({ className }: StarFieldProps) {
       colors[i * 3 + 1] = 0.3 + colorVariation * 0.4; // G (darker)
       colors[i * 3 + 2] = 0.6 + colorVariation * 0.4; // B (more blue)
 
-      sizes[i] = star.size * 0.3; // Make stars much smaller
+      sizes[i] = star.size * 0.6; // Increased size for better visibility
     }
 
     const geometry = new THREE.BufferGeometry();

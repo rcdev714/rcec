@@ -4,7 +4,7 @@ test.describe('Authentication Flow', () => {
   test('should allow user to sign up, login, and logout', async ({ page }) => {
     // Navigate to sign up page
     await page.goto('/auth/sign-up')
-    await expect(page).toHaveTitle(/Acquira B2B/)
+    await expect(page).toHaveTitle(/Camella B2B/)
 
     // Test sign up form validation
     await page.fill('input[type="email"]', '')

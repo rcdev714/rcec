@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { ArrowRight, Database, Brain, Target, Search, Filter, MessageSquare, Rocket } from "lucide-react";
@@ -13,27 +14,28 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation Header */}
-      <nav className="border-b border-gray-200">
+      <nav className="bg-black border-b border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <Link href="/" className="text-2xl font-bold text-gray-900">
-                Acquira
+              <Link href="/" className="flex items-center gap-2">
+                <Image src="/logo.svg" alt="Camella Logo" width={40} height={40} />
+                <span className="text-white font-semibold tracking-tight">Camella</span>
               </Link>
             </div>
             <div className="flex items-center gap-4">
               <Link href="/pricing">
-                <Button variant="ghost" size="sm">Ver planes</Button>
+                <Button variant="ghost" size="sm" className="text-white hover:font-bold transition-all duration-200">Ver planes</Button>
               </Link>
               {user ? (
                 <></>
               ) : (
                 <>
                   <Link href="/auth/login">
-                    <Button variant="ghost" size="sm">Iniciar Sesión</Button>
+                    <Button variant="ghost" size="sm" className="text-white hover:font-bold transition-all duration-200">Iniciar Sesión</Button>
                   </Link>
                   <Link href="/auth/sign-up">
-                    <Button size="sm" variant="secondary">Registrarse</Button>
+                    <Button size="sm" className="bg-white text-black hover:bg-gray-200">Registrarse</Button>
                   </Link>
                 </>
               )}
@@ -49,47 +51,36 @@ export default async function Home() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-36 lg:py-48">
           <div className="text-center">
             <h1 className="font-kalice text-[48px] md:text-[72px] xl:text-[96px] leading-[1.12] mt-4 tracking-tight text-white">
-              Crece tu negocio y descubre nuevas oportunidades
+              Conecta y crece tu negocio
             </h1>
-            <p className="mt-6 text-xl sm:text-2xl text-white/85 max-w-3xl mx-auto leading-relaxed">
+            <p className="mt-6 text-xl md:text-2xl text-white/85 max-w-3xl mx-auto leading-relaxed">
               La forma más fácil de encontrar y conectar con empresas ecuatorianas con ayuda de Inteligencia Artificial
             </p>
+            <div className="mt-10 flex flex-col items-center">
+              {user ? (
+                <Link href="/dashboard">
+                  <Button size="lg" variant="default" className="group px-8 py-6 text-lg bg-white text-black hover:bg-gray-100 shadow-lg transition-all">
+                    Encontrar Empresas
+                    <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/auth/sign-up">
+                  <Button size="lg" variant="default" className="group px-8 py-6 text-lg bg-white text-black hover:bg-gray-100 shadow-lg transition-all">
+                    Empezar Gratis
+                    <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                  </Button>
+                </Link>
+              )}
+              <p className="mt-3 text-base text-white/80">Prueba gratuita — no necesitas tarjeta</p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-12 bg-gray-50 border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col items-center text-center">
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              {user ? (
-                <>
-                  <Link href="/dashboard">
-                    <Button size="lg" variant="default" className="group px-8 py-6 text-lg bg-black hover:bg-gray-800 text-white shadow-lg transition-all">
-                      Encontrar Empresas
-                      <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-                    </Button>
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link href="/auth/sign-up">
-                    <Button size="lg" variant="default" className="group px-8 py-6 text-lg bg-black hover:bg-gray-800 text-white shadow-lg transition-all">
-                      Empezar Gratis
-                      <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-                    </Button>
-                  </Link>
-                </>
-              )}
-            </div>
-            <p className="mt-3 text-base text-gray-600">Prueba gratuita — no necesitas tarjeta</p>
-          </div>
-        </div>
-      </section>
 
       {/* Statistics Section */}
-      <section className="py-20 bg-white border-t border-gray-200">
+      <section className="py-16 bg-white border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
             <div className="p-6">
@@ -131,7 +122,7 @@ export default async function Home() {
       </section>
 
       {/* Features Section */}
-      <section className="py-24 bg-gray-50">
+      <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-medium text-gray-900">
@@ -187,7 +178,7 @@ export default async function Home() {
       </section>
 
       {/* How it works */}
-      <section className="py-20 bg-white">
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl font-medium text-gray-900">¿Cómo funciona?</h2>
@@ -220,7 +211,7 @@ export default async function Home() {
       </section>
 
       {/* Final CTA */}
-      <section className="py-20 bg-gradient-to-b from-gray-50 to-white border-t border-gray-200">
+      <section className="py-16 bg-gradient-to-b from-gray-50 to-white border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="rounded-3xl bg-black text-white p-8 sm:p-12 flex flex-col items-center text-center relative overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.08),_transparent_60%)]" />

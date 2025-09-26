@@ -10,8 +10,11 @@ const defaultUrl = process.env.RAILWAY_PUBLIC_DOMAIN
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Acquira B2B",
+  title: "Camella",
   description: "Conecta y crece tu negocio",
+  icons: {
+    icon: '/logo.svg',
+  },
 };
 
 export default function RootLayout({
