@@ -31,7 +31,7 @@ const Sidebar = () => {
     >
       <div className="flex items-center justify-center h-16 p-2">
         <div className={cn("flex items-center gap-2", isExpanded ? "" : "justify-center") }>
-          <Image src="/logo.svg" alt="Camella Logo" width={40} height={40} />
+          <Image src="/logo.png" alt="Camella Logo" width={40} height={40} />
           {isExpanded && (
             <span className="text-gray-900 font-semibold tracking-tight">Camella</span>
           )}

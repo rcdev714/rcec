@@ -19,7 +19,7 @@ export default async function Home() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <Link href="/" className="flex items-center gap-2">
-                <Image src="/logo.svg" alt="Camella Logo" width={40} height={40} />
+                <Image src="/logo.png" alt="Camella Logo" width={40} height={40} />
                 <span className="text-white font-semibold tracking-tight">Camella</span>
               </Link>
             </div>
