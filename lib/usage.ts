@@ -120,7 +120,7 @@ function getFallbackLimits(plan: Plan) {
   // Monthly limits - fallback
   if (plan === 'FREE') {
     return {
-      searches: 100,
+      searches: 10,
       exports: 10,
       prompt_dollars: 0, // Not used for FREE plan
       prompt_count: 10,

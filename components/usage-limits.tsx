@@ -12,7 +12,7 @@ function getUsageLimits(plan: 'FREE' | 'PRO' | 'ENTERPRISE') {
   // Monthly limits aligned with server usage tracking (lib/usage.ts)
   const limits = {
     FREE: {
-      searches_per_month: 100,
+      searches_per_month: 10,
       exports_per_month: 10,
     },
     PRO: {

@@ -125,7 +125,7 @@ describe('Usage Limits', () => {
       const result = await ensureSearchAllowedAndIncrement('user-123')
 
       expect(result.allowed).toBe(true)
-      expect(result.remaining).toBe(94)
+      expect(result.remaining).toBe(4)
     })
 
     it('should deny search for FREE user at limit', async () => {
@@ -143,7 +143,7 @@ describe('Usage Limits', () => {
         updated_at: '2024-01-01T00:00:00.000Z'
       })
 
-      // Mock usage row with 100 searches (at limit)
+      // Mock usage row with 10 searches (at limit)
       // @ts-ignore - Test mock override
       mockSupabase.from.mockReturnValue({
         upsert: vi.fn(() => ({ error: null as any })),
@@ -159,7 +159,7 @@ describe('Usage Limits', () => {
           eq: vi.fn(() => ({
             eq: vi.fn(() => ({
               single: vi.fn(() => ({
-                data: { searches: 100, user_id: 'user-123' },
+                data: { searches: 10, user_id: 'user-123' },
                 error: null as any
               }))
             }))

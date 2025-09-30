@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronRight, ChevronLeft, X, Play, Rocket, MessageSquare, Building2, LayoutDashboard, Package, Brain } from "lucide-react";
+import { ChevronRight, ChevronLeft, X, Play, Rocket, MessageSquare, Building2, LayoutDashboard, Package, Brain, CheckCircle } from "lucide-react";
 
 // Onboarding version - increment to re-show onboarding to all users
 const ONBOARDING_VERSION = "v1";
@@ -33,22 +33,19 @@ const globalOnboardingSlides: OnboardingSlide[] = [
     title: "¡Bienvenido a Camella!",
     description: "Tu plataforma B2B para encontrar y conectar con empresas ecuatorianas usando Inteligencia Artificial.",
     bullets: [
-      "Accede a +300,000 empresas ecuatorianas",
-      "Busca con IA conversacional",
-      "Conecta con decision makers directamente"
+      "Deja de perder tiempo buscando empresas manualmente en hojas de Excel.",
+      "Utiliza nuestro sistema avanzado con un agente integrado que te deja buscar y contactar con más de 300K empresas en cuestión de segundos.",
     ],
-    videoSrc: "/onboarding/overview.mp4",
     icon: Rocket,
   },
   {
     title: "¿Cómo funciona?",
-    description: "Camella combina datos empresariales actualizados con inteligencia artificial para potenciar tu estrategia comercial.",
+    description: "Camella combina datos empresariales actualizados con inteligencia artificial",
     bullets: [
       "Pregunta al Asistente IA en lenguaje natural",
       "Filtra empresas por industria, tamaño, ubicación",
       "Exporta listas y contacta decision makers"
     ],
-    videoSrc: "/onboarding/how-it-works.mp4",
     icon: Brain,
   },
   {
@@ -56,8 +53,9 @@ const globalOnboardingSlides: OnboardingSlide[] = [
     description: "Explora las diferentes secciones de la plataforma y descubre todo lo que Camella puede hacer por ti.",
     bullets: [
       "Dashboard: Monitorea tu uso y suscripción",
-      "Asistente: Haz preguntas con IA",
-      "Empresas: Busca y filtra tu mercado objetivo"
+      "Agente: Haz preguntas con IA sobre las empresas o contactos dentro de estas, estados financieros y demas datos.",
+      "Empresas: Busca y filtra empresas con más de 14 filtros financieros",
+      "Gestión de Servicios: Crea perfiles de tus productos/servicios y define tu cliente ideal, así como el precio y datos que puedes hacer públicos con un link que les ayudará a contactarte."
     ],
     icon: Play,
   },
@@ -67,25 +65,25 @@ const globalOnboardingSlides: OnboardingSlide[] = [
 const onboardingContentByRoute: Record<string, OnboardingEntry> = {
   dashboard: {
     title: "Dashboard",
-    description: "Aquí puedes monitorear tu plan actual, uso de la plataforma y estado de suscripción. Mantén el control de tus límites mensuales.",
+    description: "Aquí puedes monitorear tu plan actual, uso de la plataforma y estado de suscripción. Si llegas a tu limite en tu plan, toca el boton 'Cambiar Plan' para aumentar tu cuota mensual y acceder a todo el poder de la plataforma.",
     videoSrc: "/onboarding/dashboard.mp4",
     icon: LayoutDashboard,
   },
   chat: {
-    title: "Asistente IA",
-    description: "Conversa con nuestro asistente inteligente para encontrar empresas, redactar correos y obtener insights accionables. Pregunta en lenguaje natural.",
+    title: "Agente",
+    description: "Filtra y Descubre empresas en lenguaje natural con tu agente personal. Puedes pedir que filtre las empresas por año, ruc, ingresos o cualquier parametro que encuentras en el filtrado manual. Asi como realizar analisis de datos con la informacion financiera empresarial.",
     videoSrc: "/onboarding/chat.mp4",
     icon: MessageSquare,
   },
   companies: {
     title: "Base de Empresas",
-    description: "Busca, filtra y explora empresas ecuatorianas con filtros avanzados. Exporta listas completas con datos de contacto y financieros.",
+    description: "Busca, filtra y explora empresas ecuatorianas con filtros financieros avanzados. Exporta listas completas con datos de contacto de la empresa para que puedas contactarlos directamente.",
     videoSrc: "/onboarding/companies.mp4",
     icon: Building2,
   },
   offerings: {
     title: "Gestión de Servicios",
-    description: "Crea perfiles de tus productos/servicios y define tu cliente ideal. El sistema te sugerirá prospectos automáticamente.",
+    description: "Crea perfiles de tus productos/servicios y define tu cliente ideal, asi como el precio y datos que puedes hacer publicos con un link que les ayudara a contactarte.",
     videoSrc: "/onboarding/offerings.mp4",
     icon: Package,
   },
@@ -207,7 +205,7 @@ export default function Onboarding() {
 
     return (
       <Dialog open={showGlobalOnboarding} onOpenChange={() => {}}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-[85vw] w-full p-8 rounded-2xl border border-gray-200 shadow-2xl">
           <div className="absolute top-4 right-4">
             <Button
               variant="ghost"
@@ -220,14 +218,16 @@ export default function Onboarding() {
           </div>
 
           <DialogHeader>
-            <div className="flex items-center space-x-3">
-              {Icon && (
-                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
-                  <Icon className="h-6 w-6 text-gray-900" />
-                </div>
-              )}
-              <div className="text-2xl font-semibold">
-                <DialogTitle>{slide.title}</DialogTitle>
+            <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-gray-900 via-black to-gray-800 text-white p-6">
+              <div className="flex items-center space-x-3">
+                {Icon && (
+                  <div className="w-12 h-12 rounded-full bg-white/10 ring-1 ring-white/20 flex items-center justify-center">
+                    <Icon className="h-6 w-6 text-white" />
+                  </div>
+                )}
+                <h2 className="text-2xl font-semibold tracking-tight">
+                  <DialogTitle>{slide.title}</DialogTitle>
+                </h2>
               </div>
             </div>
           </DialogHeader>
@@ -235,11 +235,12 @@ export default function Onboarding() {
           <div className="space-y-6 mt-4">
             {/* Video placeholder */}
             {slide.videoSrc && (
-              <div className="relative w-full aspect-video bg-gray-100 rounded-lg overflow-hidden">
+              <div className="relative w-full bg-black rounded-lg overflow-hidden mb-6">
                 <video
-                  className="w-full h-full object-cover"
+                  className="w-full h-auto"
                   controls
-                  poster="/placeholder-video.png"
+                  autoPlay
+                  muted
                 >
                   <source src={slide.videoSrc} type="video/mp4" />
                   Tu navegador no soporta el elemento de video.
@@ -249,37 +250,33 @@ export default function Onboarding() {
 
             {/* Description */}
             <div>
-              <p className="text-gray-700 text-base">{slide.description}</p>
+              <p className="text-gray-700 text-lg leading-relaxed">{slide.description}</p>
             </div>
 
             {/* Bullets */}
             {slide.bullets && slide.bullets.length > 0 && (
-              <ul className="space-y-2">
+              <ul className="space-y-3">
                 {slide.bullets.map((bullet, idx) => (
                   <li key={idx} className="flex items-start space-x-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-gray-900 mt-2 flex-shrink-0" />
-                    <span className="text-gray-700">{bullet}</span>
+                    <CheckCircle className="h-5 w-5 text-gray-900 mt-0.5 flex-shrink-0" />
+                    <span className="text-gray-800 text-base">{bullet}</span>
                   </li>
                 ))}
               </ul>
             )}
 
-            {/* Progress dots */}
-            <div className="flex justify-center space-x-2 pt-4">
-              {globalOnboardingSlides.map((_, idx) => (
+            {/* Progress bar */}
+            <div className="pt-6">
+              <div className="h-1 w-full bg-gray-200 rounded-full overflow-hidden">
                 <div
-                  key={idx}
-                  className={`h-2 rounded-full transition-all ${
-                    idx === currentSlide
-                      ? "w-8 bg-gray-900"
-                      : "w-2 bg-gray-300"
-                  }`}
+                  className="h-full bg-gray-900 transition-all"
+                  style={{ width: `${Math.round(((currentSlide + 1) / globalOnboardingSlides.length) * 100)}%` }}
                 />
-              ))}
+              </div>
             </div>
 
             {/* Navigation */}
-            <div className="flex justify-between items-center pt-4 border-t">
+            <div className="flex justify-between items-center pt-6 border-t">
               <Button
                 variant="ghost"
                 onClick={prevSlide}
@@ -314,7 +311,7 @@ export default function Onboarding() {
 
     return (
       <Dialog open={showPageOnboarding} onOpenChange={() => {}}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-[85vw] w-full p-8">
           <DialogHeader>
             <div className="flex items-center space-x-3">
               {Icon && (
@@ -331,11 +328,12 @@ export default function Onboarding() {
           <div className="space-y-4 mt-4">
             {/* Video placeholder */}
             {pageContent.videoSrc && (
-              <div className="relative w-full aspect-video bg-gray-100 rounded-lg overflow-hidden">
+              <div className="relative w-full bg-black rounded-lg overflow-hidden mb-6">
                 <video
-                  className="w-full h-full object-cover"
+                  className="w-full h-auto"
                   controls
-                  poster="/placeholder-video.png"
+                  autoPlay
+                  muted
                 >
                   <source src={pageContent.videoSrc} type="video/mp4" />
                   Tu navegador no soporta el elemento de video.

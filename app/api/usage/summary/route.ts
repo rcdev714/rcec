@@ -16,7 +16,7 @@ export async function GET() {
 
     // Determine plan limits
     const limits = {
-      searches: plan === 'FREE' ? 100 : -1,
+      searches: plan === 'FREE' ? 10 : -1,
       exports: plan === 'FREE' ? 10 : plan === 'PRO' ? 50 : -1,
       prompts: plan === 'FREE' ? 10 : plan === 'PRO' ? 100 : 500,
     } as const;

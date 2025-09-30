@@ -97,7 +97,7 @@ function getPlanLimits(planId: string) {
   switch (planId) {
     case 'FREE':
       return {
-        searches_per_month: 100,
+        searches_per_month: 10,
         exports_per_month: 10,
         companies_per_export: 0,
         prompts_per_month: 10,
