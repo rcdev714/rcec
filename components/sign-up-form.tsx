@@ -12,7 +12,14 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Card as UICard } from "@/components/ui/card";
+import { GoogleSignInButton } from "@/components/google-signin-button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown } from "lucide-react";
 
 export function SignUpForm({
   className,
@@ -105,6 +112,23 @@ export function SignUpForm({
     <div className={cn("w-full", className)} {...props}>
       <Card className="border-border/50 shadow-sm">
         <CardContent className="pt-6">
+          {/* Google Sign In */}
+          <div className="mb-6">
+            <GoogleSignInButton />
+          </div>
+          
+          {/* Divider */}
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                O crea una cuenta con correo
+              </span>
+            </div>
+          </div>
+          
           <form onSubmit={handleSignUp}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
@@ -143,101 +167,62 @@ export function SignUpForm({
               </div>
 
               {/* User Type Selection */}
-              <div className="space-y-4">
-                <Label className="text-sm font-medium text-foreground">Tipo de usuario</Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <UICard 
-                    className={cn(
-                      "cursor-pointer transition-all border hover:shadow-md bg-white",
-                      userType === "individual" 
-                        ? "border-gray-800 border-2" 
-                        : "border-gray-200 hover:border-gray-400"
-                    )}
-                    onClick={() => setUserType("individual")}
-                  >
-                    <div className="p-4">
-                      <div className="flex items-center space-x-3">
-                        <div className={cn(
-                          "w-4 h-4 rounded-full border-2 flex items-center justify-center",
-                          userType === "individual" 
-                            ? "border-gray-800 bg-gray-800" 
-                            : "border-gray-400"
-                        )}>
-                          {userType === "individual" && (
-                            <div className="w-2 h-2 rounded-full bg-white"></div>
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-foreground">Usuario Regular</h3>
-                        </div>
-                      </div>
-                    </div>
-                  </UICard>
-
-                  <UICard 
-                    className={cn(
-                      "cursor-pointer transition-all border hover:shadow-md bg-white",
-                      userType === "enterprise" 
-                        ? "border-gray-800 border-2" 
-                        : "border-gray-200 hover:border-gray-400"
-                    )}
-                    onClick={() => setUserType("enterprise")}
-                  >
-                    <div className="p-4">
-                      <div className="flex items-center space-x-3">
-                        <div className={cn(
-                          "w-4 h-4 rounded-full border-2 flex items-center justify-center",
-                          userType === "enterprise" 
-                            ? "border-gray-800 bg-gray-800" 
-                            : "border-gray-400"
-                        )}>
-                          {userType === "enterprise" && (
-                            <div className="w-2 h-2 rounded-full bg-white"></div>
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-foreground">Usuario Empresarial</h3>
-                        </div>
-                      </div>
-                    </div>
-                  </UICard>
-                </div>
+              <div className="flex w-full rounded-md border bg-muted p-0.5">
+                <Button
+                  type="button"
+                  variant={userType === "individual" ? "secondary" : "ghost"}
+                  size="sm"
+                  className="w-1/2 rounded-sm"
+                  onClick={() => setUserType("individual")}
+                >
+                  Regular
+                </Button>
+                <Button
+                  type="button"
+                  variant={userType === "enterprise" ? "secondary" : "ghost"}
+                  size="sm"
+                  className="w-1/2 rounded-sm"
+                  onClick={() => setUserType("enterprise")}
+                >
+                  Empresarial
+                </Button>
               </div>
 
               {/* Enterprise Role Selection */}
               {userType === "enterprise" && (
                 <div className="space-y-3">
-                  <Label htmlFor="enterprise-role" className="text-sm font-medium text-foreground">
-                    Rol en tu empresa
-                  </Label>
-                  <select
-                    id="enterprise-role"
-                    value={enterpriseRole}
-                    onChange={(e) => setEnterpriseRole(e.target.value)}
-                    className="w-full h-10 px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                    required={userType === "enterprise"}
-                  >
-                    <option value="">Selecciona tu rol</option>
-                    {enterpriseRoles.map((role) => (
-                      <option key={role} value={role}>{role}</option>
-                    ))}
-                  </select>
-                  
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-between h-10 font-normal"
+                      >
+                        {enterpriseRole || "Rol en tu empresa"}
+                        <ChevronDown className="h-4 w-4 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                      {enterpriseRoles.map((role) => (
+                        <DropdownMenuItem
+                          key={role}
+                          onSelect={() => setEnterpriseRole(role)}
+                        >
+                          {role}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
                   {enterpriseRole === "Otro" && (
-                    <div className="mt-3">
-                      <Label htmlFor="custom-role" className="text-sm font-medium text-foreground">
-                        Especifica tu rol
-                      </Label>
-                      <Input
-                        id="custom-role"
-                        type="text"
-                        placeholder="Ingresa tu rol"
-                        value={customRole}
-                        onChange={(e) => setCustomRole(e.target.value)}
-                        className="h-10 mt-1"
-                        required={enterpriseRole === "Otro"}
-                      />
-                    </div>
+                    <Input
+                      id="custom-role"
+                      type="text"
+                      placeholder="Especifica tu rol"
+                      value={customRole}
+                      onChange={(e) => setCustomRole(e.target.value)}
+                      className="h-10"
+                      required={enterpriseRole === "Otro"}
+                    />
                   )}
                 </div>
               )}

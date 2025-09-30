@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import Sidebar from "@/components/sidebar";
 import LoadingSpinner from "@/components/loading-spinner";
+import Onboarding from "@/components/onboarding";
 import { usePathname } from "next/navigation";
 
 export default function ClientLayout({
@@ -20,6 +21,8 @@ export default function ClientLayout({
       <main className={`flex-1 ${shouldRenderSidebar ? "ml-14" : "ml-0"}`}>
         <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>
       </main>
+      {/* Onboarding modal - shows for authenticated users on first visit */}
+      <Onboarding />
     </div>
   );
 }

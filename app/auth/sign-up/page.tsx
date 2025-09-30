@@ -3,9 +3,9 @@ import { AuthLayout } from "@/components/auth-layout";
 
 export default function Page() {
   return (
-    <AuthLayout 
-      title="Crear cuenta" 
-      subtitle="Únete a UNIBROKERS para empezar"
+    <AuthLayout
+      title="Crear cuenta"
+      subtitle="Únete para empezar"
     >
       <SignUpForm />
     </AuthLayout>

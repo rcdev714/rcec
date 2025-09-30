@@ -35,7 +35,7 @@
     "@radix-ui/react-slot": "^1.2.2",
     "@stripe/stripe-js": "^7.8.0",
     "@supabase/ssr": "^0.6.1",
-    "@supabase/supabase-js": "^2.50.3",
+    "@supabase/supabase-js": "^2.58.0",
     "@types/three": "^0.180.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
