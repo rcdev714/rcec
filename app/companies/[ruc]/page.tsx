@@ -1,7 +1,7 @@
 import { fetchCompanyHistory } from "@/lib/data/companies";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import CompanyHistoryCarousel from "@/components/company-history-carousel";  // New Client Component
+import CompanyProfile from "@/components/company-profile";  // Company Profile Component
 
 
 interface CompanyDetailProps {
@@ -27,7 +27,7 @@ export default async function CompanyDetail({ params }: CompanyDetailProps) {
   }
 
   // Pass history to the Client Component
-  return <CompanyHistoryCarousel history={history} ruc={ruc} />;
+  return <CompanyProfile history={history} ruc={ruc} />;
 }
 
 export const dynamic = "force-dynamic"; 

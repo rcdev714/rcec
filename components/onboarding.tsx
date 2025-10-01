@@ -311,57 +311,54 @@ export default function Onboarding() {
 
     return (
       <Dialog open={showPageOnboarding} onOpenChange={() => {}}>
-        <DialogContent className="max-w-[85vw] w-full p-8">
-          <DialogHeader>
-            <div className="flex items-center space-x-3">
-              {Icon && (
-                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-                  <Icon className="h-5 w-5 text-gray-900" />
-                </div>
-              )}
-              <div className="text-xl font-semibold">
-                <DialogTitle>{pageContent.title}</DialogTitle>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <div className="space-y-4 mt-4">
-            {/* Video placeholder */}
-            {pageContent.videoSrc && (
-              <div className="relative w-full bg-black rounded-lg overflow-hidden mb-6">
+        <DialogContent className="max-w-[92vw] md:max-w-[1100px] w-full p-0 overflow-hidden rounded-2xl">
+          <div>
+            {/* Top: Video */}
+            <div className="bg-black">
+              {pageContent.videoSrc && (
                 <video
                   className="w-full h-auto"
                   controls
                   autoPlay
                   muted
+                  style={{ maxHeight: '75vh' }}
                 >
                   <source src={pageContent.videoSrc} type="video/mp4" />
                   Tu navegador no soporta el elemento de video.
                 </video>
-              </div>
-            )}
-
-            {/* Description */}
-            <p className="text-gray-700">{pageContent.description}</p>
-
-            {/* Don't show again checkbox */}
-            <div className="flex items-center space-x-2 pt-2">
-              <Checkbox
-                id="dont-show"
-                checked={dontShowAgain}
-                onCheckedChange={(checked) => setDontShowAgain(checked === true)}
-              />
-              <label
-                htmlFor="dont-show"
-                className="text-sm text-gray-600 cursor-pointer"
-              >
-                No volver a mostrar este mensaje
-              </label>
+              )}
             </div>
 
-            {/* Action button */}
-            <div className="flex justify-end pt-4 border-t">
-              <Button onClick={markPageComplete}>Entendido</Button>
+            {/* Bottom: Content */}
+            <div className="p-6 md:p-8">
+              <div className="flex items-center space-x-3">
+                {Icon && (
+                  <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                    <Icon className="h-5 w-5 text-gray-900" />
+                  </div>
+                )}
+                <h3 className="text-xl font-semibold">
+                  <DialogTitle>{pageContent.title}</DialogTitle>
+                </h3>
+              </div>
+
+              <p className="mt-4 text-gray-700 leading-relaxed">
+                {pageContent.description}
+              </p>
+
+              <div className="mt-6 pt-4 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center space-x-2 mb-4 sm:mb-0">
+                  <Checkbox
+                    id="dont-show"
+                    checked={dontShowAgain}
+                    onCheckedChange={(checked) => setDontShowAgain(checked === true)}
+                  />
+                  <label htmlFor="dont-show" className="text-sm text-gray-600 cursor-pointer">
+                    No volver a mostrar este mensaje
+                  </label>
+                </div>
+                <Button onClick={markPageComplete}>Entendido</Button>
+              </div>
             </div>
           </div>
         </DialogContent>

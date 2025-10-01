@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Home, Package, Building, CreditCard, Settings, Sparkles, FileText, LucideIcon } from "lucide-react";
+import { Package, Building, CreditCard, Settings, Sparkles, FileText, LucideIcon, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import UserAvatar from "./user-avatar";
 
@@ -13,7 +13,7 @@ const Sidebar = () => {
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/dashboard", icon: Home, label: "Consola" },
+    { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/chat", icon: Sparkles, label: "Asistente" },
     { href: "/offerings", icon: Package, label: "Servicios" },
     { href: "/companies", icon: Building, label: "Empresas" },
