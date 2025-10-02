@@ -536,12 +536,12 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                     </h1>
                     <div className="space-y-3">
                       <p className="text-gray-600 text-xs md:text-sm max-w-xl mx-auto leading-relaxed">
-                        Encuentra oportunidades de negocio y obtienes respuestas al
+                        Encuentra oportunidades de negocio y obtén respuestas al
                         instante.
                       </p>
                       <div className="w-12 h-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 mx-auto"></div>
                       <p className="text-gray-600 text-xs md:text-sm max-w-xl mx-auto leading-relaxed">
-                        Preguntale sobre finanzas, contacta con ejecutivos y más. Accede a todo nuestro
+                        Pregúntale sobre finanzas, contacta con ejecutivos y más. Accede a todo nuestro
                         registro empresarial a través del chat.
                       </p>
                     </div>

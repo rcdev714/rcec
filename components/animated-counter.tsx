@@ -1,77 +1,55 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
+import { useInView } from 'react-intersection-observer';
 
 interface AnimatedCounterProps {
   targetNumber: number;
   duration?: number;
   className?: string;
-  trigger?: boolean;
+  startOnVisible?: boolean;
 }
 
-export function AnimatedCounter({ targetNumber, duration = 2000, className = "", trigger = true }: AnimatedCounterProps) {
-  const [currentNumber, setCurrentNumber] = useState(0);
-  const [hasAnimated, setHasAnimated] = useState(false);
-  const elementRef = useRef<HTMLSpanElement>(null);
+export function AnimatedCounter({
+  targetNumber,
+  duration = 2000,
+  className = '',
+  startOnVisible = true
+}: AnimatedCounterProps) {
+  const [count, setCount] = useState(0);
+  const { ref, inView } = useInView({
+    triggerOnce: true,
+    threshold: 0.1
+  });
 
   useEffect(() => {
-    if (!trigger || hasAnimated || targetNumber === 0) return;
+    if (startOnVisible && !inView) return;
 
-    const element = elementRef.current;
-    if (!element) return;
-
-    const startAnimation = () => {
-      let animationFrameId: number;
-      const startTime = Date.now();
-
-      const animate = () => {
-        const elapsedTime = Date.now() - startTime;
-        const progress = Math.min(elapsedTime / duration, 1);
-        const easeOut = 1 - Math.pow(1 - progress, 3);
-        const newNumber = Math.floor(easeOut * targetNumber);
-        setCurrentNumber(newNumber);
-
-        if (progress < 1) {
-          animationFrameId = requestAnimationFrame(animate);
-        } else {
-          setCurrentNumber(targetNumber);
-        }
-      };
-
-      const timer = setTimeout(() => {
-        animate();
-      }, 300);
-
-      return () => {
-        clearTimeout(timer);
-        if (animationFrameId) {
-          cancelAnimationFrame(animationFrameId);
-        }
-      };
+    let startTime: number;
+    const animate = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = timestamp - startTime;
+      const percentage = Math.min(progress / duration, 1);
+      const currentCount = Math.floor(targetNumber * percentage);
+      setCount(currentCount);
+      if (progress < duration) {
+        requestAnimationFrame(animate);
+      } else {
+        setCount(targetNumber);
+      }
     };
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && !hasAnimated) {
-            setHasAnimated(true);
-            startAnimation();
-          }
-        });
-      },
-      { threshold: 0.3 }
-    );
+    requestAnimationFrame(animate);
 
-    observer.observe(element);
+  }, [inView, startOnVisible, targetNumber, duration]);
 
-    return () => observer.disconnect();
-  }, [trigger, hasAnimated, targetNumber, duration]);
-
-  const formattedNumber = currentNumber.toLocaleString('en-US');
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat('es-EC').format(num);
+  };
 
   return (
-    <span ref={elementRef} className={`inline-block tabular-nums ${className}`} style={{ color: 'inherit' }}>
-      {formattedNumber}
+    <span ref={ref} className={className}>
+      {formatNumber(count)}
     </span>
   );
 } 

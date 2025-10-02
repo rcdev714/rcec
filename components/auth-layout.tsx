@@ -21,7 +21,7 @@ export function AuthLayout({ children, title, hero }: AuthLayoutProps) {
   const heroSubheading =
     hero?.subheading ?? "";
   const heroImageSrc = hero?.imageSrc ?? "/heroImage.jpg";
-  const heroLogoSrc = hero?.logoSrc ?? "/logo.png";
+  const heroLogoSrc = hero?.logoSrc ?? "/logo.svg";
 
   return (
     <div className="min-h-screen bg-background grid md:grid-cols-2">
@@ -38,9 +38,13 @@ export function AuthLayout({ children, title, hero }: AuthLayoutProps) {
               className="rounded-md shadow-sm"
               priority
             />
-            <span className="font-kalice text-3xl font-medium text-foreground tracking-tight group-hover:text-primary transition-colors">
-              Camella
-            </span>
+            <Image
+              src="/camella-logo.svg"
+              alt="Camella Logo"
+              width={110}
+              height={40}
+              priority
+            />
           </Link>
         </div>
 
@@ -79,13 +83,22 @@ export function AuthLayout({ children, title, hero }: AuthLayoutProps) {
 
         {/* Content */}
         <div className="relative z-30 flex flex-col items-center text-center px-10">
-          <Image
-            src={heroLogoSrc}
-            alt="Logo"
-            width={80}
-            height={80}
-            className="mb-8 opacity-90"
-          />
+          <div className="flex items-center gap-4 mb-8">
+            <Image
+              src={heroLogoSrc}
+              alt="Logo"
+              width={80}
+              height={80}
+              className="opacity-90"
+            />
+            <Image
+              src="/camella-logo.svg"
+              alt="Camella Logo"
+              width={220}
+              height={80}
+              className="opacity-90"
+            />
+          </div>
           <h2 className="font-kalice text-white text-3xl font-medium tracking-tight drop-shadow-md md:text-4xl">
             {heroHeading}
           </h2>

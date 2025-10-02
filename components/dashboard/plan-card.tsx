@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +24,7 @@ interface PlanFeature {
 }
 
 export default function PlanCard() {
+  const router = useRouter();
   const [summary, setSummary] = useState<UsageSummary | null>(null);
   const [_loading, setLoading] = useState(true);
 
@@ -102,7 +104,7 @@ export default function PlanCard() {
             variant="outline"
             size="sm"
             className="border-indigo-600 text-indigo-600 hover:bg-indigo-500 hover:text-white"
-            onClick={() => (window.location.href = '/pricing')}
+            onClick={() => router.push('/pricing')}
           >
             Cambiar Plan
           </Button>
@@ -110,7 +112,7 @@ export default function PlanCard() {
             variant="default"
             size="sm"
             className="ml-auto bg-indigo-500 hover:bg-indigo-600"
-            onClick={() => (window.location.href = '/settings')}
+            onClick={() => router.push('/settings')}
           >
             Configuración
           </Button>

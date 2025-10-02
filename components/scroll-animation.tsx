@@ -26,11 +26,13 @@ export function ScrollAnimation({
     const element = elementRef.current;
     if (!element) return;
 
+    let timeoutId: NodeJS.Timeout | null = null;
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            setTimeout(() => {
+            timeoutId = setTimeout(() => {
               setIsVisible(true);
             }, delay);
           }
@@ -41,7 +43,10 @@ export function ScrollAnimation({
 
     observer.observe(element);
 
-    return () => observer.disconnect();
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      observer.disconnect();
+    };
   }, [delay, threshold]);
 
   const getInitialTransform = () => {
@@ -61,15 +66,21 @@ export function ScrollAnimation({
     }
   };
 
+  const getFinalTransform = () => {
+    if (direction === 'left' || direction === 'right') {
+      return 'translateX(0)';
+    }
+    return 'translateY(0)';
+  };
+
   return (
     <div
       ref={elementRef}
       className={`${className}`}
       style={{
         opacity: isVisible ? 1 : 0,
-        transform: isVisible ? 'translateY(0)' : getInitialTransform(),
-        transition: `all ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
-        transitionDelay: isVisible ? '0ms' : '0ms'
+        transform: isVisible ? getFinalTransform() : getInitialTransform(),
+        transition: `all ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`
       }}
     >
       {children}

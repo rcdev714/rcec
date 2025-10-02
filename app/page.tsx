@@ -35,7 +35,8 @@ function HomeContent() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
-                <Image src="/camella-logo.png" alt="Camella Logo" width={110} height={110} />
+                <Image src="/logo.svg" alt="Camella Icon" width={30} height={30} />
+                <Image src="/camella-logo.svg" alt="Camella Logo" width={110} height={110} />
               </Link>
             </div>
 
@@ -247,24 +248,27 @@ function HomeContent() {
           <div className="relative overflow-hidden">
             <div className="flex animate-marquee space-x-3">
               {[
-                { src: "/logos/google.svg", name: "Google" },
-                { src: "/logos/openai.svg", name: "OpenAI" },
-                { src: "/logos/claude.svg", name: "Claude" },
-                { src: "/logos/meta.svg", name: "Meta" },
-                { src: "/logos/deepseek.svg", name: "DeepSeek" },
-                { src: "/logos/groq.svg", name: "Groq" },
-                { src: "/logos/google.svg", name: "Google" },
-                { src: "/logos/openai.svg", name: "OpenAI" },
-                { src: "/logos/claude.svg", name: "Claude" },
-                { src: "/logos/meta.svg", name: "Meta" },
-                { src: "/logos/deepseek.svg", name: "DeepSeek" },
-                { src: "/logos/groq.svg", name: "Groq" },
-              ].map((logo, i) => (
-                <div key={i} className="flex-shrink-0 flex flex-col items-center justify-center p-2 bg-gray-50 rounded-lg" style={{ minWidth: '100px' }}>
-                  <Image src={logo.src} alt={logo.name} width={28} height={28} className="grayscale hover:grayscale-0 transition-all duration-300" />
-                  <span className="mt-1.5 text-xs font-medium text-gray-600">{logo.name}</span>
-                </div>
-              ))}
+                "/logos/google-logo.svg",
+                "/logos/openai-logo.png",
+                "/logos/claude-logo.png",
+                "/logos/meta-logo.png",
+                "/logos/deepseek-logo.png",
+                "/logos/groq-logo.png",
+                "/logos/google-logo.svg",
+                "/logos/openai-logo.png",
+                "/logos/claude-logo.png",
+                "/logos/meta-logo.png",
+                "/logos/deepseek-logo.png",
+                "/logos/groq-logo.png",
+              ].map((logo, i) => {
+                const isGoogle = logo.includes('google-logo');
+                const size = isGoogle ? 32 : 84;
+                return (
+                  <div key={i} className="flex-shrink-0 flex items-center justify-center p-3 bg-gray-50 rounded-lg" style={{ minWidth: isGoogle ? '100px' : '140px' }}>
+                    <Image src={logo} alt="AI Model Logo" width={size} height={size} className="transition-all duration-300" />
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -311,7 +315,8 @@ function HomeContent() {
             {/* Company Info */}
             <div className="md:col-span-2">
               <Link href="/" className="flex items-center gap-2 mb-4">
-                <Image src="/camella-logo.png" alt="Camella Logo" width={100} height={100} />
+                <Image src="/logo.svg" alt="Camella Icon" width={40} height={40} />
+                <Image src="/camella-logo.svg" alt="Camella Logo" width={100} height={100} />
               </Link>
               <p className="text-gray-600 mb-4 max-w-md">
                 Conecta y crece tu negocio con la plataforma más avanzada de conexiones empresariales en Ecuador, impulsada por Inteligencia Artificial.
