@@ -4,9 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Package, Building, CreditCard, Settings, Sparkles, FileText, LucideIcon, LayoutDashboard } from "lucide-react";
+import { Package, Building, CreditCard, Settings, Sparkles, FileText, LucideIcon, LayoutDashboard, User, Home, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import UserAvatar from "./user-avatar";
+import NotificationBadge from "./notification-badge";
 
 const Sidebar = () => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -14,7 +15,10 @@ const Sidebar = () => {
 
   const navItems = [
     { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { href: "/feed", icon: Home, label: "Feed" },
+    { href: "/notifications", icon: Bell, label: "Notificaciones" },
     { href: "/chat", icon: Sparkles, label: "Asistente" },
+    { href: "/profile/me", icon: User, label: "Perfil" },
     { href: "/offerings", icon: Package, label: "Servicios" },
     { href: "/companies", icon: Building, label: "Empresas" },
     { href: "/pricing", icon: CreditCard, label: "Suscripción" },
@@ -43,6 +47,8 @@ const Sidebar = () => {
           {navItems.map((item) => {
             const isActive = pathname.startsWith(item.href);
             const Icon = item.icon as LucideIcon;
+            const isNotifications = item.href === "/notifications";
+            
             return (
               <li key={item.label}>
                 <Link
@@ -60,7 +66,7 @@ const Sidebar = () => {
                       isActive ? "opacity-100 bg-gray-900" : "group-hover:opacity-100 bg-gray-300"
                     )}
                   />
-                  <div className={cn("flex items-center", isExpanded ? "" : "w-full justify-center")}>
+                  <div className={cn("flex items-center relative", isExpanded ? "" : "w-full justify-center")}>
                     <Icon
                       size={20}
                       className={cn(
@@ -68,6 +74,7 @@ const Sidebar = () => {
                         isActive ? "text-gray-900 scale-105" : "text-gray-500 group-hover:text-gray-900 group-hover:scale-105"
                       )}
                     />
+                    {isNotifications && <NotificationBadge />}
                   </div>
                   <span
                     className={cn(

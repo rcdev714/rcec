@@ -40,11 +40,20 @@ export async function GET() {
       company_name: profile?.company_name,
       company_ruc: profile?.company_ruc,
       position: profile?.position,
+      // Social fields
+      display_name: profile?.display_name,
+      bio: profile?.bio,
+      location: profile?.location,
+      website_url: profile?.website_url,
+      avatar_url: profile?.avatar_url,
+      is_public_profile: profile?.is_public_profile,
       subscription_plan: subscription?.plan || 'FREE',
       subscription_status: subscription?.status || 'inactive',
       created_at: profile?.created_at,
       updated_at: profile?.updated_at
     };
+
+    console.log('Returning user settings with is_public_profile:', profile?.is_public_profile);
 
     return NextResponse.json(userSettings, { status: 200 });
   } catch (error) {
@@ -71,7 +80,14 @@ export async function PUT(request: Request) {
       company_ruc, 
       position,
       user_type,
-      enterprise_role 
+      enterprise_role,
+      // Social fields
+      display_name,
+      bio,
+      location,
+      website_url,
+      avatar_url,
+      is_public_profile
     } = body;
 
     // Check if profile exists
@@ -106,6 +122,14 @@ export async function PUT(request: Request) {
         updatePayload.enterprise_role = enterprise_role;
       }
 
+      // Social fields - update if provided
+      if (display_name !== undefined) updatePayload.display_name = display_name;
+      if (bio !== undefined) updatePayload.bio = bio;
+      if (location !== undefined) updatePayload.location = location;
+      if (website_url !== undefined) updatePayload.website_url = website_url;
+      if (avatar_url !== undefined) updatePayload.avatar_url = avatar_url;
+      if (typeof is_public_profile === 'boolean') updatePayload.is_public_profile = is_public_profile;
+
       const { data, error: updateError } = await supabase
         .from('user_profiles')
         .update(updatePayload)
@@ -134,6 +158,14 @@ export async function PUT(request: Request) {
       if (typeof enterprise_role === 'string') {
         insertPayload.enterprise_role = enterprise_role;
       }
+
+      // Social fields for new profiles
+      if (display_name !== undefined) insertPayload.display_name = display_name;
+      if (bio !== undefined) insertPayload.bio = bio;
+      if (location !== undefined) insertPayload.location = location;
+      if (website_url !== undefined) insertPayload.website_url = website_url;
+      if (avatar_url !== undefined) insertPayload.avatar_url = avatar_url;
+      if (typeof is_public_profile === 'boolean') insertPayload.is_public_profile = is_public_profile;
 
       const { data, error: insertError } = await supabase
         .from('user_profiles')

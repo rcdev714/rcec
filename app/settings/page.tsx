@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import SubscriptionStatus from '@/components/subscription-status';
 import { UserSettings } from '@/types/user-profile';
-import { User, Building2, CreditCard, Settings } from 'lucide-react';
+import { User, Building2, CreditCard, Settings, Globe } from 'lucide-react';
 import UserAvatar from '@/components/user-avatar';
 
 export default function SettingsPage() {
@@ -25,6 +26,13 @@ export default function SettingsPage() {
   const [companyName, setCompanyName] = useState('');
   const [companyRuc, setCompanyRuc] = useState('');
   const [position, setPosition] = useState('');
+  // Social profile fields
+  const [displayName, setDisplayName] = useState('');
+  const [bio, setBio] = useState('');
+  const [location, setLocation] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [isPublicProfile, setIsPublicProfile] = useState<boolean | null>(null);
 
   useEffect(() => {
     fetchUserSettings();
@@ -35,6 +43,7 @@ export default function SettingsPage() {
       const response = await fetch('/api/user-profile');
       if (response.ok) {
         const data = await response.json();
+        console.log('Full user profile data from API:', data);
         setUserSettings(data);
         
         // Set form values
@@ -44,6 +53,16 @@ export default function SettingsPage() {
         setCompanyName(data.company_name || '');
         setCompanyRuc(data.company_ruc || '');
         setPosition(data.position || '');
+        // Social fields
+        setDisplayName(data.display_name || '');
+        setBio(data.bio || '');
+        setLocation(data.location || '');
+        setWebsiteUrl(data.website_url || '');
+        setAvatarUrl(data.avatar_url || '');
+        // Explicitly set the privacy status from DB
+        const privacyValue = data.is_public_profile === false ? false : true;
+        setIsPublicProfile(privacyValue);
+        console.log('Setting is_public_profile state to:', privacyValue, 'from DB value:', data.is_public_profile);
       } else {
         setError('No se pudo cargar la información del usuario');
       }
@@ -62,25 +81,38 @@ export default function SettingsPage() {
     setMessage('');
 
     try {
+      const payload = {
+        first_name: firstName,
+        last_name: lastName,
+        phone,
+        company_name: companyName,
+        company_ruc: companyRuc,
+        position,
+        user_type: userSettings?.user_type,
+        enterprise_role: userSettings?.enterprise_role,
+        // Social fields
+        display_name: displayName,
+        bio,
+        location,
+        website_url: websiteUrl,
+        avatar_url: avatarUrl,
+        is_public_profile: isPublicProfile,
+      };
+      
+      console.log('Saving profile with is_public_profile:', isPublicProfile);
+      
       const response = await fetch('/api/user-profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          first_name: firstName,
-          last_name: lastName,
-          phone,
-          company_name: companyName,
-          company_ruc: companyRuc,
-          position,
-          user_type: userSettings?.user_type,
-          enterprise_role: userSettings?.enterprise_role,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
-        setMessage('Perfil actualizado exitosamente');
+        const result = await response.json();
+        console.log('Profile updated, new is_public_profile:', result.profile?.is_public_profile);
+        setMessage(`Perfil actualizado exitosamente - Ahora tu perfil es ${isPublicProfile ? 'Público' : 'Privado'}`);
         // Refresh data
         fetchUserSettings();
       } else {
@@ -219,6 +251,147 @@ export default function SettingsPage() {
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Public Profile Section */}
+                    <div className="space-y-4 pb-6 border-b">
+                      <div className="flex items-center gap-2">
+                        <Globe className="h-5 w-5 text-gray-600" />
+                        <h3 className="text-lg font-semibold text-gray-900">Perfil Público</h3>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="displayName" className="text-sm font-medium text-gray-700">
+                            Nombre para mostrar
+                          </Label>
+                          <Input
+                            id="displayName"
+                            value={displayName}
+                            onChange={(e) => setDisplayName(e.target.value)}
+                            placeholder="¿Cómo quieres que te llamen?"
+                            className="h-11"
+                          />
+                          <p className="text-xs text-gray-500">
+                            Deja vacío para usar tu nombre completo
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="bio" className="text-sm font-medium text-gray-700">
+                            Biografía
+                          </Label>
+                          <Textarea
+                            id="bio"
+                            value={bio}
+                            onChange={(e) => setBio(e.target.value)}
+                            placeholder="Cuéntanos sobre ti..."
+                            className="min-h-[80px] resize-none"
+                            maxLength={500}
+                          />
+                          <p className="text-xs text-gray-500">
+                            {bio.length}/500 caracteres
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="location" className="text-sm font-medium text-gray-700">
+                              Ubicación
+                            </Label>
+                            <Input
+                              id="location"
+                              value={location}
+                              onChange={(e) => setLocation(e.target.value)}
+                              placeholder="Ciudad, País"
+                              className="h-11"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="websiteUrl" className="text-sm font-medium text-gray-700">
+                              Sitio web
+                            </Label>
+                            <Input
+                              id="websiteUrl"
+                              value={websiteUrl}
+                              onChange={(e) => setWebsiteUrl(e.target.value)}
+                              placeholder="https://tusitio.com"
+                              className="h-11"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="avatarUrl" className="text-sm font-medium text-gray-700">
+                            URL de foto de perfil
+                          </Label>
+                          <Input
+                            id="avatarUrl"
+                            value={avatarUrl}
+                            onChange={(e) => setAvatarUrl(e.target.value)}
+                            placeholder="https://ejemplo.com/avatar.jpg"
+                            className="h-11"
+                          />
+                          <p className="text-xs text-gray-500">
+                            URL pública de tu foto de perfil
+                          </p>
+                        </div>
+
+                        <div className="space-y-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                          <Label className="text-sm font-medium text-gray-900">
+                            Privacidad del perfil
+                          </Label>
+                          {isPublicProfile === null ? (
+                            <div className="h-24 bg-gray-100 animate-pulse rounded-md"></div>
+                          ) : (
+                            <div className="space-y-2">
+                              <button
+                                type="button"
+                                onClick={() => setIsPublicProfile(true)}
+                                className={`w-full flex items-center justify-between p-3 rounded-md border-2 transition-all ${
+                                  isPublicProfile === true
+                                    ? 'border-green-500 bg-green-50'
+                                    : 'border-gray-300 bg-white hover:border-gray-400'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                    isPublicProfile === true ? 'border-green-500 bg-green-500' : 'border-gray-400'
+                                  }`}>
+                                    {isPublicProfile === true && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                                  </div>
+                                  <div className="text-left">
+                                    <p className="font-medium text-sm text-gray-900">Público</p>
+                                    <p className="text-xs text-gray-600">Cualquiera puede ver tu perfil y seguirte</p>
+                                  </div>
+                                </div>
+                              </button>
+                              
+                              <button
+                                type="button"
+                                onClick={() => setIsPublicProfile(false)}
+                                className={`w-full flex items-center justify-between p-3 rounded-md border-2 transition-all ${
+                                  isPublicProfile === false
+                                    ? 'border-gray-600 bg-gray-50'
+                                    : 'border-gray-300 bg-white hover:border-gray-400'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                    isPublicProfile === false ? 'border-gray-600 bg-gray-600' : 'border-gray-400'
+                                  }`}>
+                                    {isPublicProfile === false && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                                  </div>
+                                  <div className="text-left">
+                                    <p className="font-medium text-sm text-gray-900">Privado</p>
+                                    <p className="text-xs text-gray-600">Solo seguidores aprobados ven tu contenido</p>
+                                  </div>
+                                </div>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="firstName" className="text-sm font-medium text-gray-700">Nombre</Label>
@@ -242,20 +415,19 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="text-sm font-medium text-gray-700">Correo Electrónico</Label>
-                      <Input
-                        id="email"
-                        value={userSettings?.email || ''}
-                        disabled
-                        className="bg-gray-50 h-11"
-                      />
-                      <p className="text-xs text-gray-500">
-                        Para cambiar tu correo, contacta soporte
-                      </p>
-                    </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="email" className="text-sm font-medium text-gray-700">Correo Electrónico</Label>
+                        <Input
+                          id="email"
+                          value={userSettings?.email || ''}
+                          disabled
+                          className="bg-gray-50 h-11"
+                        />
+                        <p className="text-xs text-gray-500">
+                          Para cambiar tu correo, contacta soporte
+                        </p>
+                      </div>
                       <div className="space-y-2">
                         <Label htmlFor="phone" className="text-sm font-medium text-gray-700">Teléfono</Label>
                         <Input
