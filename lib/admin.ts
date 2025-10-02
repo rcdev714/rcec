@@ -6,7 +6,8 @@ import { createClient } from '@/lib/supabase/server'
 
 // Admin email addresses (can be moved to environment variables)
 const ADMIN_EMAILS = process.env.ADMIN_EMAILS?.split(',') || [
-  process.env.ADMIN_EMAIL || 'juan.salgador@uisek.edu.ec'
+  process.env.ADMIN_EMAIL || 'juan.salgador@uisek.edu.ec',
+  'rafael.carrera@unibrokers.com.ec'
 ]
 
 export async function isAdmin(): Promise<boolean> {
