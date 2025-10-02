@@ -44,7 +44,7 @@ export function CompanyProfileHeader({ company, ruc, totalYears, canAccessLinked
   return (
     <div className="bg-white border-b border-gray-200">
       {/* Cover Banner */}
-      <div className="relative h-48 bg-gradient-to-r from-black via-gray-900 to-gray-700">
+      <div className="relative h-48 bg-gradient-to-r from-indigo-600 to-indigo-200">
         <div className="absolute inset-0 bg-black/10"></div>
         
         {/* Back Button */}
@@ -97,8 +97,8 @@ export function CompanyProfileHeader({ company, ruc, totalYears, canAccessLinked
         <div className="relative">
           {/* Avatar */}
           <div className="absolute -top-16 left-0">
-            <div className="w-32 h-32 rounded-full bg-white border-4 border-white shadow-xl flex items-center justify-center">
-              <div className="w-28 h-28 rounded-full bg-black flex items-center justify-center">
+            <div className="w-32 h-32 rounded-full bg-white border-2 border-white shadow-xl flex items-center justify-center">
+              <div className="w-28 h-28 rounded-full bg-indigo-600 flex items-center justify-center">
                 <span className="text-3xl font-medium text-white">{initials}</span>
               </div>
             </div>

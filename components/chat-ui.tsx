@@ -471,26 +471,28 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
   };
 
   const formLayout = (
-    <div className="w-full flex flex-col items-center space-y-3 px-2 md:px-0">
-      <form onSubmit={handleSubmit} className="relative w-full max-w-2xl">
-        <input
-          type="text"
-          value={input}
-          onChange={handleInputChange}
-          placeholder="Escribe tu mensaje..."
-          className="w-full pl-4 pr-16 md:pr-16 py-4 md:py-3 border border-gray-200 rounded-xl md:rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white text-base md:text-base touch-manipulation"
-        />
-        <button
-          type="submit"
-          disabled={isSending}
-          className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-3 md:px-2 md:py-2 bg-gray-800 text-white rounded-full hover:bg-gray-700 disabled:bg-gray-500 transition-colors min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px] flex items-center justify-center touch-manipulation"
-        >
-          {isSending ? (
-            <LoaderCircle className="w-5 h-5 md:w-5 md:h-5 animate-spin" />
-          ) : (
-            <ArrowUp className="w-5 h-5 md:w-4 md:h-4" />
-          )}
-        </button>
+    <div className="w-full flex flex-col items-center space-y-4 px-2 md:px-0">
+      <form onSubmit={handleSubmit} className="relative w-full max-w-2xl group">
+        <div className="relative">
+          <input
+            type="text"
+            value={input}
+            onChange={handleInputChange}
+            placeholder="¿Qué empresa estás buscando?"
+            className="w-full pl-6 pr-20 py-4 md:py-4 bg-white/90 backdrop-blur-sm border-2 border-gray-200/60 rounded-2xl focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 hover:border-gray-300 transition-all duration-200 text-base md:text-base placeholder:text-gray-400 shadow-sm hover:shadow-md focus:shadow-lg touch-manipulation"
+          />
+          <button
+            type="submit"
+            disabled={isSending}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-12 h-12 md:w-11 md:h-11 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 active:bg-indigo-800 disabled:bg-gray-400 transition-all duration-200 shadow-lg hover:shadow-xl active:shadow-md disabled:shadow-none flex items-center justify-center touch-manipulation group-hover:scale-105 active:scale-95"
+          >
+            {isSending ? (
+              <LoaderCircle className="w-5 h-5 md:w-5 md:h-5 animate-spin" />
+            ) : (
+              <ArrowUp className="w-5 h-5 md:w-4 md:h-4" />
+            )}
+          </button>
+        </div>
       </form>
 
       {/* Token Progress Bar - Centered and same width as input */}
@@ -526,13 +528,25 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
               transition={{ duration: 0.3 }}
               className="flex-1 flex flex-col items-center justify-center p-4 md:p-6"
             >
-              <div className="text-center mb-8 md:mb-12">
-                <h1 className="text-2xl md:text-3xl font-semibold mb-3 text-gray-800">
-                  Agente
-                </h1>
-                <p className="text-gray-600 text-sm md:text-base max-w-md mx-auto">
-                  Conversa en lenguaje natural para encontrar empresas. Pregunta por informacion financiera, personas de la organizacion, ubicación, tamaño o cualquier otra informacion que esta disponible en el filtrado manual de empresas.
-                </p>
+              <div className="w-full max-w-4xl mx-auto mb-10 md:mb-16">
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 p-6 md:p-8">
+                  <div className="text-center">
+                    <h1 className="text-3xl md:text-4xl font-kalice mb-3 text-gray-900 leading-tight">
+                      Nuestro Agente IA
+                    </h1>
+                    <div className="space-y-3">
+                      <p className="text-gray-600 text-xs md:text-sm max-w-xl mx-auto leading-relaxed">
+                        Encuentra oportunidades de negocio y obtienes respuestas al
+                        instante.
+                      </p>
+                      <div className="w-12 h-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 mx-auto"></div>
+                      <p className="text-gray-600 text-xs md:text-sm max-w-xl mx-auto leading-relaxed">
+                        Preguntale sobre finanzas, contacta con ejecutivos y más. Accede a todo nuestro
+                        registro empresarial a través del chat.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Sugerencias de Prompt */}
@@ -542,7 +556,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                     <button
                       key={i}
                       onClick={() => handleSuggestionClick(s)}
-                      className="p-4 md:p-3 border border-gray-200 rounded-xl md:rounded-lg text-sm md:text-xs text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 bg-white shadow-sm min-h-[48px] md:min-h-auto flex items-center justify-center touch-manipulation"
+                      className="p-4 md:p-3 border border-indigo-300 rounded-xl md:rounded-lg text-sm md:text-xs text-gray-600 hover:bg-gray-50 hover:border-indigo-400 transition-all duration-200 bg-white shadow-sm min-h-[48px] md:min-h-auto flex items-center justify-center touch-manipulation"
                     >
                       {s}
                     </button>
@@ -576,7 +590,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                         <UserAvatar />
                       </div>
                     ) : (
-                      <div className="w-8 h-8 md:w-8 md:h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs md:text-sm font-medium bg-gray-200 text-gray-700 mt-1">
+                      <div className="w-8 h-8 md:w-8 md:h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs md:text-sm font-medium bg-white text-indigo-500 border border-indigo-300 mt-1">
                         AI
                       </div>
                     )}
@@ -584,8 +598,8 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                       className={cn(
                         "max-w-[85%] md:max-w-[90%] px-4 md:px-4 py-3 md:py-3 rounded-2xl shadow-sm relative group border touch-manipulation",
                         msg.role === "user"
-                          ? "bg-white text-gray-800 border-gray-200 rounded-br-md self-end"
-                          : "bg-gray-100 text-gray-800 border-gray-200 rounded-bl-md self-start"
+                          ? "bg-white text-gray-800 border-indigo-300 rounded-br-md self-end"
+                          : "bg-gray-100 text-gray-800 border-indigo-300 rounded-bl-md self-start"
                       )}
                     >
                       {msg.role === 'assistant' && msg.content === '' && isSending ? (

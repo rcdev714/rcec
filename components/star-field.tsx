@@ -111,7 +111,7 @@ export function StarField({ className }: StarFieldProps) {
   }, []);
 
   const createStarField = (scene: THREE.Scene) => {
-    const starCount = 3000; // Number of stars (further reduced for optimal performance)
+    const starCount = 200; // Number of stars (reduced for better performance)
     const positions = new Float32Array(starCount * 3);
     const colors = new Float32Array(starCount * 3);
     const sizes = new Float32Array(starCount);
@@ -131,9 +131,9 @@ export function StarField({ className }: StarFieldProps) {
       // Store star data
       const star: Star = {
         position: new THREE.Vector3(x, y, z),
-        brightness: 0.3 + Math.random() * 0.7,
-        twinkleSpeed: 0.01 + Math.random() * 0.02,
-        size: 0.5 + Math.random() * 1.5
+        brightness: 0.1 + Math.random() * 0.4, // Much dimmer
+        twinkleSpeed: 0.005 + Math.random() * 0.01, // Slower twinkling
+        size: 0.3 + Math.random() * 0.8 // Much smaller
       };
       stars.push(star);
 
@@ -142,13 +142,13 @@ export function StarField({ className }: StarFieldProps) {
       positions[i * 3 + 1] = y;
       positions[i * 3 + 2] = z;
 
-      // Set colors (dark gray/blue for visibility on white background)
+      // Set colors (indigo-500 for consistency with theme)
       const colorVariation = Math.random();
-      colors[i * 3] = 0.2 + colorVariation * 0.3;     // R (darker)
-      colors[i * 3 + 1] = 0.3 + colorVariation * 0.4; // G (darker)
-      colors[i * 3 + 2] = 0.6 + colorVariation * 0.4; // B (more blue)
+      colors[i * 3] = 0.388 + colorVariation * 0.1;     // R (indigo-500 base with variation)
+      colors[i * 3 + 1] = 0.400 + colorVariation * 0.1; // G (indigo-500 base with variation)
+      colors[i * 3 + 2] = 0.945 + colorVariation * 0.05; // B (indigo-500 base with variation)
 
-      sizes[i] = star.size * 0.6; // Increased size for better visibility
+      sizes[i] = star.size * 0.3; // Much smaller for subtle effect
     }
 
     const geometry = new THREE.BufferGeometry();
@@ -184,16 +184,15 @@ export function StarField({ className }: StarFieldProps) {
           vec2 center = vec2(0.5, 0.5);
           float r = distance(gl_PointCoord, center);
 
-          // Create atomic-like appearance with sharper falloff
-          if (r > 0.4) discard;
+          // Create thin, matrix-like appearance
+          if (r > 0.15) discard;
 
-          // More defined particle shape with center brightness
-          float core = 1.0 - smoothstep(0.0, 0.15, r); // Bright core
-          float halo = (1.0 - smoothstep(0.15, 0.4, r)) * 0.8; // Brighter halo
-          float alpha = (core + halo) * vTwinkle * 2.0; // Even higher opacity for small particles
+          // Very thin and sharp falloff for matrix effect
+          float core = 1.0 - smoothstep(0.0, 0.08, r);
+          float alpha = core * vTwinkle * 0.6; // Much more subtle
 
-          // Add slight blue tint variation for atomic feel
-          vec3 finalColor = vColor + vec3(0.0, 0.1, 0.2) * (1.0 - r * 2.0);
+          // Minimal color variation
+          vec3 finalColor = vColor;
 
           gl_FragColor = vec4(finalColor, alpha);
         }
@@ -259,7 +258,21 @@ export function StarField({ className }: StarFieldProps) {
     <div
       ref={mountRef}
       className={`absolute inset-0 pointer-events-none ${className || ''}`}
-      style={{ zIndex: 0 }}
+      style={{
+        zIndex: 0,
+        background: `
+          linear-gradient(135deg,
+            rgba(15, 23, 42, 0.02) 0%,
+            rgba(30, 58, 138, 0.01) 25%,
+            rgba(79, 70, 229, 0.005) 50%,
+            rgba(30, 58, 138, 0.01) 75%,
+            rgba(15, 23, 42, 0.02) 100%
+          ),
+          radial-gradient(circle at 30% 20%, rgba(99, 102, 241, 0.02) 0%, transparent 50%),
+          radial-gradient(circle at 70% 80%, rgba(139, 92, 246, 0.01) 0%, transparent 50%),
+          radial-gradient(circle at 50% 50%, rgba(79, 70, 229, 0.005) 0%, transparent 70%)
+        `
+      }}
     />
   );
 }

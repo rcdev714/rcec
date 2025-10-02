@@ -154,9 +154,9 @@ export default function CompanyHistoryCharts({ history }: CompanyHistoryChartsPr
                 type="monotone"
                 dataKey="ingresos_ventas"
                 name="Ingresos Ventas"
-                stroke="#3b82f6"
+                stroke="#6366f1"
                 strokeWidth={3}
-                dot={{ r: 4, fill: '#3b82f6' }}
+                dot={{ r: 4, fill: '#6366f1' }}
                 activeDot={{ r: 6 }}
               />
               <Line
@@ -172,9 +172,9 @@ export default function CompanyHistoryCharts({ history }: CompanyHistoryChartsPr
                 type="monotone"
                 dataKey="impuesto_renta"
                 name="Impuesto Renta"
-                stroke="#f59e0b"
+                stroke="#ef4444"
                 strokeWidth={3}
-                dot={{ r: 4, fill: '#f59e0b' }}
+                dot={{ r: 4, fill: '#ef4444' }}
                 activeDot={{ r: 6 }}
               />
             </LineChart>
@@ -196,9 +196,9 @@ export default function CompanyHistoryCharts({ history }: CompanyHistoryChartsPr
                 wrapperStyle={{ paddingTop: '20px' }}
                 iconType="circle"
               />
-              <Bar dataKey="ingresos_ventas" name="Ingresos Ventas" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="ingresos_ventas" name="Ingresos Ventas" fill="#6366f1" radius={[8, 8, 0, 0]} />
               <Bar dataKey="utilidad_neta" name="Utilidad Neta" fill="#10b981" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="impuesto_renta" name="Impuesto Renta" fill="#f59e0b" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="impuesto_renta" name="Impuesto Renta" fill="#ef4444" radius={[8, 8, 0, 0]} />
             </BarChart>
           )}
         </ResponsiveContainer>

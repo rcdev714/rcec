@@ -124,7 +124,7 @@ export default function OfferingsPage() {
             </p>
           </div>
           <Link href="/offerings/new" passHref>
-            <button className="bg-black text-white font-medium py-2 px-4 rounded-md shadow hover:bg-gray-800 transition-colors flex items-center text-sm">
+            <button className="bg-indigo-500 text-white font-medium py-2 px-4 rounded-md shadow hover:bg-indigo-600 transition-colors flex items-center text-sm">
               <PlusIcon className="h-4 w-4 mr-2" />
               Añadir Servicio
             </button>

@@ -18,7 +18,11 @@ export default function ClientLayout({
   return (
     <div className="flex min-h-screen">
       {shouldRenderSidebar && <Sidebar />}
-      <main className={`flex-1 ${shouldRenderSidebar ? "ml-14" : "ml-0"}`}>
+      <main
+        className={`flex-1 ${
+          shouldRenderSidebar ? "ml-16 md:ml-48" : "ml-0"
+        }`}
+      >
         <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>
       </main>
       {/* Onboarding modal - shows for authenticated users on first visit */}

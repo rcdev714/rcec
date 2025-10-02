@@ -1,78 +1,195 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/server";
-import { ArrowRight, Database, Brain, Target, Search, Filter, MessageSquare, Rocket } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { Menu, X } from "lucide-react";
 import { FaLinkedin } from "react-icons/fa";
 import { StarField } from "@/components/star-field";
 import { AnimatedCounter } from "@/components/animated-counter";
+import { ScrollAnimation } from "@/components/scroll-animation";
+import { useState, useEffect } from "react";
+import { User } from "@supabase/supabase-js";
 
-export default async function Home() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+function HomeContent() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    getUser();
+  }, []);
+
+  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation Header */}
-      <nav className="bg-black border-b border-gray-800">
+      <nav className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <Link href="/" className="flex items-center gap-2">
-                <Image src="/logo.png" alt="Camella Logo" width={40} height={40} />
-                <span className="text-white font-semibold tracking-tight">Camella</span>
+              <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
+                <Image src="/camella-logo.png" alt="Camella Logo" width={110} height={110} />
               </Link>
             </div>
-            <div className="flex items-center gap-4">
-              <Link href="/pricing">
-                <Button variant="ghost" size="sm" className="text-white hover:font-bold transition-all duration-200">Ver planes</Button>
+
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center gap-1">
+              <Link href="/pricing" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200">
+                Precios
               </Link>
+              <Link href="/companies" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200">
+                Empresas
+              </Link>
+              <Link href="/offerings" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200">
+                Ofertas
+              </Link>
+              <Link href="/docs" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200">
+                Documentación
+              </Link>
+            </div>
+
+            {/* Desktop Auth Buttons */}
+            <div className="hidden md:flex items-center gap-3">
               {user ? (
-                <></>
+                <Link href="/dashboard">
+                  <Button size="sm" className="bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow-md transition-all duration-200">
+                    Dashboard
+                  </Button>
+                </Link>
               ) : (
                 <>
                   <Link href="/auth/login">
-                    <Button variant="ghost" size="sm" className="text-white hover:font-bold transition-all duration-200">Iniciar Sesión</Button>
+                    <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200">
+                      Iniciar Sesión
+                    </Button>
                   </Link>
                   <Link href="/auth/sign-up">
-                    <Button size="sm" className="bg-white text-black hover:bg-gray-200">Registrarse</Button>
+                    <Button size="sm" className="bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow-md transition-all duration-200">
+                      Registrarse
+                    </Button>
                   </Link>
                 </>
               )}
             </div>
+
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleMenu}
+                className="text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+              >
+                {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </Button>
+            </div>
           </div>
+
+          {/* Mobile Navigation Menu */}
+          {isMenuOpen && (
+            <div className="md:hidden border-t border-gray-200 bg-white/95 backdrop-blur-sm">
+              <div className="px-2 pt-2 pb-3 space-y-1">
+                <Link
+                  href="/pricing"
+                  className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors duration-200"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Precios
+                </Link>
+                <Link
+                  href="/companies"
+                  className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors duration-200"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Empresas
+                </Link>
+                <Link
+                  href="/offerings"
+                  className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors duration-200"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Ofertas
+                </Link>
+                <Link
+                  href="/docs"
+                  className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors duration-200"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Documentación
+                </Link>
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  {user ? (
+                    <Link href="/dashboard" onClick={() => setIsMenuOpen(false)}>
+                      <Button size="sm" className="w-full bg-indigo-600 text-white hover:bg-indigo-700">
+                        Dashboard
+                      </Button>
+                    </Link>
+                  ) : (
+                    <div className="space-y-2">
+                      <Link href="/auth/login" onClick={() => setIsMenuOpen(false)}>
+                        <Button variant="ghost" size="sm" className="w-full text-gray-600 hover:text-gray-900 hover:bg-gray-50">
+                          Iniciar Sesión
+                        </Button>
+                      </Link>
+                      <Link href="/auth/sign-up" onClick={() => setIsMenuOpen(false)}>
+                        <Button size="sm" className="w-full bg-indigo-600 text-white hover:bg-indigo-700">
+                          Registrarse
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-black">
-        <StarField className="opacity-70" />
-        <div className="absolute inset-0 bg-black/60" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-36 lg:py-48">
-          <div className="text-center">
-            <h1 className="font-kalice text-[48px] md:text-[72px] xl:text-[96px] leading-[1.12] mt-4 tracking-tight text-white">
-              Conecta y crece tu negocio
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-white to-indigo-50/20">
+        <StarField className="opacity-25" />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/95 via-white/80 to-white/70" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
+          <div className="text-center max-w-4xl mx-auto">
+            <div className="mb-6">
+              <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700 border border-emerald-200/50 shadow-sm">
+                Sin tarjeta de crédito • Configuración en minutos
+              </span>
+            </div>
+            <h1 className="font-kalice text-[44px] md:text-[64px] lg:text-[80px] leading-[1.05] tracking-tight text-gray-900 mb-6">
+              <span className="block text-lg md:text-xl lg:text-2xl font-sans font-medium text-gray-600 mb-2">Conoce a:</span>
+              <span className="block">Tu Agente Personal</span>
+              <span className="block">de Ventas</span>
             </h1>
-            <p className="mt-6 text-xl md:text-2xl text-white/85 max-w-3xl mx-auto leading-relaxed">
-              La forma más fácil de encontrar y conectar con empresas ecuatorianas con ayuda de Inteligencia Artificial
+            <p className="text-lg md:text-xl text-gray-700 max-w-2xl mx-auto leading-relaxed font-medium">
+              Tu asistente inteligente para encontrar oportunidades de negocio y aumentar tus ventas.
             </p>
-            <div className="mt-10 flex flex-col items-center">
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-2">
               {user ? (
                 <Link href="/dashboard">
-                  <Button size="lg" variant="default" className="group px-8 py-6 text-lg bg-white text-black hover:bg-gray-100 shadow-lg transition-all">
-                    Encontrar Empresas
-                    <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                  <Button size="sm" className="px-4 py-2 text-xs font-medium bg-indigo-500 text-white hover:bg-indigo-600 shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 active:scale-95">
+                    Dashboard
                   </Button>
                 </Link>
               ) : (
                 <Link href="/auth/sign-up">
-                  <Button size="lg" variant="default" className="group px-8 py-6 text-lg bg-white text-black hover:bg-gray-100 shadow-lg transition-all">
+                  <Button size="sm" className="px-4 py-2 text-xs font-medium bg-slate-900 text-white hover:bg-slate-800 shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 active:scale-95">
                     Empezar Gratis
-                    <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                   </Button>
                 </Link>
               )}
-              <p className="mt-3 text-base text-white/80">Prueba gratuita — no necesitas tarjeta</p>
+              <Link href="/companies">
+                <Button size="sm" variant="outline" className="px-4 py-2 text-xs font-medium border border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50 hover:text-gray-900 shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-105 active:scale-95">
+                  Explorar Empresas
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -80,162 +197,178 @@ export default async function Home() {
 
 
       {/* Statistics Section */}
-      <section className="py-16 bg-white border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            <div className="p-6">
-              <div className="text-4xl sm:text-5xl font-medium text-gray-900 mb-2">
-                <AnimatedCounter targetNumber={300000} />+
-              </div>
-              <div className="text-sm text-gray-600 uppercase tracking-wide">
-                Empresas Ecuatorianas
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                En nuestra base de datos
-              </div>
-            </div>
-            <div className="p-6">
-              <div className="text-4xl sm:text-5xl font-medium text-gray-900 mb-2">
-                <AnimatedCounter targetNumber={1500000} />
-              </div>
-              <div className="text-sm text-gray-600 uppercase tracking-wide">
-                Registros Financieros
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                Datos actualizados y verificados
-              </div>
-            </div>
-            <div className="p-6">
-              <div className="text-4xl sm:text-5xl font-medium text-gray-900 mb-2">
-                <AnimatedCounter targetNumber={200000} />
-              </div>
-              <div className="text-sm text-gray-600 uppercase tracking-wide flex items-center justify-center space-x-1">
-                <span>Contactos</span>
-                <FaLinkedin className="h-5 w-5 text-[#0077B5]" />
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                Perfiles profesionales disponibles
-              </div>
+      <ScrollAnimation delay={200}>
+        <section className="py-12 bg-white border-y border-gray-100">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <ScrollAnimation delay={600}>
+                <div className="group p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 hover:border-indigo-200 hover:shadow-lg transition-all duration-300 text-center">
+                  <div className="text-base md:text-lg font-normal text-gray-700 mb-2">
+                    <AnimatedCounter targetNumber={300000} />+
+                  </div>
+                  <div className="text-xs font-normal text-gray-600 mb-1">Empresas Ecuatorianas</div>
+                  <p className="text-xs text-gray-500">Base de datos actualizada</p>
+                </div>
+              </ScrollAnimation>
+              <ScrollAnimation delay={800}>
+                <div className="group p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 hover:border-indigo-200 hover:shadow-lg transition-all duration-300 text-center">
+                  <div className="text-base md:text-lg font-normal text-gray-700 mb-2">
+                    <AnimatedCounter targetNumber={1500000} />
+                  </div>
+                  <div className="text-xs font-normal text-gray-600 mb-1">Registros Financieros</div>
+                  <p className="text-xs text-gray-500">Datos analizados por IA</p>
+                </div>
+              </ScrollAnimation>
+              <ScrollAnimation delay={1000}>
+                <div className="group p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 hover:border-indigo-200 hover:shadow-lg transition-all duration-300 text-center">
+                  <div className="text-base md:text-lg font-normal text-gray-700 mb-2">
+                    <AnimatedCounter targetNumber={200000} />
+                  </div>
+                  <div className="text-xs font-normal text-gray-600 mb-1 flex items-center justify-center gap-1">
+                    <span>Contactos</span>
+                    <FaLinkedin className="h-3 w-3 text-[#0077B5]" />
+                  </div>
+                  <p className="text-xs text-gray-500">Perfiles de directivos, ejecutivos y empleados</p>
+                </div>
+              </ScrollAnimation>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </ScrollAnimation>
 
-      {/* Features Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-medium text-gray-900">
-              Todo lo que necesitas para encontrar y vender a empresas ecuatorianas
+      {/* AI Models Section */}
+      <section className="py-12 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <h2 className="text-lg font-medium text-gray-800">
+              Modelos
             </h2>
-            <p className="mt-4 text-lg md:text-xl text-gray-700 max-w-3xl mx-auto">
-              Nuestra plataforma combina datos empresariales actualizados con inteligencia artificial 
-              para potenciar tu estrategia comercial.
+          </div>
+          <div className="relative overflow-hidden">
+            <div className="flex animate-marquee space-x-3">
+              {[
+                { src: "/logos/google.svg", name: "Google" },
+                { src: "/logos/openai.svg", name: "OpenAI" },
+                { src: "/logos/claude.svg", name: "Claude" },
+                { src: "/logos/meta.svg", name: "Meta" },
+                { src: "/logos/deepseek.svg", name: "DeepSeek" },
+                { src: "/logos/groq.svg", name: "Groq" },
+                { src: "/logos/google.svg", name: "Google" },
+                { src: "/logos/openai.svg", name: "OpenAI" },
+                { src: "/logos/claude.svg", name: "Claude" },
+                { src: "/logos/meta.svg", name: "Meta" },
+                { src: "/logos/deepseek.svg", name: "DeepSeek" },
+                { src: "/logos/groq.svg", name: "Groq" },
+              ].map((logo, i) => (
+                <div key={i} className="flex-shrink-0 flex flex-col items-center justify-center p-2 bg-gray-50 rounded-lg" style={{ minWidth: '100px' }}>
+                  <Image src={logo.src} alt={logo.name} width={28} height={28} className="grayscale hover:grayscale-0 transition-all duration-300" />
+                  <span className="mt-1.5 text-xs font-medium text-gray-600">{logo.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section - Combined with How it works */}
+      <ScrollAnimation delay={200}>
+        <section className="py-20 bg-gradient-to-b from-white to-slate-50/60">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 className="text-2xl font-medium text-gray-900 mb-3">
+              Resuelve tus desafíos de prospección
+            </h2>
+            <p className="text-lg text-gray-500 mb-10">
+              IA que encuentra, analiza y conecta por ti.
             </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center p-8 bg-white rounded-2xl border border-gray-200 hover:shadow-md transition-transform hover:-translate-y-0.5">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Database className="h-8 w-8 text-gray-900" />
-              </div>
-              <h3 className="text-xl font-medium text-gray-900 mb-2">
-                Base de Datos Completa
-              </h3>
-              <p className="text-gray-700">
-                Accede a información actualizada de miles de empresas ecuatorianas 
-                con datos de contacto, financieros y comerciales.
+            <div className="space-y-5 text-left max-w-xl mx-auto">
+              <p className="flex items-start gap-4 text-gray-700">
+                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-gray-200 text-gray-600 text-xs font-bold text-center leading-5">1</span>
+                <span className="font-light">
+                  <strong className="font-medium">Ahorra tiempo,</strong> olvídate de búsquedas manuales y obtén prospectos perfectos al instante.
+                </span>
               </p>
-            </div>
-            
-            <div className="text-center p-8 bg-white rounded-2xl border border-gray-200 hover:shadow-md transition-transform hover:-translate-y-0.5">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Brain className="h-8 w-8 text-gray-900" />
-              </div>
-              <h3 className="text-xl font-medium text-gray-900 mb-2">
-                Agente de IA Personal
-              </h3>
-              <p className="text-gray-700">
-                Tu asistente inteligente analiza datos, identifica oportunidades 
-                y te ayuda a crear estrategias de venta personalizadas.
+              <p className="flex items-start gap-4 text-gray-700">
+                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-gray-200 text-gray-600 text-xs font-bold text-center leading-5">2</span>
+                <span className="font-light">
+                  <strong className="font-medium">Toma mejores decisiones,</strong> nuestra IA analiza finanzas y sugiere oportunidades reales para tu negocio.
+                </span>
               </p>
-            </div>
-            
-            <div className="text-center p-8 bg-white rounded-2xl border border-gray-200 hover:shadow-md transition-transform hover:-translate-y-0.5">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Target className="h-8 w-8 text-gray-900" />
-              </div>
-              <h3 className="text-xl font-medium text-gray-900 mb-2">
-                Targeting Inteligente
-              </h3>
-              <p className="text-gray-700">
-                Encuentra exactamente las empresas que necesitas con filtros 
-                avanzados y recomendaciones basadas en IA.
+              <p className="flex items-start gap-4 text-gray-700">
+                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-gray-200 text-gray-600 text-xs font-bold text-center leading-5">3</span>
+                <span className="font-light">
+                  <strong className="font-medium">Conecta directamente,</strong> accede a contactos y datos estratégicos para cierres más rápidos.
+                </span>
               </p>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </ScrollAnimation>
 
-      {/* How it works */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-medium text-gray-900">¿Cómo funciona?</h2>
-            <p className="mt-4 text-gray-700 max-w-2xl mx-auto text-lg">De cero a prospectos calificados en minutos.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-8 rounded-2xl border border-gray-200 bg-white hover:shadow-md transition-transform hover:-translate-y-0.5">
-              <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-4">
-                <Search className="h-6 w-6 text-gray-900" />
+      {/* Footer */}
+      <footer className="bg-gray-50 border-t border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            {/* Company Info */}
+            <div className="md:col-span-2">
+              <Link href="/" className="flex items-center gap-2 mb-4">
+                <Image src="/camella-logo.png" alt="Camella Logo" width={100} height={100} />
+              </Link>
+              <p className="text-gray-600 mb-4 max-w-md">
+                Conecta y crece tu negocio con la plataforma más avanzada de conexiones empresariales en Ecuador, impulsada por Inteligencia Artificial.
+              </p>
+              <div className="flex space-x-4">
+                <a href="#" className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <FaLinkedin className="h-5 w-5" />
+                </a>
+                <a href="#" className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <span className="text-sm font-medium">Twitter</span>
+                </a>
+                <a href="#" className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <span className="text-sm font-medium">Blog</span>
+                </a>
               </div>
-              <h3 className="text-lg font-medium text-gray-900">Busca</h3>
-              <p className="mt-2 text-gray-700">Escribe lo que buscas o usa filtros avanzados por industria, tamaño y ubicación.</p>
             </div>
-            <div className="p-8 rounded-2xl border border-gray-200 bg-white hover:shadow-md transition-transform hover:-translate-y-0.5">
-              <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-4">
-                <Filter className="h-6 w-6 text-gray-900" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900">Refina</h3>
-              <p className="mt-2 text-gray-700">Nuestro agente de IA entiende tu contexto y sugiere segmentos con mayor potencial.</p>
-            </div>
-            <div className="p-8 rounded-2xl border border-gray-200 bg-white hover:shadow-md transition-transform hover:-translate-y-0.5">
-              <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-4">
-                <MessageSquare className="h-6 w-6 text-gray-900" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900">Conecta</h3>
-              <p className="mt-2 text-gray-700">Accede a contactos clave y planifica tu acercamiento con insights accionables.</p>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Final CTA */}
-      <section className="py-16 bg-gradient-to-b from-gray-50 to-white border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="rounded-3xl bg-black text-white p-8 sm:p-12 flex flex-col items-center text-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.08),_transparent_60%)]" />
-            <div className="relative">
-              <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 bg-white/10 ring-1 ring-white/20 text-sm">
-                <Rocket className="h-4 w-4" />
-                <span>Empieza hoy</span>
-              </div>
-              <h3 className="mt-4 text-2xl sm:text-3xl font-bold tracking-tight">Lanza tu prospección con IA</h3>
-              <p className="mt-3 text-white/80 max-w-2xl">Prueba la plataforma y descubre nuevos clientes en minutos.</p>
-              <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-                <Link href={user ? "/dashboard" : "/auth/sign-up"}>
-                  <Button size="lg" variant="secondary" className="px-8 py-3 text-lg">Comenzar</Button>
-                </Link>
-                <Link href="/pricing">
-                  <Button size="lg" variant="outline" className="px-8 py-3 bg-white text-lg text-black">Ver planes</Button>
-                </Link>
-              </div>
+            {/* Product */}
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-4">Producto</h3>
+              <ul className="space-y-2">
+                <li><Link href="/companies" className="text-gray-600 hover:text-gray-900 transition-colors">Empresas</Link></li>
+                <li><Link href="/offerings" className="text-gray-600 hover:text-gray-900 transition-colors">Ofertas</Link></li>
+                <li><Link href="/pricing" className="text-gray-600 hover:text-gray-900 transition-colors">Precios</Link></li>
+                <li><Link href="/docs" className="text-gray-600 hover:text-gray-900 transition-colors">Documentación</Link></li>
+              </ul>
+            </div>
+
+            {/* Company */}
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-4">Empresa</h3>
+              <ul className="space-y-2">
+                <li><a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">Sobre nosotros</a></li>
+                <li><a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">Blog</a></li>
+                <li><a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">Carreras</a></li>
+                <li><a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">Contacto</a></li>
+              </ul>
             </div>
           </div>
-        </div>
-      </section>
 
+          <div className="border-t border-gray-200 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
+            <p className="text-gray-600 text-sm">
+              © 2025 Camella. Todos los derechos reservados.
+            </p>
+            <div className="flex space-x-6 mt-4 md:mt-0">
+              <a href="#" className="text-gray-600 hover:text-gray-900 text-sm transition-colors">Privacidad</a>
+              <a href="#" className="text-gray-600 hover:text-gray-900 text-sm transition-colors">Términos</a>
+              <a href="#" className="text-gray-600 hover:text-gray-900 text-sm transition-colors">Cookies</a>
+            </div>
+          </div>
+        </div>
+      </footer>
 
     </div>
   );
+}
+
+export default function Home() {
+  return <HomeContent />;
 }

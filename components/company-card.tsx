@@ -109,7 +109,7 @@ export function CompanyCard({ company, variant = 'grid' }: CompanyCardProps) {
       <div className="flex-grow">
         {/* Card Header */}
         <div className="flex items-center gap-4 mb-4">
-          <div className="w-12 h-12 rounded-full bg-black flex-shrink-0 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-full bg-indigo-600 flex-shrink-0 flex items-center justify-center">
             <span className="text-white font-medium text-base">{initials}</span>
           </div>
           <div className="flex-1 truncate">
@@ -154,8 +154,8 @@ export function CompanyCard({ company, variant = 'grid' }: CompanyCardProps) {
         <div className="flex justify-end items-center text-xs text-gray-500">
           <span>{company.anio}</span>
         </div>
-        <Link href={`/companies/${company.ruc}`} className="w-full">
-          <Button variant="outline" className="w-full h-9">
+        <Link href={`/companies/${company.ruc}`} className="w-full flex justify-center">
+          <Button variant="outline" className="text-indigo-600 border-indigo-600 hover:bg-indigo-50 px-4 h-9">
             Ver perfil
           </Button>
         </Link>

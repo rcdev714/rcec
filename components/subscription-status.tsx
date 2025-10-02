@@ -90,7 +90,7 @@ export default function SubscriptionStatus() {
   const getStatusColor = (planStatus: string) => {
     switch (planStatus) {
       case 'active':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-500 text-white';
       case 'trialing':
         return 'bg-blue-100 text-blue-800';
       case 'past_due':
@@ -177,7 +177,7 @@ export default function SubscriptionStatus() {
   }
 
   return (
-    <Card className="bg-white text-gray-900 border-gray-200 shadow-sm">
+    <Card className="bg-white text-gray-900 border-gray-200 shadow-sm max-w-sm">
       <CardHeader>
         <CardTitle>Subscription Status</CardTitle>
       </CardHeader>
@@ -223,21 +223,21 @@ export default function SubscriptionStatus() {
 
         <div className="flex gap-2">
           {status.plan !== 'FREE' && (
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleManageSubscription}
-              className="flex-1"
+              className="flex-1 border-indigo-500 text-indigo-500 hover:bg-indigo-50"
             >
               Gestionar Suscripción
             </Button>
           )}
-          
-          <Button 
-            variant="default" 
-            size="sm" 
+
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => window.location.href = '/pricing'}
-            className="flex-1"
+            className="flex-1 border-indigo-500 text-indigo-500 bg-white hover:bg-indigo-50"
           >
             {status.plan === 'FREE' ? 'Actualizar Plan' : 'Cambiar Plan'}
           </Button>

@@ -4,11 +4,42 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckIcon } from '@heroicons/react/20/solid';
+import { CheckIcon, XMarkIcon } from '@heroicons/react/20/solid';
 import { UserSubscription } from '@/types/subscription';
 import { transformPlanForDisplay, getPlansWithLimitsClient } from '@/lib/plans-client';
 
 // transformPlanForDisplay function is imported from plans-client.ts
+
+// Define plan-specific features to avoid redundancy
+const planFeatures = {
+  FREE: [
+    { name: 'Chat con IA (10 mensajes/mes)', available: true },
+    { name: 'Búsqueda manual limitada (10/mes)', available: true },
+    { name: 'IA', available: true },
+    { name: 'Soporte básico', available: true },
+    { name: 'Acceso a la comunidad', available: true },
+    { name: 'Búsqueda en LinkedIn', available: false },
+    { name: 'Exportación de datos', available: false },
+    { name: 'Soporte prioritario', available: false }
+  ],
+  PRO: [
+    'Chat con IA (100 mensajes/mes)',
+    'Búsqueda ilimitada de empresas',
+    'Modo Agente',
+    'Exportación de datos (50/mes)',
+    'Búsqueda en LinkedIn',
+    'Soporte prioritario'
+  ],
+  ENTERPRISE: [
+    'Chat con IA (500 mensajes/mes)',
+    'Búsqueda ilimitada de empresas',
+    'Modo Agente',
+    'Exportaciones ilimitadas',
+    'Búsqueda en LinkedIn',
+    'Integraciones personalizadas',
+    'Soporte dedicado'
+  ]
+};
 
 // Get fallback plans (defined outside component to avoid useEffect dependency issues)
 const getFallbackPlans = () => [
@@ -17,31 +48,17 @@ const getFallbackPlans = () => [
     name: 'Gratuito',
     price: 0,
     description: 'Prueba la IA para búsquedas empresariales',
-    features: [
-      'Chat con IA (10 mensajes/mes)',
-      'Búsqueda manual limitada de empresas (100/mes)',
-      'Acceso a funciones básicas',
-      'Soporte básico',
-      'Acceso a la comunidad'
-    ],
+    features: planFeatures.FREE,
     buttonText: 'Plan Actual',
     popular: false,
-    limits: { searches_per_month: 100, exports_per_month: 10, companies_per_export: 0, prompts_per_month: 10 },
+    limits: { searches_per_month: 10, exports_per_month: 0, companies_per_export: 0, prompts_per_month: 10 },
   },
   {
     id: 'PRO',
     name: 'Pro',
     price: 20,
     description: 'Potencia tu negocio con IA avanzada',
-    features: [
-      'Chat con IA (100 mensajes/mes)',
-      'Búsqueda ilimitada de empresas',
-      'Filtros avanzados de IA',
-      'Análisis inteligente de datos',
-      'Exportación de datos (50/mes)',
-      'Soporte prioritario',
-      'Búsqueda en LinkedIn'
-    ],
+    features: planFeatures.PRO,
     buttonText: 'Actualizar a Pro',
     popular: true,
     limits: { searches_per_month: -1, exports_per_month: 50, companies_per_export: 1000, prompts_per_month: 100 },
@@ -51,21 +68,14 @@ const getFallbackPlans = () => [
     name: 'Empresarial',
     price: 200,
     description: 'IA empresarial para grandes organizaciones',
-    features: [
-      'Chat con IA (500 mensajes/mes)',
-      'Búsqueda ilimitada de empresas',
-      'Análisis avanzado con IA',
-      'Análisis inteligente de datos',
-      'Exportaciones ilimitadas',
-      'Búsqueda en LinkedIn',
-      'Integraciones personalizadas',
-      'Soporte dedicado'
-    ],
+    features: planFeatures.ENTERPRISE,
     buttonText: 'Actualizar a Empresarial',
     popular: false,
     limits: { searches_per_month: -1, exports_per_month: -1, companies_per_export: -1, prompts_per_month: 500 },
   },
 ];
+
+type PlanFeature = string | { name: string; available: boolean };
 
 export default function PricingPlans() {
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
@@ -74,7 +84,7 @@ export default function PricingPlans() {
     name: string;
     price: number;
     description: string;
-    features: string[];
+    features: PlanFeature[] | Array<{ name: string; available: boolean }>;
     buttonText: string;
     popular: boolean;
     limits: {
@@ -103,7 +113,13 @@ export default function PricingPlans() {
           transformPlanForDisplay(plan, plan.limits)
         );
 
-        setPlans(plansForDisplay);
+        // Replace features with plan-specific features to avoid redundancy
+        const plansWithFeatures = plansForDisplay.map(plan => ({
+          ...plan,
+          features: planFeatures[plan.id as keyof typeof planFeatures] || plan.features
+        }));
+
+        setPlans(plansWithFeatures);
       } catch (error) {
         console.error('Error fetching data:', error);
         // Fallback to hardcoded plans if database fails
@@ -209,12 +225,24 @@ export default function PricingPlans() {
 
           <CardContent className="px-6 pb-6">
             <ul className="space-y-3 mb-8">
-              {plan.features.map((feature: string, index: number) => (
-                <li key={index} className="flex items-start">
-                  <CheckIcon className="h-4 w-4 text-gray-600 mt-0.5 mr-3 flex-shrink-0" />
-                  <span className="text-sm text-gray-700 leading-relaxed">{feature}</span>
-                </li>
-              ))}
+              {plan.features.map((feature: PlanFeature, index: number) => {
+                const isObject = typeof feature === 'object' && feature !== null;
+                const featureName = isObject ? feature.name : feature;
+                const isAvailable = isObject ? feature.available : true;
+
+                return (
+                  <li key={index} className="flex items-start">
+                    {isAvailable ? (
+                      <CheckIcon className="h-4 w-4 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
+                    ) : (
+                      <XMarkIcon className="h-4 w-4 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+                    )}
+                    <span className={`text-sm leading-relaxed ${isAvailable ? 'text-gray-700' : 'text-gray-400'}`}>
+                      {featureName}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
 
             <Button

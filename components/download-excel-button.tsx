@@ -122,7 +122,7 @@ export function DownloadExcelButton({ searchParams, totalCount, className }: Dow
           disabled={isDownloading || totalCount === 0}
           variant="outline"
           size="sm"
-          className="flex items-center gap-2 h-8 px-3 text-sm text-gray-900 border-gray-300 hover:bg-gray-100"
+          className="flex items-center gap-2 h-8 px-3 text-sm bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700"
         >
           {isDownloading ? (
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -136,8 +136,8 @@ export function DownloadExcelButton({ searchParams, totalCount, className }: Dow
         {progress.isActive && (
           <div className="space-y-1">
             <div className="w-full bg-gray-200 rounded-full h-1.5">
-              <div 
-                className="bg-blue-600 h-1.5 rounded-full transition-all duration-300 ease-out"
+              <div
+                className="bg-indigo-600 h-1.5 rounded-full transition-all duration-300 ease-out"
                 style={{ width: `${progressPercentage}%` }}
               />
             </div>

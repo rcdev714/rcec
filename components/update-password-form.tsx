@@ -54,11 +54,11 @@ export function UpdatePasswordForm({
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-10"
+                  className="h-10 transition-all duration-200"
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={isLoading}>
+              <Button type="submit" className="w-full bg-indigo-500 text-white hover:bg-indigo-600" disabled={isLoading}>
                 {isLoading ? "Guardando..." : "Guardar nueva contraseña"}
               </Button>
             </div>

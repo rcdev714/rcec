@@ -40,7 +40,7 @@ export function GoogleSignInButton() {
     <Button
       type="button"
       variant="outline"
-      className="w-full"
+      className="w-auto"
       onClick={handleGoogleSignIn}
       disabled={isLoading}
     >

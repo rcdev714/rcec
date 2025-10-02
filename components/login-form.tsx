@@ -75,7 +75,7 @@ export function LoginForm({
       <Card className="border-border/50 shadow-sm">
         <CardContent className="pt-6">
           {/* Google Sign In */}
-          <div className="mb-6">
+          <div className="mb-6 flex justify-center">
             <GoogleSignInButton />
           </div>
           
@@ -102,7 +102,7 @@ export function LoginForm({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-10"
+                  className="h-10 transition-all duration-200"
                   autoComplete="email"
                 />
               </div>
@@ -122,7 +122,7 @@ export function LoginForm({
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-10"
+                  className="h-10 transition-all duration-200"
                   autoComplete="current-password"
                 />
               </div>
@@ -131,7 +131,7 @@ export function LoginForm({
                   <p className="text-sm text-red-800">{error}</p>
                 </div>
               )}
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={isLoading}>
+              <Button type="submit" className="w-full bg-indigo-500 text-white hover:bg-indigo-600" disabled={isLoading}>
                 {isLoading ? "Iniciando sesión..." : "Iniciar sesión"}
               </Button>
             </div>

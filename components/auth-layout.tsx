@@ -17,7 +17,7 @@ interface AuthLayoutProps {
 
 export function AuthLayout({ children, title, hero }: AuthLayoutProps) {
   const heroHeading =
-    hero?.heading ?? "Encuentra y conecta con empresas, rápido";
+    hero?.heading ?? "Encuentra y conecta con empresas, rápido.";
   const heroSubheading =
     hero?.subheading ?? "";
   const heroImageSrc = hero?.imageSrc ?? "/heroImage.jpg";
@@ -65,7 +65,7 @@ export function AuthLayout({ children, title, hero }: AuthLayoutProps) {
       </div>
 
       {/* Right column: hero */}
-      <div className="relative hidden md:flex items-start justify-center pt-[33.33vh] bg-black overflow-hidden">
+      <div className="relative hidden md:flex items-start justify-center pt-[33.33vh] bg-indigo-950 overflow-hidden">
         {/* Background image */}
         <Image
           src={heroImageSrc}
@@ -75,7 +75,7 @@ export function AuthLayout({ children, title, hero }: AuthLayoutProps) {
           className="object-cover"
         />
         {/* Gradient overlay for readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent z-20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-indigo-950/70 via-indigo-950/40 to-transparent z-20" />
 
         {/* Content */}
         <div className="relative z-30 flex flex-col items-center text-center px-10">

@@ -122,7 +122,7 @@ export default function ConversationSidebar({
       {/* Sidebar container: mobile drawer + desktop static */}
       <div
         className={`
-          z-40 bg-white transition-all duration-300 ease-in-out
+          z-40 bg-gray-50 transition-all duration-300 ease-in-out
           fixed inset-y-0 left-0 w-64 ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static md:ml-12
           ${isCollapsed ? 'md:w-16 md:ml-12' : 'md:w-64 md:ml-12'}
           flex flex-col h-full

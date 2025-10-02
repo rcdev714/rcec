@@ -40,7 +40,7 @@ export default async function ConversationPage({ params }: ConversationPageProps
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Header */}
-      <div className="border-b border-border bg-card px-6 py-4 shrink-0">
+      <div className="border-b border-indigo-300 bg-card px-6 py-4 shrink-0">
         <h1 className="text-lg font-semibold text-foreground">
           {conversation.title}
         </h1>

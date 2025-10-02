@@ -360,7 +360,7 @@ export default function SettingsPage() {
 
                     {/* Submit Button */}
                     <div className="flex justify-end pt-4">
-                      <Button type="submit" disabled={saving} className="px-8 h-11">
+                      <Button type="submit" disabled={saving} className="px-8 h-11 bg-indigo-500">
                         {saving ? 'Guardando...' : 'Guardar Cambios'}
                       </Button>
                     </div>
@@ -383,44 +383,16 @@ export default function SettingsPage() {
                   </CardHeader>
                   <CardContent>
                     <SubscriptionStatus />
+                    <Button 
+                      onClick={handleManagePayment}
+                      className="w-full mt-4"
+                    >
+                      Gestionar Suscripción
+                    </Button>
                   </CardContent>
                 </Card>
               </div>
 
-              <div id="billing">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Gestión de Pagos</CardTitle>
-                    <CardDescription>Administra tu facturación y métodos de pago</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-3">
-                      <Button
-                        onClick={handleManagePayment}
-                        variant="outline"
-                        disabled={userSettings?.subscription_plan === 'FREE'}
-                        className="h-11"
-                      >
-                        Portal de Facturación
-                      </Button>
-                      <Button
-                        onClick={() => (window.location.href = '/pricing')}
-                        variant="default"
-                        className="h-11"
-                      >
-                        {userSettings?.subscription_plan === 'FREE' ? 'Actualizar Plan' : 'Cambiar Plan'}
-                      </Button>
-                    </div>
-                    {userSettings?.subscription_plan === 'FREE' && (
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p className="text-xs text-blue-700">
-                          El portal de facturación está disponible solo para suscripciones de pago.
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
             </div>
           </div>
         </div>
