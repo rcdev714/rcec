@@ -53,7 +53,7 @@ export async function GET() {
       .in('status', ['active', 'trialing'])
       .neq('plan', 'FREE')
 
-    const monthlyRevenue = subscriptions?.reduce((total, sub) => {
+    const monthlyRevenue = subscriptions?.reduce((total: number, sub) => {
       switch (sub.plan) {
         case 'PRO':
           return total + 20
