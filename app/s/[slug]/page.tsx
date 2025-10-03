@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { createStaticClient } from "@/lib/supabase/static";
+import { createStaticClient } from "@/lib/supabase/staticClient";
 import { AuthButton } from "@/components/auth-button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,16 +76,17 @@ export const revalidate = 3600; // Revalidate every hour
 
 export async function generateStaticParams() {
   const supabase = createStaticClient();
-  type OfferingSlug = { public_slug: string };
   const { data: offerings } = await supabase
     .from('user_offerings')
     .select('public_slug')
     .eq('is_public', true)
     .is('public_revoked_at', null)
-    .limit(100) // Pre-build the first 100 public offerings
-    .returns<OfferingSlug[]>();
+    .limit(100); // Pre-build the first 100 public offerings
 
-  return offerings?.map(({ public_slug }) => ({
+  type OfferingSlug = { public_slug: string };
+  const typedOfferings: OfferingSlug[] | null = offerings;
+
+  return typedOfferings?.map(({ public_slug }) => ({
     slug: public_slug,
   })) || [];
 }
