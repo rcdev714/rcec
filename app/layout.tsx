@@ -10,9 +10,14 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
-const defaultUrl = process.env.RAILWAY_PUBLIC_DOMAIN
+const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN
   ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
   : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+// Ensure no double protocol and normalize the URL
+const defaultUrl = baseUrl.startsWith('http://') || baseUrl.startsWith('https://')
+  ? baseUrl
+  : `https://${baseUrl}`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),

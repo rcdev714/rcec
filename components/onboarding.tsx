@@ -112,14 +112,20 @@ export default function Onboarding() {
     const initOnboarding = async () => {
       // Get authenticated user
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+          console.error('Error fetching user for onboarding:', error);
+          setIsLoading(false);
+          return;
+        }
 
-      if (!user) {
-        setIsLoading(false);
-        return;
-      }
+        if (!user) {
+          setIsLoading(false);
+          return;
+        }
 
-      setUserId(user.id);
+        setUserId(user.id);
 
       // Check if we should show global onboarding
       const globalKey = getStorageKey(user.id, "global");
@@ -141,10 +147,28 @@ export default function Onboarding() {
         }
       }
 
-      setIsLoading(false);
+      } catch (err) {
+        console.error('Failed to initialize onboarding:', err);
+        setIsLoading(false);
+      }
+      
+      // Also subscribe to auth changes to react to sign-in/out in other tabs
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        (_event, session) => {
+          setUserId(session?.user?.id ?? null);
+        }
+      );
+      
+      return () => {
+        subscription.unsubscribe();
+      };
     };
 
-    initOnboarding();
+    const cleanupPromise = initOnboarding();
+    return () => {
+      // Ensure cleanup if init returned a cleanup function
+      Promise.resolve(cleanupPromise).catch(() => {});
+    };
   }, [pathname, routeSegment, pageContent]);
 
   const markGlobalComplete = () => {

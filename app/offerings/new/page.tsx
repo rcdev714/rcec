@@ -49,15 +49,31 @@ export default function NewOfferingPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
+    const supabase = createClient();
     const fetchUser = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      if (!user) {
-        router.push("/auth/login");
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+          console.error('Error fetching user in offerings/new:', error);
+          return;
+        }
+        setUser(user);
+        if (!user) {
+          router.push("/auth/login");
+        }
+      } catch (err) {
+        console.error('Failed to fetch user in offerings/new:', err);
       }
     };
     fetchUser();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [router]);
 
   // Render nothing or a loading spinner until user is fetched

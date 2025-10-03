@@ -54,6 +54,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Create checkout session
+    const envBase = process.env.RAILWAY_PUBLIC_DOMAIN
+      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+      : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const baseUrl = envBase.startsWith('http://') || envBase.startsWith('https://')
+      ? envBase
+      : `https://${envBase}`;
+
     const session = await getStripe().checkout.sessions.create({
       customer: customerId,
       billing_address_collection: 'auto',
@@ -64,8 +71,8 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: 'subscription',
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/pricing`,
+      success_url: `${baseUrl}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/pricing`,
       metadata: {
         supabase_user_id: user.id,
         plan_id: planId,

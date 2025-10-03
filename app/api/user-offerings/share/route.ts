@@ -67,10 +67,13 @@ export async function POST(request: Request) {
     // Get base URL from environment or derive from request
     const host = request.headers.get('host');
     const protocol = request.headers.get('x-forwarded-proto') || 'http';
-    const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN
+    const envBase = process.env.RAILWAY_PUBLIC_DOMAIN
       ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-      : process.env.NEXT_PUBLIC_APP_URL 
-      || (host ? `${protocol}://${host}` : 'http://localhost:3000');
+      : process.env.NEXT_PUBLIC_APP_URL
+        || (host ? `${protocol}://${host}` : 'http://localhost:3000');
+    const baseUrl = envBase.startsWith('http://') || envBase.startsWith('https://')
+      ? envBase
+      : `https://${envBase}`;
 
     const shareUrl = updated.is_public && updated.public_slug
       ? `${baseUrl}/s/${updated.public_slug}`

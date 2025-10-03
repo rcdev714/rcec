@@ -26,9 +26,14 @@ export async function generateMetadata(
     .is("public_revoked_at", null)
     .single();
 
-  const defaultUrl = process.env.RAILWAY_PUBLIC_DOMAIN
+  const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN
     ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
     : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  
+  // Ensure no double protocol and normalize the URL
+  const defaultUrl = baseUrl.startsWith('http://') || baseUrl.startsWith('https://')
+    ? baseUrl
+    : `https://${baseUrl}`;
 
   if (!offering) {
     return {
@@ -51,9 +56,9 @@ export async function generateMetadata(
       url: `${defaultUrl}/s/${slug}`,
       images: [
         {
-          url: '/og-image.jpg', // Replace with dynamic image if available
-          width: 1200,
-          height: 630,
+          url: '/logo-image.png', // Replace with dynamic image if available
+          width: 500,
+          height: 500,
           alt: title,
         },
       ],

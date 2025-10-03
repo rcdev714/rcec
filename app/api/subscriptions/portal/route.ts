@@ -27,9 +27,16 @@ export async function POST() {
     }
 
     // Create portal session
+    const envBase = process.env.RAILWAY_PUBLIC_DOMAIN
+      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+      : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const baseUrl = envBase.startsWith('http://') || envBase.startsWith('https://')
+      ? envBase
+      : `https://${envBase}`;
+
     const portalSession = await getStripe().billingPortal.sessions.create({
       customer: subscription.customer_id,
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard`,
+      return_url: `${baseUrl}/dashboard`,
     });
 
     return NextResponse.json({
