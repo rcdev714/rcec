@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createStaticClient } from "@supabase/supabase-js";
 import { AuthButton } from "@/components/auth-button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +15,11 @@ export async function generateMetadata(
   { params }: Props,
   _parent: ResolvingMetadata
 ): Promise<Metadata> {
-  const supabase = await createClient();
+  // Use static client for metadata generation (no cookies needed)
+  const supabase = createStaticClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
   const { slug } = await params;
 
   const { data: offering } = await supabase
@@ -74,7 +79,12 @@ export async function generateMetadata(
 export const revalidate = 3600; // Revalidate every hour
 
 export async function generateStaticParams() {
-  const supabase = await createClient();
+  // Use static Supabase client for build-time generation (no cookies needed)
+  const supabase = createStaticClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
   const { data: offerings } = await supabase
     .from('user_offerings')
     .select('public_slug')
