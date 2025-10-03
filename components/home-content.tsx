@@ -199,7 +199,7 @@ export default function HomeContent() {
                 </Link>
               ) : (
                 <Link href="/auth/sign-up">
-                  <Button size="sm" className="px-4 py-2 text-xs font-medium bg-slate-900 text-white hover:bg-slate-800 shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 active:scale-95">
+                  <Button size="sm" className="px-4 py-2 text-xs font-medium bg-indigo-500 text-white hover:bg-indigo-600 shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 active:scale-95">
                     Empezar Gratis
                   </Button>
                 </Link>

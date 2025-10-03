@@ -19,6 +19,7 @@ interface DialogHeaderProps {
 
 interface DialogTitleProps {
   children: React.ReactNode;
+  className?: string;
 }
 
 interface DialogTriggerProps {
@@ -58,9 +59,9 @@ export const DialogHeader: React.FC<DialogHeaderProps> = ({ children }) => {
   );
 };
 
-export const DialogTitle: React.FC<DialogTitleProps> = ({ children }) => {
+export const DialogTitle: React.FC<DialogTitleProps> = ({ children, className }) => {
   return (
-    <h2 className="text-lg font-semibold">
+    <h2 className={className || "text-lg font-semibold"}>
       {children}
     </h2>
   );

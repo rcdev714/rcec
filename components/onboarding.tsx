@@ -249,9 +249,7 @@ export default function Onboarding() {
                     <Icon className="h-6 w-6 text-white" />
                   </div>
                 )}
-                <h2 className="text-2xl font-semibold tracking-tight">
-                  <DialogTitle>{slide.title}</DialogTitle>
-                </h2>
+                <DialogTitle className="text-2xl font-semibold tracking-tight">{slide.title}</DialogTitle>
               </div>
             </div>
           </DialogHeader>
@@ -361,9 +359,7 @@ export default function Onboarding() {
                     <Icon className="h-5 w-5 text-gray-900" />
                   </div>
                 )}
-                <h3 className="text-xl font-semibold">
-                  <DialogTitle>{pageContent.title}</DialogTitle>
-                </h3>
+                <DialogTitle className="text-xl font-semibold">{pageContent.title}</DialogTitle>
               </div>
 
               <p className="mt-4 text-gray-700 leading-relaxed">
