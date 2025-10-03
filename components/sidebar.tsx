@@ -42,18 +42,18 @@ const Sidebar = () => {
         isCollapsed ? "w-16" : "w-16 md:w-48"
       )}
     >
-      <div className="flex items-center justify-center h-16 p-2 relative">
+      <div className="flex items-center justify-between h-16 p-2 relative">
         <div className={cn("flex items-center gap-2")}>
           <Image src="/logo.svg" alt="Camella Logo" width={35} height={35} />
           <Image src="/camella-logo.svg" alt="Camella Logo text" width={95} height={35} className={cn("hidden", !isCollapsed && "md:block")} />
         </div>
+        <button
+          onClick={toggleSidebar}
+          className="bg-white border border-gray-300 rounded-full p-1 shadow-md hover:bg-gray-100 transition-all z-10"
+        >
+          {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </button>
       </div>
-      <button
-        onClick={toggleSidebar}
-        className="absolute top-1/2 -right-3 transform -translate-y-1/2 bg-white border border-gray-300 rounded-full p-1 shadow-md hover:bg-gray-100 transition-all"
-      >
-        {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-      </button>
 
       <nav className="flex-grow px-2 py-6">
         <ul className="space-y-3">
