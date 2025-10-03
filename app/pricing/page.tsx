@@ -1,5 +1,3 @@
-import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
 import PricingPlans from '@/components/pricing-plans';
 
 export default async function PricingPage({
@@ -7,13 +5,6 @@ export default async function PricingPage({
 }: {
   searchParams: Promise<{ upgrade?: string }>;
 }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) {
-    redirect('/auth/login');
-  }
-
   const resolvedSearchParams = await searchParams;
   const upgradeRequired = resolvedSearchParams.upgrade === 'required';
 

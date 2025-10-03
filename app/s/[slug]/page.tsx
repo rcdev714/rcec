@@ -1,11 +1,87 @@
 import { createClient } from "@/lib/supabase/server";
+import { createStaticClient } from "@/lib/supabase/static";
 import { AuthButton } from "@/components/auth-button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import PublicViewTracker from "@/components/public-view-tracker";
+import { Metadata, ResolvingMetadata } from "next";
 
-export const dynamic = "force-dynamic";
+type Props = {
+  params: Promise<{ slug: string }>;
+};
+
+export async function generateMetadata(
+  { params }: Props,
+  _parent: ResolvingMetadata
+): Promise<Metadata> {
+  const supabase = createStaticClient();
+  const { slug } = await params;
+
+  const { data: offering } = await supabase
+    .from("user_offerings")
+    .select("offering_name, description, public_company_name")
+    .eq("public_slug", slug)
+    .eq("is_public", true)
+    .is("public_revoked_at", null)
+    .single();
+
+  const defaultUrl = process.env.RAILWAY_PUBLIC_DOMAIN
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  if (!offering) {
+    return {
+      title: "Oferta no encontrada",
+    };
+  }
+
+  const title = `${offering.offering_name} por ${offering.public_company_name || 'Empresa'}`;
+  const description = offering.description?.substring(0, 160) || "Información detallada sobre esta oferta.";
+
+  return {
+    title: title,
+    description: description,
+    alternates: {
+      canonical: `${defaultUrl}/s/${slug}`,
+    },
+    openGraph: {
+      title: title,
+      description: description,
+      url: `${defaultUrl}/s/${slug}`,
+      images: [
+        {
+          url: '/og-image.jpg', // Replace with dynamic image if available
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: title,
+      description: description,
+      images: [`${defaultUrl}/logo.png`], // Replace with dynamic image if available
+    },
+  };
+}
+
+export const revalidate = 3600; // Revalidate every hour
+
+export async function generateStaticParams() {
+  const supabase = createStaticClient();
+  const { data: offerings } = await supabase
+    .from('user_offerings')
+    .select('public_slug')
+    .eq('is_public', true)
+    .is('public_revoked_at', null)
+    .limit(100); // Pre-build the first 100 public offerings
+
+  return offerings?.map(({ public_slug }) => ({
+    slug: public_slug,
+  })) || [];
+}
 
 type PricePlan = { name?: string; price?: number | string; period?: string };
 
@@ -77,6 +153,31 @@ export default async function PublicOfferingPage({ params }: { params: Promise<{
     );
   }
 
+  // Structured data JSON-LD (computed after data fetch)
+  const numericPrices: number[] = (offering.price_plans || [])
+    .map((pl: PricePlan) => toNumber(pl.price))
+    .filter((n: number | null): n is number => n !== null);
+  const lowPrice = numericPrices.length ? Math.min(...numericPrices) : undefined;
+  const highPrice = numericPrices.length ? Math.max(...numericPrices) : undefined;
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: offering.offering_name,
+    description: offering.description,
+    brand: {
+      "@type": "Organization",
+      name: offering.public_company_name,
+    },
+    offers: {
+      "@type": "AggregateOffer",
+      priceCurrency: "USD",
+      lowPrice: lowPrice ?? undefined,
+      highPrice: highPrice ?? undefined,
+      offerCount: (offering.price_plans?.length ?? 0),
+    },
+  };
+
   // Simple price display
   const priceDisplay = (() => {
     const paymentType = offering.payment_type;
@@ -113,6 +214,12 @@ export default async function PublicOfferingPage({ params }: { params: Promise<{
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white text-gray-900">
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
       <header className="w-full border-b border-gray-200 bg-white/80 backdrop-blur">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <Link href="/" className="font-semibold">Camella</Link>
