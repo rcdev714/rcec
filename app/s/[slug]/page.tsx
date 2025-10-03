@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { createStaticClient } from "../../../lib/supabase/staticClient";
+import { createStaticClient } from "@/lib/supabase/staticClient";
 import { AuthButton } from "@/components/auth-button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
