@@ -61,7 +61,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Define public paths that don't require authentication
-  const publicPaths = ['/', '/pricing', '/auth/confirm', '/auth/sign-up-success']
+  const publicPaths = ['/', '/auth/confirm', '/auth/sign-up-success', '/contacto', '/carreras', '/inversores']
   const publicPrefixes = ['/s/']
   const isPublicPath = publicPaths.includes(request.nextUrl.pathname) ||
     publicPrefixes.some(prefix => request.nextUrl.pathname.startsWith(prefix))

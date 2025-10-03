@@ -67,7 +67,11 @@ export function PaginationControls({
           variant={currentPage === page ? "default" : "outline"}
           size="sm"
           onClick={() => router.push(`?${createPageURL(page)}`)}
-          className="h-8 min-w-8 text-xs"
+          className={`h-8 min-w-8 text-xs ${
+            currentPage === page
+              ? 'bg-indigo-500 text-white hover:bg-indigo-600'
+              : ''
+          }`}
         >
           {page}
         </Button>

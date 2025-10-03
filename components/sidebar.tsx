@@ -38,18 +38,24 @@ const Sidebar = () => {
   return (
     <aside
       className={cn(
-        "fixed top-0 left-0 h-full bg-white text-gray-500 transition-all duration-300 ease-in-out z-50 border-r border-gray-400 flex flex-col",
+        "fixed top-0 left-0 h-full bg-white text-gray-500 transition-all duration-300 ease-in-out z-50 border-r border-gray-200 flex flex-col",
         isCollapsed ? "w-16" : "w-16 md:w-48"
       )}
     >
-      <div className="flex items-center justify-between h-16 p-2 relative">
+      <div className="flex items-center justify-center h-16 relative">
         <div className={cn("flex items-center gap-2")}>
           <Image src="/logo.svg" alt="Camella Logo" width={35} height={35} />
-          <Image src="/camella-logo.svg" alt="Camella Logo text" width={95} height={35} className={cn("hidden", !isCollapsed && "md:block")} />
+          <Image
+            src="/camella-logo.svg"
+            alt="Camella Logo text"
+            width={95}
+            height={35}
+            className={cn("hidden", !isCollapsed && "md:block")}
+          />
         </div>
         <button
           onClick={toggleSidebar}
-          className="bg-white border border-gray-300 rounded-full p-1 shadow-md hover:bg-gray-100 transition-all z-10"
+          className="absolute right-[-12px] top-1/2 -translate-y-1/2 bg-white border border-gray-300 rounded-full p-1 shadow-md hover:bg-gray-100 transition-all z-10"
         >
           {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>

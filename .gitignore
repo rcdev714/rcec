@@ -45,6 +45,7 @@ supabase
 .env.local
 company-data
 scripts-data
+scripts-sql
 
 # Local Netlify folder
 .netlify

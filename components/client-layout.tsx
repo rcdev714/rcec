@@ -13,7 +13,8 @@ export default function ClientLayout({
 }) {
   const pathname = usePathname();
   // Don't show sidebar on landing page, auth pages, or any other public pages
-  const shouldRenderSidebar = pathname !== "/" && !pathname.startsWith("/auth") && !pathname.startsWith("/s/");
+  const publicPaths = ['/', '/contacto', '/carreras', '/inversores'];
+  const shouldRenderSidebar = !publicPaths.includes(pathname) && !pathname.startsWith("/auth") && !pathname.startsWith("/s/");
   
   return (
     <div className="flex min-h-screen">

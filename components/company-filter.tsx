@@ -367,7 +367,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
       <div className="flex gap-2 pt-2 justify-center">
         <Button
           onClick={handleApply}
-          className="flex-1 text-sm h-9 border hover:text-gray-600 border-gray-300"
+          className="text-sm h-9 bg-indigo-500 text-white hover:bg-indigo-600 transition-transform active:scale-95"
           disabled={isApplying}
         >
           {isApplying ? 'Aplicando...' : 'Aplicar filtros'}

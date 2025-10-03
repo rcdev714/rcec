@@ -26,7 +26,7 @@ export function AuthLayout({ children, title, hero }: AuthLayoutProps) {
   return (
     <div className="min-h-screen bg-background grid md:grid-cols-2">
       {/* Left column: form */}
-      <div className="relative flex min-h-screen flex-col items-center justify-center p-6 md:p-10">
+      <div className="relative z-10 flex min-h-screen flex-col items-center justify-center p-6 md:p-10">
         {/* Brand */}
         <div className="absolute top-6 left-6 md:top-10 md:left-10">
           <Link href="/" className="inline-flex items-center gap-3 group">
