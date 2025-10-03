@@ -76,12 +76,14 @@ export const revalidate = 3600; // Revalidate every hour
 
 export async function generateStaticParams() {
   const supabase = createStaticClient();
+  type OfferingSlug = { public_slug: string };
   const { data: offerings } = await supabase
     .from('user_offerings')
     .select('public_slug')
     .eq('is_public', true)
     .is('public_revoked_at', null)
-    .limit(100); // Pre-build the first 100 public offerings
+    .limit(100) // Pre-build the first 100 public offerings
+    .returns<OfferingSlug[]>();
 
   return offerings?.map(({ public_slug }) => ({
     slug: public_slug,
