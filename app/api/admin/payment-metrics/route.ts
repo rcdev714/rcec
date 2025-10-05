@@ -84,6 +84,7 @@ export async function GET() {
 
     return NextResponse.json({
       stripeStatus,
+      stripeApiVersion: process.env.STRIPE_API_VERSION || 'account_default',
       recentTransactions,
       failedPayments: failedPayments || 0,
       activeWebhooks,

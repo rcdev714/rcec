@@ -13,7 +13,7 @@ export default function DashboardPage() {
           <div className="text-left">
             <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
             <p className="mt-1 text-sm text-gray-600">
-              Monitorea tu uso mensual de búsquedas, conversaciones IA y exportaciones. Gestiona tu suscripción y analiza tu actividad.
+              Monitorea tu uso mensual de búsquedas, conversaciones Agentes y exportaciones. Gestiona tu suscripción y analiza tu actividad.
             </p>
           </div>
         </div>

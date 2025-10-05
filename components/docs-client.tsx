@@ -120,7 +120,7 @@ export default function DocsPageClient() {
         <div className="prose prose-lg max-w-none">
             <h1 className="text-3xl font-semibold tracking-tight text-gray-900 !mb-3">Base de Datos Empresarial</h1>
           <p className="text-lg !mt-0 text-gray-500">
-            Información completa and actualizada de más de 300,000 empresas ecuatorianas.
+            Información completa y actualizada de más de 300,000 empresas ecuatorianas.
             </p>
 
           <h2 id="db-info" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Información Disponible</h2>
@@ -326,7 +326,7 @@ export default function DocsPageClient() {
                     <div className="flex items-start space-x-3">
                       <div className="w-2 h-2 bg-white0 rounded-full mt-3 flex-shrink-0"></div>
                       <div>
-                        <h4 className="font-medium text-gray-900">Descripción Detalhada</h4>
+                        <h4 className="font-medium text-gray-900">Descripción Detallada</h4>
                         <p className="text-sm text-gray-600">Explica qué ofreces y sus beneficios</p>
                       </div>
                     </div>
@@ -878,6 +878,12 @@ export default function DocsPageClient() {
             <li><strong>Portal de Facturación:</strong> Accede al portal seguro de Stripe para actualizar tu método de pago, ver facturas y gestionar tu suscripción. (Disponible solo para planes de pago).</li>
             <li><strong>Cambiar Plan:</strong> Explora otros planes y actualiza tu suscripción para acceder a más funcionalidades.</li>
           </ul>
+          <p className="!mt-6 text-sm text-gray-600">
+            Integración con Stripe: utilizamos la versión de API configurada en <code>STRIPE_API_VERSION</code> (o la versión por defecto de tu cuenta si no está definida). Consulta la documentación oficial para más detalles:
+            {' '}<a className="text-blue-600 hover:underline" href="https://docs.stripe.com/api/checkout/sessions" target="_blank" rel="noreferrer">Checkout Sessions</a>,{' '}
+            <a className="text-blue-600 hover:underline" href="https://docs.stripe.com/api/customer_portal/sessions" target="_blank" rel="noreferrer">Billing Portal Sessions</a>,{' '}
+            <a className="text-blue-600 hover:underline" href="https://docs.stripe.com/webhooks" target="_blank" rel="noreferrer">Webhooks</a>.
+          </p>
         </div>
       )
     }

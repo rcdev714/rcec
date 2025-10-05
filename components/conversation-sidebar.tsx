@@ -134,7 +134,7 @@ export default function ConversationSidebar({
             {!isCollapsed ? (
               <>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-lg font-semibold text-gray-800">Conversaciones</h2>
+                  <h2 className="text-lg font-semibold text-gray-800">Agentes</h2>
                   <div className="flex gap-1">
                     <Button
                       variant="outline"
@@ -162,7 +162,7 @@ export default function ConversationSidebar({
                   size="sm"
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  Nueva Conversación
+                  Nuevo Agente
                 </Button>
               </>
             ) : (

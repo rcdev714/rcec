@@ -532,7 +532,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                 <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 p-6 md:p-8">
                   <div className="text-center">
                     <h1 className="text-3xl md:text-4xl font-kalice mb-3 text-gray-900 leading-tight">
-                      Nuestro Agente IA
+                      Agente
                     </h1>
                     <div className="space-y-3">
                       <p className="text-gray-600 text-xs md:text-sm max-w-xl mx-auto leading-relaxed">

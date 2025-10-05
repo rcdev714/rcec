@@ -1,4 +1,4 @@
-// Gestión de conversaciones múltiples con persistencia en Supabase
+// Gestión de  múltiples con persistencia en Supabase
 import { createClient } from '@/lib/supabase/client';
 import { ChatMessage } from '@/types/chat';
 
@@ -145,7 +145,7 @@ class ConversationManager {
     }
   }
 
-  // Obtener todas las conversaciones ordenadas por actividad
+  // Obtener todas las  ordenadas por actividad
   getAllConversations(): ConversationItem[] {
     return Array.from(this.conversations.values())
       .sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime());

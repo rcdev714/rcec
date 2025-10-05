@@ -11,6 +11,8 @@ export function getStripe(): Stripe {
       throw new Error('STRIPE_SECRET_KEY is not set');
     }
     stripeSingleton = new Stripe(secretKey, {
+      // Pin API version if provided (fallback to account default when unset)
+      apiVersion: (process.env.STRIPE_API_VERSION || undefined) as unknown as Stripe.LatestApiVersion,
       typescript: true,
     });
   }
