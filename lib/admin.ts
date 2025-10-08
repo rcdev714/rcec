@@ -2,13 +2,21 @@ import { createClient } from '@/lib/supabase/server'
 
 /**
  * Admin access control utilities
+ * 
+ * REQUIRED ENVIRONMENT VARIABLE:
+ * ADMIN_EMAILS - Comma-separated list of admin email addresses
+ * Example: "admin1@company.com,admin2@company.com,admin3@company.com"
+ * 
+ * Note: This must be set in your environment variables for admin access to work.
+ * Without this variable, no users will have admin access.
  */
 
-// Admin email addresses (can be moved to environment variables)
-const ADMIN_EMAILS = process.env.ADMIN_EMAILS?.split(',') || [
-  process.env.ADMIN_EMAIL || 'juan.salgador@uisek.edu.ec',
-  'rafael.carrera@unibrokers.com.ec'
-]
+// Admin email addresses from environment variable (REQUIRED)
+const ADMIN_EMAILS = process.env.ADMIN_EMAILS?.split(',').map(email => email.trim()).filter(Boolean) || []
+
+if (ADMIN_EMAILS.length === 0) {
+  console.warn('WARNING: ADMIN_EMAILS environment variable is not set. No users will have admin access.')
+}
 
 export async function isAdmin(): Promise<boolean> {
   try {

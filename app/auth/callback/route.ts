@@ -19,22 +19,43 @@ export async function GET(request: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     
     if (user) {
-      const { data: existingProfile } = await supabase
-        .from('user_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single()
-
-      if (!existingProfile) {
-        // Create profile for OAuth user
-        await supabase
+      try {
+        const { data: existingProfile } = await supabase
           .from('user_profiles')
-          .insert({
-            user_id: user.id,
-            user_type: 'individual', // default type
-            first_name: user.user_metadata?.full_name?.split(' ')[0] || '',
-            last_name: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
-          })
+          .select('id')
+          .eq('user_id', user.id)
+          .single()
+
+        if (!existingProfile) {
+          // Create profile for OAuth user
+          const { error: insertError } = await supabase
+            .from('user_profiles')
+            .insert({
+              user_id: user.id,
+              user_type: 'individual', // default type
+              first_name: user.user_metadata?.full_name?.split(' ')[0] || '',
+              last_name: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
+            })
+          
+          if (insertError) {
+            // Log the error but don't fail the auth flow
+            // A database trigger might have already created the profile
+            console.error('Error creating user profile in auth callback:', insertError)
+            // Check if profile was created by trigger
+            const { data: retryProfile } = await supabase
+              .from('user_profiles')
+              .select('id')
+              .eq('user_id', user.id)
+              .single()
+            
+            if (!retryProfile) {
+              console.error('Profile creation failed and no profile found after retry')
+            }
+          }
+        }
+      } catch (profileError) {
+        // Log error but continue auth flow
+        console.error('Error in profile creation flow:', profileError)
       }
     }
   }

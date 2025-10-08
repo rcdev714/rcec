@@ -1,9 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/server';
 import { createClient } from '@/lib/supabase/server';
 import { getUserSubscription } from '@/lib/subscription';
 
-export async function POST() {
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+export async function POST(request: NextRequest) {
   try {
     // Get the authenticated user
     const supabase = await createClient();
@@ -27,12 +31,7 @@ export async function POST() {
     }
 
     // Create portal session
-    const envBase = process.env.RAILWAY_PUBLIC_DOMAIN
-      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-      : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const baseUrl = envBase.startsWith('http://') || envBase.startsWith('https://')
-      ? envBase
-      : `https://${envBase}`;
+    const baseUrl = request.nextUrl.origin;
 
     const portalSession = await getStripe().billingPortal.sessions.create({
       customer: subscription.customer_id,

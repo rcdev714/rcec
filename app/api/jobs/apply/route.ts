@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { isPostgrestError } from '@/lib/type-guards';
 
 export async function POST(request: NextRequest) {
   try {
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
       .eq('email', email)
       .single();
 
-    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+    if (checkError && (!isPostgrestError(checkError) || checkError.code !== 'PGRST116')) { // PGRST116 = no rows returned
       console.error('Error checking existing application:', checkError);
       return NextResponse.json(
         { error: 'Failed to check existing applications' },
@@ -142,6 +143,12 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      if (isPostgrestError(insertError)) {
+        return NextResponse.json(
+          { error: `Failed to submit application: ${insertError.message}` },
+          { status: 500 }
+        );
+      }
       return NextResponse.json(
         { error: 'Failed to submit application' },
         { status: 500 }

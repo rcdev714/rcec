@@ -419,20 +419,16 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
       const response = await fetch('/api/usage/summary');
       if (response.ok) {
         const data = await response.json();
-        const promptsUsed = data.usage?.prompt_input_tokens || 0;
+        // Use the 'prompts' field which is the correct counter from the API
+        const promptsUsed = data.usage?.prompts || 0;
         const isFreePlan = data.plan === 'FREE';
-        const limit = isFreePlan ? 10 : -1; // FREE plan has 10 prompt limit
+        const promptLimit = data.limits?.prompts || (isFreePlan ? 10 : 100);
 
-        if (isFreePlan && promptsUsed >= 8) { // Warn at 80% usage
+        // Warn at 80% usage for all plans
+        const warningThreshold = Math.floor(promptLimit * 0.8);
+        if (promptsUsed >= warningThreshold && promptLimit > 0) {
           const shouldContinue = confirm(
-            `Has usado ${promptsUsed} de ${limit} prompts este mes. ¿Quieres continuar? Considera actualizar tu plan para más prompts.`
-          );
-          if (!shouldContinue) {
-            return false;
-          }
-        } else if (!isFreePlan && data.usage?.prompt_dollars >= (data.planDollarLimit * 0.8)) {
-          const shouldContinue = confirm(
-            `Has usado $${data.usage.prompt_dollars.toFixed(2)} de $${data.planDollarLimit} en prompts este mes. ¿Quieres continuar?`
+            `Has usado ${promptsUsed} de ${promptLimit} prompts este mes (${Math.round((promptsUsed / promptLimit) * 100)}%). ¿Quieres continuar? ${isFreePlan ? 'Considera actualizar tu plan para más prompts.' : ''}`
           );
           if (!shouldContinue) {
             return false;

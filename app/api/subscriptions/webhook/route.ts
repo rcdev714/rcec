@@ -5,6 +5,11 @@ import { getPlanFromStripePriceId } from '@/lib/plans';
 import { updateUserSubscription } from '@/lib/subscription';
 import { logValidationError, logValidationSuccess } from '@/lib/subscription-validation';
 import Stripe from 'stripe';
+import { isPostgrestError } from '@/lib/type-guards';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 // Extended interface for Stripe subscription with period dates
 interface StripeSubscriptionWithPeriods extends Stripe.Subscription {
@@ -16,6 +21,32 @@ interface StripeSubscriptionWithPeriods extends Stripe.Subscription {
 // Extended interface for Stripe invoice with subscription
 interface StripeInvoiceWithSubscription extends Stripe.Invoice {
   subscription: string | null;
+}
+
+interface SimplifiedStripeEvent {
+  id: string;
+  type: string;
+  object: 'event';
+  api_version: string | null;
+  created: number;
+  data: {
+    object: {
+      id?: string;
+      [key: string]: any;
+    };
+  };
+}
+
+async function updateWebhookLog(supabase: any, eventId: string, status: string, processingTimeMs: number, errorMessage?: string) {
+  await supabase
+    .from('webhook_logs')
+    .update({
+      status,
+      processing_time_ms: processingTimeMs,
+      error_message: errorMessage,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('stripe_event_id', eventId);
 }
 
 export async function POST(request: NextRequest) {
@@ -53,6 +84,19 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient();
 
   // Log webhook event for idempotency and audit
+  const simplifiedEvent: SimplifiedStripeEvent = {
+    id: event.id,
+    type: event.type,
+    object: 'event',
+    api_version: event.api_version,
+    created: event.created,
+    data: {
+      object: {
+        id: (event.data.object as any).id,
+      },
+    },
+  };
+
   const { error: logError } = await supabase
     .from('webhook_logs')
     .insert({
@@ -60,55 +104,29 @@ export async function POST(request: NextRequest) {
       event_type: event.type,
       status: 'received',
       stripe_event_id: event.id,
-      payload: {
-        id: event.id,
-        type: event.type,
-        object: 'event',
-        api_version: event.api_version,
-        created: event.created,
-                  // @ts-expect-error - Simplified payload structure for logging
-          data: { object: { id: event.data.object.id } }
-      }
+      payload: simplifiedEvent,
     });
 
-  // If it's a unique constraint violation, it's a duplicate event, so we can ignore it.
-  if (logError && logError.code === '23505') {
-    console.log(`Duplicate webhook event received: ${event.id}`);
-    return NextResponse.json({ received: true, message: 'Duplicate event' });
-  }
-
-  if (logError) {
+  if (logError && (!isPostgrestError(logError) || logError.code !== '23505')) {
     console.error('Error logging webhook:', logError);
     // We don't return here because we should still try to process the event
+  } else if (logError && isPostgrestError(logError) && logError.code === '23505') {
+    console.log(`Duplicate webhook event received: ${event.id}`);
+    return NextResponse.json({ received: true, message: 'Duplicate event' });
   }
 
   try {
     await handleStripeEvent(event);
     
     // Update webhook log as processed
-    await supabase
-      .from('webhook_logs')
-      .update({
-        status: 'processed',
-        processing_time_ms: Date.now() - startTime,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('stripe_event_id', event.id);
+    await updateWebhookLog(supabase, event.id, 'processed', Date.now() - startTime);
 
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error('Error processing webhook:', error);
     
     // Update webhook log as failed
-    await supabase
-      .from('webhook_logs')
-      .update({
-        status: 'failed',
-        processing_time_ms: Date.now() - startTime,
-        error_message: error instanceof Error ? error.message : 'Unknown error',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('stripe_event_id', event.id);
+    await updateWebhookLog(supabase, event.id, 'failed', Date.now() - startTime, error instanceof Error ? error.message : 'Unknown error');
 
     return NextResponse.json(
       { error: 'Webhook processing failed' },
@@ -321,6 +339,9 @@ async function handleStripeEvent(event: Stripe.Event) {
 
       if (error) {
         console.error('Error cancelling subscription:', error);
+        if (isPostgrestError(error)) {
+          // Handle PostgrestError
+        }
       }
       break;
     }
@@ -342,6 +363,9 @@ async function handleStripeEvent(event: Stripe.Event) {
 
       if (error) {
         console.error('Error updating subscription status to past_due:', error);
+        if (isPostgrestError(error)) {
+          // Handle PostgrestError
+        }
       }
       break;
     }
@@ -363,6 +387,9 @@ async function handleStripeEvent(event: Stripe.Event) {
 
       if (error) {
         console.error('Error reactivating subscription:', error);
+        if (isPostgrestError(error)) {
+          // Handle PostgrestError
+        }
       }
       break;
     }

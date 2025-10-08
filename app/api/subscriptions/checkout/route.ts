@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
+import Stripe from 'stripe';
 import { getStripe, getSubscriptionPlansForStripe } from '@/lib/stripe/server';
 import { createClient } from '@/lib/supabase/server';
 import { getUserSubscription } from '@/lib/subscription';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,14 +60,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Create checkout session
-    const envBase = process.env.RAILWAY_PUBLIC_DOMAIN
-      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-      : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const baseUrl = envBase.startsWith('http://') || envBase.startsWith('https://')
-      ? envBase
-      : `https://${envBase}`;
+    const baseUrl = request.nextUrl.origin;
 
-    const session = await getStripe().checkout.sessions.create({
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       billing_address_collection: 'auto',
       line_items: [
@@ -71,13 +72,29 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: 'subscription',
+      allow_promotion_codes: true,
+      automatic_tax: { enabled: true },
+      client_reference_id: user.id,
+      subscription_data: {
+        metadata: {
+          supabase_user_id: user.id,
+          plan_id: planId,
+        },
+      },
       success_url: `${baseUrl}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/pricing`,
       metadata: {
         supabase_user_id: user.id,
         plan_id: planId,
       },
-    });
+    };
+
+    const idempotencyKey =
+      request.headers.get('x-request-id') ||
+      request.headers.get('x-correlation-id') ||
+      randomUUID();
+
+    const session = await getStripe().checkout.sessions.create(sessionParams, { idempotencyKey });
 
     return NextResponse.json({
       sessionId: session.id,

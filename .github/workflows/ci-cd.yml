@@ -38,7 +38,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Check environment variables structure
-        run: node scripts/test-env.js
+        run: node scripts-sql/test-env.js
         env:
           CI: true
 

@@ -3,8 +3,6 @@
 import * as XLSX from 'xlsx';
 import { fetchCompanies } from '@/lib/data/companies';
 import { Company } from '@/types/company';
-import { ensureExportAllowedAndIncrement } from '@/lib/usage';
-import { createClient } from '@/lib/supabase/server';
 
 // Define the search parameters interface to match the one in companies.ts
 interface ExportSearchParams {
@@ -50,13 +48,13 @@ function transformCompanyForExcel(company: Company) {
   };
 }
 
-async function fetchAllCompaniesInBatches(searchParams: ExportSearchParams, sessionId?: string) {
+async function fetchAllCompaniesInBatches(searchParams: ExportSearchParams, sessionId?: string, maxRecords?: number) {
   const BATCH_SIZE = 1000; // Supabase limit
   let allCompanies: Company[] = [];
   let currentPage = 1;
   let hasMoreData = true;
 
-  console.log('Starting batch fetch process...');
+  console.log('Starting batch fetch process...', maxRecords ? `Max records: ${maxRecords}` : 'No limit');
 
   // Import progress tracking functions
   let updateProgress: ((sessionId: string, fetched: number, total: number) => void) | undefined;
@@ -88,35 +86,36 @@ async function fetchAllCompaniesInBatches(searchParams: ExportSearchParams, sess
         updateProgress(sessionId, allCompanies.length, totalCount);
       }
       
-      // Check if we have more data to fetch
-      hasMoreData = allCompanies.length < totalCount && companies.length === BATCH_SIZE;
-      currentPage++;
+      // Check if we hit the per-export limit
+      if (maxRecords && maxRecords > 0 && allCompanies.length >= maxRecords) {
+        console.log(`Reached max export limit of ${maxRecords} records`);
+        hasMoreData = false;
+      } else {
+        // Check if we have more data to fetch
+        hasMoreData = allCompanies.length < totalCount && companies.length === BATCH_SIZE;
+        currentPage++;
+      }
     } else {
       hasMoreData = false;
     }
   }
 
   console.log(`Batch fetch completed. Total records: ${allCompanies.length}`);
+  
+  // Enforce the limit by truncating if needed
+  if (maxRecords && maxRecords > 0 && allCompanies.length > maxRecords) {
+    console.log(`Truncating from ${allCompanies.length} to ${maxRecords} records`);
+    allCompanies = allCompanies.slice(0, maxRecords);
+  }
+  
   return allCompanies;
 }
 
-export async function exportCompaniesToExcel(searchParams: ExportSearchParams = {}, sessionId?: string) {
+export async function exportCompaniesToExcel(searchParams: ExportSearchParams = {}, sessionId?: string, maxRecords?: number) {
   try {
-    // Check rate limiting for exports
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      throw new Error('Authentication required for export');
-    }
-
-    const rateLimitResult = await ensureExportAllowedAndIncrement(user.id);
-    if (!rateLimitResult.allowed) {
-      throw new Error('Export limit reached. Please upgrade your plan or try again later.');
-    }
-
+    // Note: Authentication and rate limiting are now handled at the API route level
     // Fetch all companies in batches to bypass Supabase 1000 row limit
-    const companies = await fetchAllCompaniesInBatches(searchParams, sessionId);
+    const companies = await fetchAllCompaniesInBatches(searchParams, sessionId, maxRecords);
     
     console.log('Total companies fetched:', companies.length);
     console.log('Search params:', searchParams);

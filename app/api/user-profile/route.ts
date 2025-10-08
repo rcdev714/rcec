@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { isPostgrestError } from '@/lib/type-guards';
+import { UserProfilePayload } from '@/types/user-profile';
 
 export async function GET() {
   try {
@@ -17,7 +19,7 @@ export async function GET() {
       .eq('user_id', user.id)
       .single();
 
-    if (profileError && profileError.code !== 'PGRST116') { // PGRST116 = row not found
+    if (profileError && (!isPostgrestError(profileError) || profileError.code !== 'PGRST116')) { // PGRST116 = row not found
       console.error('Error fetching user profile:', profileError);
       return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
     }
@@ -62,7 +64,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body: UserProfilePayload = await request.json();
     const { 
       first_name, 
       last_name, 
@@ -81,19 +83,15 @@ export async function PUT(request: Request) {
       .eq('user_id', user.id)
       .single();
 
-    let profileData;
-    let error;
-
     if (existingProfile) {
       // Update existing profile
-      const updatePayload: Record<string, unknown> = {
+      const updatePayload: UserProfilePayload = {
         first_name,
         last_name,
         phone,
         company_name,
         company_ruc,
         position,
-        updated_at: new Date().toISOString()
       };
 
       // Only update user_type if a valid value is provided; avoid NULLing a NOT NULL column
@@ -108,16 +106,29 @@ export async function PUT(request: Request) {
 
       const { data, error: updateError } = await supabase
         .from('user_profiles')
-        .update(updatePayload)
+        .update({ ...updatePayload, updated_at: new Date().toISOString() })
         .eq('user_id', user.id)
         .select()
         .single();
       
-      profileData = data;
-      error = updateError;
+      if (updateError) {
+        console.error('Error updating user profile:', updateError);
+        if (isPostgrestError(updateError)) {
+          return NextResponse.json(
+            { error: `Failed to update profile: ${updateError.message}` },
+            { status: 500 }
+          );
+        }
+        return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
+      }
+
+      return NextResponse.json({ 
+        message: 'Profile updated successfully', 
+        profile: data 
+      }, { status: 200 });
     } else {
       // Create new profile
-      const insertPayload: Record<string, unknown> = {
+      const insertPayload: UserProfilePayload & { user_id: string } = {
         user_id: user.id,
         first_name,
         last_name,
@@ -141,19 +152,22 @@ export async function PUT(request: Request) {
         .select()
         .single();
       
-      profileData = data;
-      error = insertError;
-    }
+      if (insertError) {
+        console.error('Error creating user profile:', insertError);
+        if (isPostgrestError(insertError)) {
+          return NextResponse.json(
+            { error: `Failed to create profile: ${insertError.message}` },
+            { status: 500 }
+          );
+        }
+        return NextResponse.json({ error: 'Failed to create profile' }, { status: 500 });
+      }
 
-    if (error) {
-      console.error('Error updating user profile:', error);
-      return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
+      return NextResponse.json({ 
+        message: 'Profile created successfully', 
+        profile: data 
+      }, { status: 200 });
     }
-
-    return NextResponse.json({ 
-      message: 'Profile updated successfully', 
-      profile: profileData 
-    }, { status: 200 });
 
   } catch (error) {
     console.error('API Error:', error);

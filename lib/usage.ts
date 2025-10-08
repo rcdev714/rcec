@@ -149,6 +149,12 @@ export async function ensureSearchAllowedAndIncrement(userId: string): Promise<{
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { allowed: false };
 
+  // Security: Ensure the userId parameter matches the authenticated user
+  if (userId !== user.id) {
+    console.error('UserId mismatch in ensureSearchAllowedAndIncrement:', { provided: userId, authenticated: user.id });
+    return { allowed: false };
+  }
+
   // Admin bypass: Allow unlimited searches for admin users
   if (await isAdmin()) {
     return { allowed: true };
@@ -208,6 +214,12 @@ export async function ensureExportAllowedAndIncrement(userId: string): Promise<{
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { allowed: false };
 
+  // Security: Ensure the userId parameter matches the authenticated user
+  if (userId !== user.id) {
+    console.error('UserId mismatch in ensureExportAllowedAndIncrement:', { provided: userId, authenticated: user.id });
+    return { allowed: false };
+  }
+
   // Admin bypass: Allow unlimited exports for admin users
   if (await isAdmin()) {
     return { allowed: true };
@@ -249,6 +261,12 @@ export async function ensurePromptAllowedAndTrack(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { allowed: false };
 
+  // Security: Ensure the userId parameter matches the authenticated user
+  if (userId !== user.id) {
+    console.error('UserId mismatch in ensurePromptAllowedAndTrack:', { provided: userId, authenticated: user.id });
+    return { allowed: false };
+  }
+
   // Admin bypass: Allow unlimited prompts for admin users
   if (await isAdmin()) {
     return { allowed: true };
@@ -289,6 +307,13 @@ export async function trackOutputTokensAndDollars(
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
+
+  // Security: Ensure the userId parameter matches the authenticated user
+  if (userId !== user.id) {
+    console.error('UserId mismatch in trackOutputTokensAndDollars:', { provided: userId, authenticated: user.id });
+    return;
+  }
+
   const { start, end } = getMonthlyPeriodForAnchor(user.created_at || new Date().toISOString());
   const usage = await getOrCreateUsageRow(userId, start, end);
 

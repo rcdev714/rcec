@@ -13,6 +13,12 @@ export function getStripe(): Stripe {
     stripeSingleton = new Stripe(secretKey, {
       // Pin API version if provided (fallback to account default when unset)
       apiVersion: (process.env.STRIPE_API_VERSION || undefined) as unknown as Stripe.LatestApiVersion,
+      maxNetworkRetries: 2,
+      timeout: 15000,
+      appInfo: {
+        name: 'rcec-main',
+        version: process.env.APP_VERSION || '0.0.0',
+      },
       typescript: true,
     });
   }
