@@ -188,7 +188,7 @@ export default function HomeContent() {
               <span className="block">de Ventas</span>
             </h1>
             <p className="text-base sm:text-lg md:text-xl text-gray-700 max-w-2xl mx-auto leading-relaxed font-medium px-2 text-center">
-              Tu asistente inteligente para encontrar oportunidades de negocio y aumentar tus ventas.
+              Tu agente inteligente para encontrar oportunidades de negocio y aumentar tus ventas.
             </p>
             <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-2">
               {user ? (

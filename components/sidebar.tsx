@@ -25,7 +25,7 @@ const Sidebar = () => {
 
   const navItems = [
     { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-    { href: "/chat", icon: Sparkles, label: "Asistente" },
+    { href: "/chat", icon: Sparkles, label: "Agente" },
     { href: "/offerings", icon: Package, label: "Servicios" },
     { href: "/companies", icon: Building, label: "Empresas" },
     { href: "/pricing", icon: CreditCard, label: "Suscripción" },

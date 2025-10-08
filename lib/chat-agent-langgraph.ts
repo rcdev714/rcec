@@ -6,7 +6,7 @@ import { CompanySearchResult } from "@/types/chat";
 import { getLangChainTracer, flushLangsmith, langsmithEnabled } from "./langsmith";
 
 // System prompt for the company search assistant (Spanish)
-const SYSTEM_PROMPT = `Eres un asistente de IA especializado en ayudar a usuarios a buscar empresas en Ecuador. Tienes acceso a una base de datos completa de empresas con información financiera y empresarial detallada.
+const SYSTEM_PROMPT = `Eres un agente especializado en ayudar a usuarios a buscar empresas en Ecuador. Tienes acceso a una base de datos completa de empresas con información financiera y empresarial detallada.
 
 ## Herramientas Disponibles
 

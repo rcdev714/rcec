@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     default: 'Camella | Tu Agente Personal de Ventas',
     template: '%s | Camella',
   },
-  description: "Encuentra prospectos B2B ideales en Ecuador con nuestro asistente de IA. Accede a datos de más de 300,000 empresas, optimiza tu prospección y cierra más ventas.",
+  description: "Encuentra prospectos B2B ideales en Ecuador con nuestro Agente Personal de Ventas. Accede a datos de más de 300,000 empresas, optimiza tu prospección y cierra más ventas.",
   keywords: ['b2b', 'ventas', 'ecuador', 'prospectos', 'empresas ecuatorianas', 'inteligencia artificial', 'finanzas'],
   authors: [{ name: 'Camella' }],
   robots: {

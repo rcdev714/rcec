@@ -42,7 +42,7 @@ const globalOnboardingSlides: OnboardingSlide[] = [
     title: "¿Cómo funciona?",
     description: "Camella combina datos empresariales actualizados con inteligencia artificial",
     bullets: [
-      "Pregunta al Asistente IA en lenguaje natural",
+      "Pregunta al Agente en lenguaje natural",
       "Filtra empresas por industria, tamaño, ubicación",
       "Exporta listas y contacta decision makers"
     ],
