@@ -197,7 +197,7 @@ export default function CarrerasContent() {
       {/* Careers Hero Section */}
       <section className="py-20 sm:py-24 bg-gradient-to-b from-white to-gray-50/30">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="font-kalice text-5xl sm:text-6xl md:text-7xl leading-tight text-gray-900 mb-8">
+          <h1 className="text-5xl sm:text-6xl md:text-7xl leading-tight text-gray-900 mb-8">
             Únete a nuestro equipo
           </h1>
           <p className="text-xl sm:text-2xl text-gray-600 max-w-2xl mx-auto mb-6">
