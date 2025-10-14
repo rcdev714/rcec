@@ -22,23 +22,56 @@ export default function ConversationSidebar({
   const [isOpen, setIsOpen] = useState(false); // mobile drawer
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
+  const [showAll, setShowAll] = useState(false); // For pagination
   const conversationManager = ConversationManager.getInstance();
+  
+  // Limit to show initially
+  const INITIAL_LIMIT = 5;
 
   const loadConversations = useCallback(async () => {
     await conversationManager.initialize();
     const convs = conversationManager.getAllConversations();
     setConversations(convs);
+    // Reset pagination when loading conversations
+    setShowAll(false);
+  }, [conversationManager]);
+
+  // Force refresh from Supabase
+  const refreshConversations = useCallback(async () => {
+    await conversationManager.refresh();
+    const convs = conversationManager.getAllConversations();
+    setConversations(convs);
+    // Reset pagination when refreshing conversations
+    setShowAll(false);
   }, [conversationManager]);
 
   useEffect(() => {
     loadConversations();
   }, [currentConversationId, loadConversations]);
 
+  // Listen for conversation updates from other components
+  useEffect(() => {
+    const handleConversationUpdate = () => {
+      refreshConversations();
+    };
+
+    window.addEventListener('conversation-updated', handleConversationUpdate);
+    return () => {
+      window.removeEventListener('conversation-updated', handleConversationUpdate);
+    };
+  }, [refreshConversations]);
+
   const handleNewConversation = () => {
-    // Navigate to the main chat page for new conversation
-    router.push('/chat');
+    // Clear current conversation first
     onNewConversation();
+    
+    // Navigate to the main chat page for new conversation
+    // Adding a timestamp query param forces a fresh mount
+    router.push(`/chat?new=${Date.now()}`);
+    
     setIsOpen(false);
+    
+    // Refresh conversation list after navigation
     setTimeout(loadConversations, 100);
   };
 
@@ -57,24 +90,32 @@ export default function ConversationSidebar({
     
     // Limpiar conversación del backend
     try {
-      await fetch("/api/chat/clear", {
+      const response = await fetch("/api/chat/clear", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ conversationId: id }),
       });
+
+      if (!response.ok) {
+        console.error("Error clearing conversation:", await response.text());
+        return;
+      }
     } catch (error) {
       console.error("Error clearing conversation:", error);
+      return;
     }
 
     // Eliminar del manager local
     conversationManager.deleteConversation(id);
     
-    // Si era la conversación actual, iniciar nueva
+    // Si era la conversación actual, navegar a /chat
     if (id === currentConversationId) {
+      router.push('/chat');
       onConversationChange(null);
     }
     
-    loadConversations();
+    // Refresh the list
+    await refreshConversations();
   };
 
   const formatDate = (date: Date) => {
@@ -197,41 +238,59 @@ export default function ConversationSidebar({
                   <p className="text-sm">No hay conversaciones</p>
                 </div>
               ) : (
-                <div className="space-y-1">
-                  {conversations.map((conv) => (
-                    <Card
-                      key={conv.id}
-                      className={`
-                        p-3 cursor-pointer transition-all duration-200 hover:bg-gray-50 group
-                        ${conv.id === currentConversationId ? 'bg-gray-100' : ''}
-                      `}
-                      onClick={() => handleSelectConversation(conv.id)}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <MessageSquare className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                            <span className="text-xs text-gray-500">
-                              {formatDate(conv.lastActivity)}
-                            </span>
+                <>
+                  <div className="space-y-1">
+                    {(showAll ? conversations : conversations.slice(0, INITIAL_LIMIT)).map((conv) => (
+                      <Card
+                        key={conv.id}
+                        className={`
+                          p-3 cursor-pointer transition-all duration-200 hover:bg-gray-50 group
+                          ${conv.id === currentConversationId ? 'bg-gray-100' : ''}
+                        `}
+                        onClick={() => handleSelectConversation(conv.id)}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <MessageSquare className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                              <span className="text-xs text-gray-500">
+                                {formatDate(conv.lastActivity)}
+                              </span>
+                            </div>
+                            <p className="text-sm font-medium text-gray-800 truncate">
+                              {conv.title}
+                            </p>
                           </div>
-                          <p className="text-sm font-medium text-gray-800 truncate">
-                            {conv.title}
-                          </p>
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => handleDeleteConversation(conv.id, e)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 h-auto text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
                         </div>
-                        
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => handleDeleteConversation(conv.id, e)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 h-auto text-red-500 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
+                      </Card>
+                    ))}
+                  </div>
+                  
+                  {/* Show More/Less Button */}
+                  {conversations.length > INITIAL_LIMIT && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowAll(!showAll)}
+                      className="w-full mt-2 text-xs text-gray-600 hover:text-gray-800"
+                    >
+                      {showAll ? (
+                        <>Mostrar menos</>
+                      ) : (
+                        <>Ver {conversations.length - INITIAL_LIMIT} más</>
+                      )}
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           )}

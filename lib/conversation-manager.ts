@@ -35,6 +35,12 @@ class ConversationManager {
     this.isInitialized = true;
   }
 
+  // Force refresh from Supabase (useful for syncing after updates)
+  async refresh(): Promise<void> {
+    await this.syncWithSupabase();
+    this.saveToStorage();
+  }
+
   // Crear nueva conversación
   async createConversation(firstMessage: string): Promise<string> {
     const now = new Date();
@@ -113,8 +119,12 @@ class ConversationManager {
   }
 
   // Cambiar conversación activa
-  setCurrentConversation(id: string): void {
-    if (this.conversations.has(id)) {
+  setCurrentConversation(id: string | null): void {
+    if (id === null || id === '') {
+      // Clear current conversation
+      this.currentConversationId = null;
+      this.saveToStorage();
+    } else if (this.conversations.has(id)) {
       this.currentConversationId = id;
       this.saveToStorage();
     }
@@ -151,12 +161,19 @@ class ConversationManager {
       .sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime());
   }
 
-  // Eliminar conversación
+  // Eliminar conversación (local only - server deletion should happen via API)
   deleteConversation(id: string): void {
     this.conversations.delete(id);
     if (this.currentConversationId === id) {
       this.currentConversationId = null;
     }
+    this.saveToStorage();
+  }
+
+  // Clear all conversations (useful for logout or reset)
+  clearAll(): void {
+    this.conversations.clear();
+    this.currentConversationId = null;
     this.saveToStorage();
   }
 

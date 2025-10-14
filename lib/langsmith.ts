@@ -5,9 +5,13 @@ let langsmithClient: Client | null = null;
 
 export function getLangsmithClient(): Client {
   if (!langsmithClient) {
+    // Support both LANGSMITH_* and LANGCHAIN_* prefixes for compatibility
+    const apiKey = process.env.LANGSMITH_API_KEY || process.env.LANGCHAIN_API_KEY;
+    const apiUrl = process.env.LANGSMITH_ENDPOINT || process.env.LANGCHAIN_ENDPOINT || "https://api.smith.langchain.com";
+    
     langsmithClient = new Client({
-      apiKey: process.env.LANGSMITH_API_KEY,
-      apiUrl: process.env.LANGSMITH_ENDPOINT || "https://api.smith.langchain.com",
+      apiKey,
+      apiUrl,
       // Respect optional privacy flags if set
       hideInputs: process.env.LANGSMITH_HIDE_INPUTS === "true",
       hideOutputs: process.env.LANGSMITH_HIDE_OUTPUTS === "true",
@@ -18,7 +22,18 @@ export function getLangsmithClient(): Client {
 
 export function getLangChainTracer(projectName?: string): LangChainTracer {
   const client = getLangsmithClient();
-  return new LangChainTracer({ client, projectName: projectName || process.env.LANGSMITH_PROJECT });
+  // Support both LANGSMITH_PROJECT and LANGCHAIN_PROJECT
+  const defaultProject = process.env.LANGSMITH_PROJECT || process.env.LANGCHAIN_PROJECT || "default";
+  const finalProject = projectName || defaultProject;
+  
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[LangSmith] Creating tracer for project: ${finalProject}`);
+  }
+  
+  return new LangChainTracer({ 
+    client, 
+    projectName: finalProject 
+  });
 }
 
 export async function flushLangsmith(): Promise<void> {
@@ -31,11 +46,23 @@ export async function flushLangsmith(): Promise<void> {
   }
 }
 
-export const langsmithEnabled: boolean =
-  process.env.LANGSMITH_TRACING === "true" ||
-  process.env.NEXT_PUBLIC_LANGSMITH_TRACING === "true" ||
-  process.env.LANGCHAIN_TRACING_V2 === "true" ||
-  Boolean(process.env.LANGSMITH_API_KEY || process.env.LANGCHAIN_API_KEY) ||
-  false;
+// Check if LangSmith tracing is enabled
+// Supports multiple environment variable formats for compatibility
+export const langsmithEnabled: boolean = (() => {
+  const tracingEnabled = 
+    process.env.LANGSMITH_TRACING === "true" ||
+    process.env.NEXT_PUBLIC_LANGSMITH_TRACING === "true" ||
+    process.env.LANGCHAIN_TRACING_V2 === "true";
+  
+  const hasApiKey = Boolean(process.env.LANGSMITH_API_KEY || process.env.LANGCHAIN_API_KEY);
+  
+  const enabled = tracingEnabled && hasApiKey;
+  
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[LangSmith] Tracing enabled: ${enabled} (tracing flag: ${tracingEnabled}, has API key: ${hasApiKey})`);
+  }
+  
+  return enabled;
+})();
 
 

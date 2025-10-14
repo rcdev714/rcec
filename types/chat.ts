@@ -38,13 +38,24 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   metadata?: {
-    type?: 'text' | 'company_results' | 'export_link';
+    type?: 'text' | 'company_results' | 'export_link' | 'email_draft' | 'planning';
     searchResult?: CompanySearchResult;
+    emailDraft?: {
+      subject: string;
+      body: string;
+      toEmail?: string;
+      toName?: string;
+      companyContext?: string;
+      offeringContext?: string;
+    };
+    agentStateEvents?: any[]; // Agent state events for debugging
+    todos?: any[]; // Planning todos from agent
     exportData?: {
       filename: string;
       downloadUrl: string;
       recordCount: number;
     };
+    showAgentDetails?: boolean;
   };
   tokenCount?: number;
   createdAt: Date;

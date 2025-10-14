@@ -12,13 +12,35 @@ import ConversationManager from "@/lib/conversation-manager";
 import { ChatCompanyResults } from "./chat-company-card";
 import { CompanySearchResult } from "@/types/chat";
 import { StarField } from "./star-field";
+import { EmailDraftCard } from "./email-draft-card";
+import { type AgentStateEvent } from "./agent-state-indicator";
+
+interface EmailDraft {
+  subject: string;
+  body: string;
+  toName?: string;
+  toEmail?: string;
+  companyName?: string;
+}
+
+interface TodoItem {
+  id: string;
+  description: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  createdAt: Date;
+  completedAt?: Date;
+}
 
 interface Message {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "system";
   content: string;
   searchResult?: CompanySearchResult;
+  emailDraft?: EmailDraft;
+  agentStateEvents?: AgentStateEvent[];
+  todos?: TodoItem[];
   metadata?: {
-    type?: 'text' | 'company_results' | 'export_link';
+    type?: 'text' | 'company_results' | 'export_link' | 'email_draft' | 'planning';
+    showAgentDetails?: boolean;
   };
 }
 
@@ -28,9 +50,37 @@ const LoadingSpinner = () => (
   </div>
 );
 
+// Helper to format tool names for display
+const formatToolName = (toolName: string): string => {
+  const toolNames: Record<string, string> = {
+    // Company tools
+    'search_companies': 'Búsqueda de empresas',
+    'get_company_details': 'Obtener detalles de empresa',
+    'refine_search': 'Refinar búsqueda',
+    'export_companies': 'Exportar empresas a Excel',
+    // Web search
+    'web_search': 'Búsqueda en internet',
+    // Contact tools
+    'enrich_company_contacts': 'Buscar contactos ejecutivos',
+    // Email tools (if re-enabled in future)
+    'generate_sales_email': 'Generar email de ventas',
+  };
+  return toolNames[toolName] || toolName;
+};
+
 interface ChatUIProps {
   initialConversationId?: string;
-  initialMessages?: { role: string; content: string; metadata?: { searchResult?: CompanySearchResult; type?: 'text' | 'company_results' | 'export_link' } }[];
+  initialMessages?: { 
+    role: string; 
+    content: string; 
+    metadata?: { 
+      searchResult?: CompanySearchResult; 
+      emailDraft?: EmailDraft;
+      agentStateEvents?: AgentStateEvent[];
+      todos?: TodoItem[];
+      type?: 'text' | 'company_results' | 'export_link' | 'email_draft' | 'planning';
+    } 
+  }[];
 }
 
 export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIProps) {
@@ -41,6 +91,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
   const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId || null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  // Note: currentAgentEvents tracking removed - state events are now stored in message metadata
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const conversationManager = useMemo(() => ConversationManager.getInstance(), []);
@@ -59,27 +110,115 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
     setSuggestions(shuffled.slice(0, 3));
   }, [allSuggestions]);
 
+  // Helper to sanitize legacy content and extract structured blocks
+  const parseAndSanitizeMessage = (role: "user" | "assistant" | "system", content: string) => {
+    let clean = content || "";
+
+    // Remove any STATE_EVENT blocks entirely
+    clean = clean.replace(/\[STATE_EVENT\][\s\S]*?\[\/STATE_EVENT\]/g, "");
+
+    // Extract SEARCH_RESULTS
+    let extractedSearchResult: CompanySearchResult | undefined;
+    clean = clean.replace(/\[SEARCH_RESULTS\]([\s\S]*?)\[\/SEARCH_RESULTS\]/g, (_m: string, p1: string) => {
+      try {
+        const parsed = JSON.parse(p1);
+        extractedSearchResult = parsed;
+      } catch {
+        // Ignore parse errors
+      }
+      return "";
+    });
+
+    // Extract EMAIL_DRAFT
+    let extractedEmailDraft: EmailDraft | undefined;
+    clean = clean.replace(/\[EMAIL_DRAFT\]([\s\S]*?)\[\/EMAIL_DRAFT\]/g, (_m: string, p1: string) => {
+      try {
+        const parsed = JSON.parse(p1);
+        extractedEmailDraft = parsed;
+      } catch {
+        // Ignore parse errors
+      }
+      return "";
+    });
+
+    // Extract AGENT_PLAN (todos)
+    let extractedTodos: TodoItem[] | undefined;
+    clean = clean.replace(/\[AGENT_PLAN\]([\s\S]*?)\[\/AGENT_PLAN\]/g, (_m: string, p1: string) => {
+      try {
+        const parsed = JSON.parse(p1);
+        extractedTodos = parsed;
+      } catch {
+        // Ignore parse errors
+      }
+      return "";
+    });
+
+    // Remove any remaining [AGENT_PLAN] markers (in case they appear without closing tags or with extra content)
+    clean = clean.replace(/\[AGENT_PLAN\][^\[]*$/g, "");
+    clean = clean.replace(/\[\/AGENT_PLAN\]/g, "");
+
+    // Strip common tool transcript lines that might have leaked into model text
+    clean = clean
+      .replace(/^Herramienta utilizada:[\s\S]*?(?=\n\n|$)/gmi, "")
+      .replace(/^Parámetros:[\s\S]*?(?=\n\n|$)/gmi, "")
+      .replace(/\[CALL:[^\]]*\][^\n]*\n?/g, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+    const metadata: Message["metadata"] = {};
+    if (extractedSearchResult) {
+      metadata.type = 'company_results';
+    }
+    if (extractedEmailDraft) {
+      metadata.type = 'email_draft';
+    }
+
+    return { clean, extractedSearchResult, extractedEmailDraft, extractedTodos, metadata };
+  };
+
   // Cargar conversaciones guardadas al inicializar
   useEffect(() => {
     conversationManager.loadFromStorage();
     
     if (initialConversationId && initialMessages.length > 0) {
-      // Load initial messages from server
-      const formattedMessages: Message[] = initialMessages.map(msg => ({
-        role: msg.role as "user" | "assistant",
-        content: msg.content,
-        searchResult: msg.metadata?.searchResult,
-        metadata: msg.metadata
-      }));
-      setMessages(formattedMessages);
-      setConversationId(initialConversationId);
-    } else {
-      const currentId = conversationManager.getCurrentConversationId();
-      if (currentId) {
-        setConversationId(currentId);
+      // Load and sanitize initial messages from server
+      const hydrated: Message[] = [];
+      for (const msg of initialMessages) {
+        const role = msg.role as "user" | "assistant" | "system";
+        if (role === 'assistant') {
+          const { clean, extractedSearchResult, extractedEmailDraft, extractedTodos, metadata } = parseAndSanitizeMessage(role, msg.content || '');
+          if (extractedTodos && extractedTodos.length > 0) {
+            hydrated.push({
+              role: 'system',
+              content: '',
+              todos: extractedTodos as TodoItem[],
+              metadata: { type: 'planning' }
+            });
+          }
+          hydrated.push({
+            role: 'assistant',
+            content: clean,
+            searchResult: (msg.metadata?.searchResult as CompanySearchResult) || extractedSearchResult,
+            emailDraft: (msg.metadata?.emailDraft as EmailDraft) || extractedEmailDraft,
+            agentStateEvents: msg.metadata?.agentStateEvents as AgentStateEvent[] || undefined, // Restore agent workflow
+            metadata: { ...msg.metadata, ...metadata }
+          });
+        } else {
+          const { agentStateEvents: _drop, ...restMetadata } = (msg.metadata || {}) as any;
+          hydrated.push({
+            role,
+            content: msg.content,
+            // pass through any metadata except agent state events
+            metadata: Object.keys(restMetadata).length > 0 ? restMetadata : undefined,
+          });
+        }
       }
+      setMessages(hydrated);
+      setConversationId(initialConversationId);
     }
-  }, [initialConversationId, initialMessages, conversationManager]);
+    // Note: For new conversations (no initialConversationId), state is already initialized empty
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialConversationId, initialMessages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -116,14 +255,15 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
   const handleNewConversation = () => {
     setMessages([]);
     setConversationId(null);
+    // Clear current conversation from manager to ensure clean state
+    conversationManager.setCurrentConversation(null);
   };
 
   const handleConversationChange = (id: string | null) => {
     setMessages([]);
     setConversationId(id);
-    if (id) {
-      conversationManager.setCurrentConversation(id);
-    }
+    // Update the manager's current conversation
+    conversationManager.setCurrentConversation(id);
   };
 
   const handleExportCompanies = async (searchResult: CompanySearchResult) => {
@@ -223,8 +363,12 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
     if (!message.trim() || isSending) return;
 
     let finalSearchResult: CompanySearchResult | undefined;
+    let finalEmailDraft: EmailDraft | undefined;
+    let agentPlan: TodoItem[] | undefined;
+    const agentEvents: AgentStateEvent[] = [];
 
     setIsSending(true);
+    // Agent events are tracked in agentEvents array and stored in message metadata
     const userMessage: Message = { role: "user", content: message };
     setMessages((prev) => [...prev, userMessage]);
     
@@ -233,9 +377,21 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
     if (!currentConvId) {
       currentConvId = await conversationManager.createConversation(message);
       setConversationId(currentConvId);
+      // Notify sidebar about new conversation
+      window.dispatchEvent(new Event('conversation-updated'));
     } else {
       // Actualizar actividad de conversación existente
       await conversationManager.updateActivity(currentConvId);
+    }
+
+    // Store user message immediately
+    if (currentConvId) {
+      await conversationManager.addMessage(currentConvId, {
+        id: '',
+        role: 'user' as const,
+        content: message,
+        createdAt: new Date(),
+      });
     }
     
     setInput("");
@@ -312,25 +468,67 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
         buffer += decoder.decode(value, { stream: true });
         if (process.env.NODE_ENV === 'development') console.log(`Chunk received. Buffer size: ${buffer.length}`);
 
-        const startTag = '[SEARCH_RESULTS]';
-        const endTag = '[/SEARCH_RESULTS]';
+        // Process STATE_EVENT blocks
+        const stateStartTag = '[STATE_EVENT]';
+        const stateEndTag = '[/STATE_EVENT]';
         
-        // Continuously process the buffer for complete search result blocks
+        let stateEventBlockFound;
+        do {
+          stateEventBlockFound = false;
+          const startIndex = buffer.indexOf(stateStartTag);
+          const endIndex = buffer.indexOf(stateEndTag);
+
+          if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+            stateEventBlockFound = true;
+            if (process.env.NODE_ENV === 'development') console.log("Found complete state event block in buffer.");
+            
+            const textBefore = buffer.substring(0, startIndex);
+            const jsonStr = buffer.substring(startIndex + stateStartTag.length, endIndex);
+            
+            assistantResponseText += textBefore;
+            buffer = buffer.substring(endIndex + stateEndTag.length);
+
+            try {
+              const stateEvent = JSON.parse(jsonStr) as AgentStateEvent;
+              agentEvents.push(stateEvent);
+              // Events are stored in agentEvents array and will be saved to message metadata
+
+              if (process.env.NODE_ENV === 'development') console.log("Successfully parsed state event:", stateEvent);
+              
+              // Update the assistant message with live agent events
+              setMessages((prev) => {
+                const newMessages = [...prev];
+                const lastMessage = newMessages[newMessages.length - 1];
+                if (lastMessage?.role === "assistant") {
+                  lastMessage.agentStateEvents = [...agentEvents];
+                }
+                return newMessages;
+              });
+            } catch (e) {
+              console.error("Failed to parse state event JSON:", e, "JSON string was:", jsonStr);
+            }
+          }
+        } while (stateEventBlockFound);
+
+        // Process SEARCH_RESULTS blocks
+        const searchStartTag = '[SEARCH_RESULTS]';
+        const searchEndTag = '[/SEARCH_RESULTS]';
+        
         let searchResultBlockFound;
         do {
           searchResultBlockFound = false;
-          const startIndex = buffer.indexOf(startTag);
-          const endIndex = buffer.indexOf(endTag);
+          const startIndex = buffer.indexOf(searchStartTag);
+          const endIndex = buffer.indexOf(searchEndTag);
 
           if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
             searchResultBlockFound = true;
             if (process.env.NODE_ENV === 'development') console.log("Found complete search result block in buffer.");
             
             const textBefore = buffer.substring(0, startIndex);
-            const jsonStr = buffer.substring(startIndex + startTag.length, endIndex);
+            const jsonStr = buffer.substring(startIndex + searchStartTag.length, endIndex);
             
             assistantResponseText += textBefore;
-            buffer = buffer.substring(endIndex + endTag.length);
+            buffer = buffer.substring(endIndex + searchEndTag.length);
 
             try {
               const searchResult = JSON.parse(jsonStr);
@@ -350,10 +548,104 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
               });
             } catch (e) {
               console.error("Failed to parse search results JSON:", e, "JSON string was:", jsonStr);
-              assistantResponseText += `${startTag}${jsonStr}${endTag}`;
+              assistantResponseText += `${searchStartTag}${jsonStr}${searchEndTag}`;
             }
           }
         } while (searchResultBlockFound);
+
+        // Process AGENT_PLAN blocks (planning/todos)
+        const planStartTag = '[AGENT_PLAN]';
+        const planEndTag = '[/AGENT_PLAN]';
+        
+        let planBlockFound;
+        do {
+          planBlockFound = false;
+          const startIndex = buffer.indexOf(planStartTag);
+          const endIndex = buffer.indexOf(planEndTag);
+
+          if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+            planBlockFound = true;
+            if (process.env.NODE_ENV === 'development') console.log("Found complete agent plan block in buffer.");
+            
+            const textBefore = buffer.substring(0, startIndex);
+            const jsonStr = buffer.substring(startIndex + planStartTag.length, endIndex);
+            
+            assistantResponseText += textBefore;
+            buffer = buffer.substring(endIndex + planEndTag.length);
+
+            try {
+              const todos = JSON.parse(jsonStr);
+              agentPlan = todos;
+
+              if (process.env.NODE_ENV === 'development') console.log("Successfully parsed agent plan:", todos);
+              
+              // Insert a system message with the plan right after the user message
+              setMessages((prev) => {
+                const newMessages = [...prev];
+                // Insert plan message after user message (before assistant response)
+                const planMessage: Message = {
+                  role: "system",
+                  content: "",
+                  todos: todos,
+                  metadata: { type: 'planning' }
+                };
+                // Insert before the last message (which is the assistant's empty message)
+                if (newMessages.length > 0 && newMessages[newMessages.length - 1].role === "assistant") {
+                  newMessages.splice(newMessages.length - 1, 0, planMessage);
+                } else {
+                  newMessages.push(planMessage);
+                }
+                return newMessages;
+              });
+            } catch (e) {
+              console.error("Failed to parse agent plan JSON:", e, "JSON string was:", jsonStr);
+            }
+          }
+        } while (planBlockFound);
+
+        // Process EMAIL_DRAFT blocks
+        const emailStartTag = '[EMAIL_DRAFT]';
+        const emailEndTag = '[/EMAIL_DRAFT]';
+        
+        let emailDraftBlockFound;
+        do {
+          emailDraftBlockFound = false;
+          const startIndex = buffer.indexOf(emailStartTag);
+          const endIndex = buffer.indexOf(emailEndTag);
+
+          if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+            emailDraftBlockFound = true;
+            if (process.env.NODE_ENV === 'development') console.log("Found complete email draft block in buffer.");
+            
+            const textBefore = buffer.substring(0, startIndex);
+            const jsonStr = buffer.substring(startIndex + emailStartTag.length, endIndex);
+            
+            assistantResponseText += textBefore;
+            buffer = buffer.substring(endIndex + emailEndTag.length);
+
+            try {
+              const emailDraft = JSON.parse(jsonStr);
+              finalEmailDraft = emailDraft;
+
+              if (process.env.NODE_ENV === 'development') console.log("Successfully parsed email draft:", emailDraft);
+              
+              setMessages((prev) => {
+                const newMessages = [...prev];
+                const lastMessage = newMessages[newMessages.length - 1];
+                if (lastMessage?.role === "assistant") {
+                  lastMessage.content = assistantResponseText;
+                  lastMessage.emailDraft = emailDraft;
+                  if (!lastMessage.metadata) lastMessage.metadata = {};
+                  lastMessage.metadata.type = 'email_draft';
+                }
+                return newMessages;
+              });
+            } catch (e) {
+              console.error("Failed to parse email draft JSON:", e, "JSON string was:", jsonStr);
+              assistantResponseText += `${emailStartTag}${jsonStr}${emailEndTag}`;
+            }
+          }
+        } while (emailDraftBlockFound);
         
         // Update UI with processed text and remaining buffer (which is streaming text)
         setMessages((prev) => {
@@ -367,6 +659,11 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
       }
       
       assistantResponseText += buffer; // Add any remaining text from buffer
+      
+      // Clean up any remaining tags from final content
+      assistantResponseText = assistantResponseText
+        .replace(/\[AGENT_PLAN\][\s\S]*?\[\/AGENT_PLAN\]/g, '')
+        .trim();
 
       // Final update for UI consistency
       setMessages((prev) => {
@@ -374,6 +671,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
           const lastMessage = newMessages[newMessages.length - 1];
           if (lastMessage?.role === 'assistant') {
               lastMessage.content = assistantResponseText;
+              lastMessage.agentStateEvents = agentEvents; // Store for display
           }
           return newMessages;
       });
@@ -381,19 +679,50 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
       // Persist the final assistant message to the database
       if (currentConvId) {
         if (process.env.NODE_ENV === 'development') {
-            console.log("Persisting final message. Content:", assistantResponseText, "Search Result:", finalSearchResult);
+            console.log("Persisting final message. Content:", assistantResponseText, "Search Result:", finalSearchResult, "Email Draft:", finalEmailDraft);
         }
+        
+        // Determine message type
+        let messageType: 'text' | 'company_results' | 'export_link' | 'email_draft' = 'text';
+        if (finalEmailDraft) {
+          messageType = 'email_draft';
+        } else if (finalSearchResult) {
+          messageType = 'company_results';
+        }
+        
+        // Store planning as a separate system message if it exists
+        if (agentPlan && agentPlan.length > 0) {
+          await conversationManager.addMessage(currentConvId, {
+            id: '',
+            role: 'system' as const,
+            content: '',
+            metadata: {
+              type: 'planning' as const,
+              todos: agentPlan,
+            },
+            createdAt: new Date(),
+          });
+        }
+        
+        // Store the main assistant message with all metadata including agent events for review
         await conversationManager.addMessage(currentConvId, {
           id: '', // DB generates
-          role: 'assistant',
+          role: 'assistant' as const,
           content: assistantResponseText,
           metadata: {
-            type: finalSearchResult ? 'company_results' : 'text',
+            type: messageType,
             searchResult: finalSearchResult,
+            emailDraft: finalEmailDraft,
+            agentStateEvents: agentEvents, // Persist agent workflow for later review
           },
           createdAt: new Date(),
         });
+
+        // Notify sidebar and other components that conversation was updated
+        window.dispatchEvent(new Event('conversation-updated'));
       }
+      
+      // Agent events have been stored in the message metadata
     } catch (error) {
       if (process.env.NODE_ENV !== 'production') {
         console.error("Error fetching chat response:", error);
@@ -573,7 +902,50 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
               className="flex-1 overflow-y-auto p-3 md:p-6 pb-0"
             >
               <div className="w-full max-w-6xl mx-auto space-y-3 md:space-y-6">
-                {messages.map((msg, index) => (
+                
+                {messages.map((msg, index) => {
+                  // Special rendering for planning messages
+                  if (msg.role === "system" && msg.metadata?.type === 'planning' && msg.todos) {
+                    return (
+                      <div key={index} className="w-full mb-3">
+                        <div className="bg-indigo-50/50 border border-indigo-200 rounded-xl p-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs font-semibold">
+                              AI
+                            </div>
+                            <h4 className="font-medium text-indigo-900 text-sm">Pasos del Agente</h4>
+                          </div>
+                          <div className="space-y-2">
+                            {msg.todos.map((todo, todoIndex) => (
+                              <div key={todoIndex} className="flex items-start gap-3 text-sm">
+                                <span className={cn(
+                                  "flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium",
+                                  todo.status === 'completed' && "bg-green-500 text-white",
+                                  todo.status === 'in_progress' && "bg-amber-500 text-white animate-pulse",
+                                  todo.status === 'pending' && "bg-gray-300 text-gray-700",
+                                  todo.status === 'failed' && "bg-red-500 text-white"
+                                )}>
+                                  {todo.status === 'completed' ? '✓' : todoIndex + 1}
+                                </span>
+                                <span className={cn(
+                                  "flex-1 leading-relaxed",
+                                  todo.status === 'completed' && "text-gray-600",
+                                  todo.status === 'in_progress' && "text-gray-900 font-medium",
+                                  todo.status === 'pending' && "text-gray-500",
+                                  todo.status === 'failed' && "text-red-600"
+                                )}>
+                                  {todo.description}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  // Normal message rendering
+                  return (
                   <div
                     key={index}
                     className={cn(
@@ -599,9 +971,64 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                       )}
                     >
                       {msg.role === 'assistant' && msg.content === '' && isSending ? (
-                        <LoadingSpinner />
+                        <div className="space-y-3">
+                          <LoadingSpinner />
+                        </div>
                       ) : (
                         <div className="space-y-4">
+                          {/* Show agent execution steps as persistent inline cards */}
+                          {msg.role === 'assistant' && msg.agentStateEvents && msg.agentStateEvents.length > 0 && (
+                            <div className="mb-4 p-4 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg shadow-sm">
+                              <div className="flex items-center gap-2 mb-3">
+                                <div className="w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs">
+                                  🔧
+                                </div>
+                                <span className="text-sm font-semibold text-indigo-900">Pasos del Agente</span>
+                                <span className="ml-auto text-xs text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">
+                                  {msg.agentStateEvents.filter(e => e.type === 'tool_call').length} acciones
+                                </span>
+                              </div>
+                              <div className="space-y-2">
+                                {msg.agentStateEvents
+                                  .filter(e => e.type === 'tool_call' || e.type === 'tool_result')
+                                  .map((event, eventIndex) => (
+                                    <div key={eventIndex} className="flex items-start gap-3 text-sm">
+                                      {event.type === 'tool_call' && (
+                                        <>
+                                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">
+                                            {Math.floor(eventIndex / 2) + 1}
+                                          </span>
+                                          <div className="flex-1">
+                                            <div className="font-medium text-gray-900">
+                                              {formatToolName(event.toolName)}
+                                            </div>
+                                          </div>
+                                        </>
+                                      )}
+                                      {event.type === 'tool_result' && (
+                                        <div className="ml-9 pl-3 border-l-2 border-gray-300">
+                                          <div className={cn(
+                                            "flex items-center gap-2 text-sm",
+                                            event.success ? "text-green-700" : "text-red-700"
+                                          )}>
+                                            <span className={cn(
+                                              "flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold",
+                                              event.success ? "bg-green-500 text-white" : "bg-red-500 text-white"
+                                            )}>
+                                              {event.success ? '✓' : '✗'}
+                                            </span>
+                                            <span className="font-medium">
+                                              {event.success ? 'Completado exitosamente' : `Error: ${event.error}`}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+                          
                           {msg.content && (
                             <div className="prose prose-sm max-w-none chat-content overflow-x-auto">
                               <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -621,6 +1048,14 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                               onLoadMore={() => handleLoadMoreResults(msg.searchResult!)}
                             />
                           )}
+                          
+                          {/* Render email draft */}
+                          {msg.emailDraft && msg.metadata?.type === 'email_draft' && (
+                            <EmailDraftCard
+                              draft={msg.emailDraft}
+                              index={index}
+                            />
+                          )}
                         </div>
                       )}
                       {msg.role === 'assistant' && msg.content && !isSending && (
@@ -637,7 +1072,8 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
                 <div ref={messagesEndRef} />
               </div>
 

@@ -6,6 +6,7 @@ import { updateUserSubscription } from '@/lib/subscription';
 import { logValidationError, logValidationSuccess } from '@/lib/subscription-validation';
 import Stripe from 'stripe';
 import { isPostgrestError } from '@/lib/type-guards';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -32,12 +33,16 @@ interface SimplifiedStripeEvent {
   data: {
     object: {
       id?: string;
-      [key: string]: any;
+      [key: string]: unknown;
     };
   };
 }
 
-async function updateWebhookLog(supabase: any, eventId: string, status: string, processingTimeMs: number, errorMessage?: string) {
+interface StripeObjectWithId {
+  id: string;
+}
+
+async function updateWebhookLog(supabase: SupabaseClient, eventId: string, status: string, processingTimeMs: number, errorMessage?: string) {
   await supabase
     .from('webhook_logs')
     .update({
@@ -92,7 +97,7 @@ export async function POST(request: NextRequest) {
     created: event.created,
     data: {
       object: {
-        id: (event.data.object as any).id,
+        id: (event.data.object as StripeObjectWithId).id,
       },
     },
   };

@@ -36,6 +36,7 @@
     "@stripe/stripe-js": "^7.8.0",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.58.0",
+    "@tavily/core": "^0.5.12",
     "@types/three": "^0.180.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

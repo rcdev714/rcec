@@ -1,7 +1,7 @@
 import { chatWithMemory, getConversationStats } from "@/lib/chat-agent";
 import { chatWithLangGraph } from "@/lib/chat-agent-langgraph";
+import { chatWithSalesAgent } from "@/lib/agents/sales-agent";
 import { createClient } from "@/lib/supabase/server";
-import ConversationManager from "@/lib/conversation-manager";
 import { HumanMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
 import { validateEnvironment } from "@/lib/env-validation";
 import { ensurePromptAllowedAndTrack, estimateTokensFromTextLength } from "@/lib/usage";
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const { message, conversationId, useLangGraph = true } = await req.json();
+    const { message, conversationId, useLangGraph = true, useSalesAgent = true } = await req.json();
 
     // Use user ID as conversation ID if not provided for user-specific memory
     const effectiveConversationId = conversationId || user.id;
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     // Check and track prompt usage before processing
     const inputTokensEstimate = estimateTokensFromTextLength(message);
     const promptCheck = await ensurePromptAllowedAndTrack(user.id, {
-      model: "gemini-2.5-flash", // Default model
+      model: "gemini-2.5-pro", // Default model
       inputTokensEstimate,
     });
 
@@ -66,27 +66,60 @@ export async function POST(req: Request) {
       );
     }
 
+    // Shared LangSmith configuration
+    const langsmithConfig = {
+      projectName: process.env.LANGSMITH_PROJECT || "rcec-chat",
+    };
+
+    // Fetch conversation history once for LangGraph-based agents (server-side)
+    let conversationHistory: BaseMessage[] = [];
+    if (conversationId && (useSalesAgent || useLangGraph)) {
+      const { data: messages, error } = await supabase
+        .from('conversation_messages')
+        .select('role, content, metadata, created_at')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true });
+
+      if (!error && messages) {
+        conversationHistory = messages.map(msg => {
+          if (msg.role === 'user') {
+            return new HumanMessage(msg.content);
+          } else {
+            // For assistant messages, include search results in content if available (for sales agent)
+            let content = msg.content;
+            
+            // If this message had search results, append a summary
+            if (useSalesAgent && msg.metadata?.searchResult) {
+              const sr = msg.metadata.searchResult;
+              const companiesSummary = sr.companies?.slice(0, 3).map((c: any) => 
+                `- ${c.nombre_comercial || c.nombre} (RUC: ${c.ruc}, Empleados: ${c.n_empleados || 'N/A'}, Ingresos: $${c.ingresos_ventas?.toLocaleString() || 'N/A'})`
+              ).join('\n') || '';
+              
+              content += `\n\n[PREVIOUS_SEARCH_RESULTS]\nEncontré ${sr.totalCount} empresas para "${sr.query}". Las principales fueron:\n${companiesSummary}\n[/PREVIOUS_SEARCH_RESULTS]`;
+            }
+            
+            return new AIMessage(content);
+          }
+        });
+      }
+    }
+
     let stream: ReadableStream;
 
-    if (useLangGraph) {
-      // Use LangGraph agent for company search capabilities
-      const conversationManager = ConversationManager.getInstance();
-      
-      // Get conversation history if conversationId is provided
-      let conversationHistory: BaseMessage[] = [];
-      if (conversationId) {
-        const messages = await conversationManager.getConversationMessages(conversationId);
-        conversationHistory = messages.map(msg => 
-          msg.role === 'user' 
-            ? new HumanMessage(msg.content)
-            : new AIMessage(msg.content)
-        );
-      }
-
+    if (useSalesAgent) {
+      // Use new Sales Agent with StateGraph and checkpointing
+      stream = await chatWithSalesAgent(message, conversationHistory, {
+        userId: user.id,
+        conversationId: effectiveConversationId,
+        ...langsmithConfig,
+        runName: "Sales Agent Chat",
+      });
+    } else if (useLangGraph) {
+      // Fallback to simple LangGraph React agent
       stream = await chatWithLangGraph(message, conversationHistory, {
         userId: user.id,
         conversationId: effectiveConversationId,
-        projectName: process.env.LANGSMITH_PROJECT || "rcec-chat",
+        ...langsmithConfig,
         runName: "RCEC Chat (LangGraph)",
       });
     } else {
@@ -98,12 +131,13 @@ export async function POST(req: Request) {
       stream = await chatWithMemory(message, effectiveConversationId);
     }
 
-    if (useLangGraph) {
+    if (useSalesAgent || useLangGraph) {
       // LangGraph stream already returns a ReadableStream
       return new Response(stream, {
         headers: {
           "Content-Type": "text/plain; charset=utf-8",
           "X-Conversation-Id": effectiveConversationId,
+          "X-Use-Sales-Agent": useSalesAgent ? "true" : "false",
           "X-Use-LangGraph": "true",
         },
       });
