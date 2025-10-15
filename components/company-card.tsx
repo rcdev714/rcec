@@ -15,7 +15,7 @@ export function CompanyCard({ company, variant = 'grid' }: CompanyCardProps) {
   if (variant === 'overview') {
     return (
       <div className="bg-white border border-gray-200 rounded-xl p-6 text-gray-900">
-        <h3 className="text-lg font-medium text-gray-900 mb-6">Resumen Financiero Actual</h3>
+        <h3 className="text-base font-medium text-gray-900 mb-6">Resumen Financiero Actual</h3>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div className="space-y-2">
@@ -23,7 +23,7 @@ export function CompanyCard({ company, variant = 'grid' }: CompanyCardProps) {
               <DollarSign className="h-4 w-4" />
               <p className="text-xs font-medium">Ingresos Ventas</p>
             </div>
-            <p className="text-xl font-normal text-gray-900">
+            <p className="text-lg font-normal text-gray-900">
               ${company.ingresos_ventas?.toLocaleString() || 'N/A'}
             </p>
           </div>
@@ -33,7 +33,7 @@ export function CompanyCard({ company, variant = 'grid' }: CompanyCardProps) {
               <Building2 className="h-4 w-4" />
               <p className="text-xs font-medium">Activos</p>
             </div>
-            <p className="text-xl font-normal text-gray-900">
+            <p className="text-lg font-normal text-gray-900">
               ${company.activos?.toLocaleString() || 'N/A'}
             </p>
           </div>
@@ -43,7 +43,7 @@ export function CompanyCard({ company, variant = 'grid' }: CompanyCardProps) {
               <TrendingUp className="h-4 w-4" />
               <p className="text-xs font-medium">Patrimonio</p>
             </div>
-            <p className="text-xl font-normal text-gray-900">
+            <p className="text-lg font-normal text-gray-900">
               ${company.patrimonio?.toLocaleString() || 'N/A'}
             </p>
           </div>
@@ -53,7 +53,7 @@ export function CompanyCard({ company, variant = 'grid' }: CompanyCardProps) {
               <Users className="h-4 w-4" />
               <p className="text-xs font-medium">Empleados</p>
             </div>
-            <p className="text-xl font-normal text-gray-900">
+            <p className="text-lg font-normal text-gray-900">
               {company.n_empleados?.toLocaleString() || 'N/A'}
             </p>
           </div>
@@ -63,25 +63,25 @@ export function CompanyCard({ company, variant = 'grid' }: CompanyCardProps) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="space-y-1">
               <p className="text-xs text-gray-500">Utilidad Neta</p>
-              <p className="text-base font-normal text-gray-900">
+              <p className="text-sm font-normal text-gray-900">
                 ${company.utilidad_neta?.toLocaleString() || 'N/A'}
               </p>
             </div>
             <div className="space-y-1">
               <p className="text-xs text-gray-500">Total Gastos</p>
-              <p className="text-base font-normal text-gray-900">
+              <p className="text-sm font-normal text-gray-900">
                 ${company.total_gastos?.toLocaleString() || 'N/A'}
               </p>
             </div>
             <div className="space-y-1">
               <p className="text-xs text-gray-500">Impuesto Renta</p>
-              <p className="text-base font-normal text-gray-900">
+              <p className="text-sm font-normal text-gray-900">
                 ${company.impuesto_renta?.toLocaleString() || 'N/A'}
               </p>
             </div>
             <div className="space-y-1">
               <p className="text-xs text-gray-500">Gastos Financieros</p>
-              <p className="text-base font-normal text-gray-900">
+              <p className="text-sm font-normal text-gray-900">
                 ${company.gastos_financieros?.toLocaleString() || 'N/A'}
               </p>
             </div>
@@ -116,7 +116,7 @@ export function CompanyCard({ company, variant = 'grid' }: CompanyCardProps) {
             <h3 className="font-medium text-gray-900 leading-tight truncate" title={companyName}>
               {companyName}
             </h3>
-            <p className="text-sm text-gray-500">
+            <p className="text-xs text-gray-500">
               @{company.ruc}
             </p>
             {company.provincia && (
@@ -132,19 +132,19 @@ export function CompanyCard({ company, variant = 'grid' }: CompanyCardProps) {
         <div className="grid grid-cols-2 gap-4 py-4 border-y border-gray-100">
           <div className="space-y-1">
             <p className="text-xs text-gray-500">Activos</p>
-            <p className="text-base font-normal">{company.activos?.toLocaleString() || 'N/A'}</p>
+            <p className="text-sm font-normal">{company.activos?.toLocaleString() || 'N/A'}</p>
           </div>
           <div className="space-y-1">
             <p className="text-xs text-gray-500">Patrimonio</p>
-            <p className="text-base font-normal">{company.patrimonio?.toLocaleString() || 'N/A'}</p>
+            <p className="text-sm font-normal">{company.patrimonio?.toLocaleString() || 'N/A'}</p>
           </div>
           <div className="space-y-1">
             <p className="text-xs text-gray-500">Ingresos</p>
-            <p className="text-base font-normal">{company.ingresos_ventas?.toLocaleString() || 'N/A'}</p>
+            <p className="text-sm font-normal">{company.ingresos_ventas?.toLocaleString() || 'N/A'}</p>
           </div>
           <div className="space-y-1">
             <p className="text-xs text-gray-500">Empleados</p>
-            <p className="text-base font-normal">{company.n_empleados?.toLocaleString() || 'N/A'}</p>
+            <p className="text-sm font-normal">{company.n_empleados?.toLocaleString() || 'N/A'}</p>
           </div>
         </div>
       </div>

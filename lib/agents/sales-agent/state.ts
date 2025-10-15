@@ -189,6 +189,12 @@ export const SalesAgentState = Annotation.Root({
     reducer: (_, update) => update,
     default: () => null,
   }),
+  
+  // Model selection
+  modelName: Annotation<string>({
+    reducer: (_, update) => update,
+    default: () => "gemini-2.5-flash",
+  }),
 });
 
 // Type for the state

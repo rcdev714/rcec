@@ -39,15 +39,16 @@ export async function POST(req: Request) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const { message, conversationId, useLangGraph = true, useSalesAgent = true } = await req.json();
+    const { message, conversationId, useLangGraph = true, useSalesAgent = true, model } = await req.json();
 
     // Use user ID as conversation ID if not provided for user-specific memory
     const effectiveConversationId = conversationId || user.id;
 
     // Check and track prompt usage before processing
     const inputTokensEstimate = estimateTokensFromTextLength(message);
+    const selectedModel = model || "gemini-2.5-flash"; // Default model
     const promptCheck = await ensurePromptAllowedAndTrack(user.id, {
-      model: "gemini-2.5-pro", // Default model
+      model: selectedModel,
       inputTokensEstimate,
     });
 
@@ -113,6 +114,7 @@ export async function POST(req: Request) {
         conversationId: effectiveConversationId,
         ...langsmithConfig,
         runName: "Sales Agent Chat",
+        modelName: selectedModel,
       });
     } else if (useLangGraph) {
       // Fallback to simple LangGraph React agent
@@ -121,6 +123,7 @@ export async function POST(req: Request) {
         conversationId: effectiveConversationId,
         ...langsmithConfig,
         runName: "RCEC Chat (LangGraph)",
+        modelName: selectedModel,
       });
     } else {
       // Fallback to original memory-based agent
@@ -128,7 +131,7 @@ export async function POST(req: Request) {
       if (process.env.NODE_ENV !== 'production') {
         console.log(`Conversation ${effectiveConversationId} stats before:`, statsBefore);
       }
-      stream = await chatWithMemory(message, effectiveConversationId);
+      stream = await chatWithMemory(message, effectiveConversationId, selectedModel);
     }
 
     if (useSalesAgent || useLangGraph) {

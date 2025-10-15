@@ -97,7 +97,7 @@ export default function OfferingsPage() {
     return (
       <div className="p-4 md:p-8">
         <div className="flex justify-center items-center min-h-[200px]">
-          <div className="text-gray-500">Cargando servicios...</div>
+          <div className="text-gray-500 text-xs">Cargando servicios...</div>
         </div>
       </div>
     );
@@ -106,7 +106,7 @@ export default function OfferingsPage() {
   if (error) {
     return (
       <div className="p-4 md:p-8">
-        <div className="text-center text-red-600">
+        <div className="text-center text-red-600 text-xs">
           Error: {error}
         </div>
       </div>
@@ -118,13 +118,13 @@ export default function OfferingsPage() {
       <div className="mb-6 px-2 md:px-4">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
           <div>
-            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight bg-gradient-to-br from-gray-900 via-gray-700 to-gray-400 bg-clip-text text-transparent">Catálogo de Servicios</h1>
-            <p className="text-gray-600 text-sm md:text-base mt-1">
+            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight bg-gradient-to-br from-gray-900 via-gray-700 to-gray-400 bg-clip-text text-transparent">Catálogo de Servicios</h1>
+            <p className="text-gray-600 text-xs md:text-sm mt-1">
               Gestiona tu portafolio con herramientas de clase mundial.
             </p>
           </div>
           <Link href="/offerings/new" passHref>
-            <button className="bg-indigo-500 text-white font-medium py-2 px-4 rounded-md shadow hover:bg-indigo-600 transition-colors flex items-center text-sm">
+            <button className="bg-indigo-500 text-white font-medium py-2 px-4 rounded-md shadow hover:bg-indigo-600 transition-colors flex items-center text-xs">
               <PlusIcon className="h-4 w-4 mr-2" />
               Nuevo Servicio
             </button>
@@ -134,9 +134,9 @@ export default function OfferingsPage() {
 
       {offerings.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-gray-500 mb-4">No tienes servicios registrados aún.</p>
+          <p className="text-gray-500 text-xs mb-4">No tienes servicios registrados aún.</p>
           <Link href="/offerings/new" passHref>
-            <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-full shadow">
+            <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-full shadow text-xs">
               Crear tu primer servicio
             </button>
           </Link>

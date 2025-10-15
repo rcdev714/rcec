@@ -75,10 +75,10 @@ export default function CompanyProfile({ history, ruc }: CompanyProfileProps) {
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="text-center py-12">
             <Building2 className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-xl font-bold text-gray-900 mb-2">
               No se encontraron datos
             </h1>
-            <p className="text-xl text-gray-600 mb-8">
+            <p className="text-sm text-gray-600 mb-8">
               RUC: {ruc}
             </p>
             <Link 
@@ -211,7 +211,7 @@ export default function CompanyProfile({ history, ruc }: CompanyProfileProps) {
             {activeTab === 'history' && (
               <div className="space-y-4">
                 <div className="bg-white border border-gray-200 rounded-xl p-6">
-                  <h3 className="text-xl font-medium text-gray-900 mb-1">
+                  <h3 className="text-base font-medium text-gray-900 mb-1">
                     Historia Financiera
                   </h3>
                   <div className="flex items-center gap-2 text-gray-500">
@@ -234,7 +234,7 @@ export default function CompanyProfile({ history, ruc }: CompanyProfileProps) {
             {activeTab === 'contact' && (
               <div className="space-y-6">
                 <div className="bg-white border border-gray-200 rounded-xl p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-6">
+                  <h3 className="text-base font-bold text-gray-900 mb-6">
                     Información de Contacto
                   </h3>
                   
@@ -244,7 +244,7 @@ export default function CompanyProfile({ history, ruc }: CompanyProfileProps) {
                         <p className="text-sm font-medium text-gray-500 mb-2">
                           Representante Legal
                         </p>
-                        <p className="text-lg font-semibold text-gray-900">
+                        <p className="text-base font-semibold text-gray-900">
                           {latestCompany.director_representante}
                         </p>
                       </div>
@@ -255,7 +255,7 @@ export default function CompanyProfile({ history, ruc }: CompanyProfileProps) {
                         <p className="text-sm font-medium text-gray-500 mb-2">
                           Cargo
                         </p>
-                        <p className="text-lg font-semibold text-gray-900">
+                        <p className="text-base font-semibold text-gray-900">
                           {latestCompany.director_cargo}
                         </p>
                       </div>
@@ -266,9 +266,9 @@ export default function CompanyProfile({ history, ruc }: CompanyProfileProps) {
                         <p className="text-sm font-medium text-gray-500 mb-2">
                           Teléfono de Contacto
                         </p>
-                        <a 
+                        <a
                           href={`tel:${latestCompany.director_telefono}`}
-                          className="text-lg font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                          className="text-base font-semibold text-blue-600 hover:text-blue-700 transition-colors"
                         >
                           {latestCompany.director_telefono}
                         </a>
@@ -279,7 +279,7 @@ export default function CompanyProfile({ history, ruc }: CompanyProfileProps) {
                      !latestCompany.director_cargo && 
                      !latestCompany.director_telefono && (
                       <div className="text-center py-8">
-                        <p className="text-gray-500">
+                        <p className="text-sm text-gray-500">
                           No hay información de contacto disponible para esta empresa
                         </p>
                       </div>
@@ -290,7 +290,7 @@ export default function CompanyProfile({ history, ruc }: CompanyProfileProps) {
                 {/* Additional Company Info */}
                 {(latestCompany.actividad_principal || latestCompany.segmento_empresa) && (
                   <div className="bg-white border border-gray-200 rounded-xl p-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-6">
+                    <h3 className="text-base font-bold text-gray-900 mb-6">
                       Detalles Adicionales
                     </h3>
                     
@@ -300,7 +300,7 @@ export default function CompanyProfile({ history, ruc }: CompanyProfileProps) {
                           <p className="text-sm font-medium text-gray-500 mb-2">
                             Actividad Principal
                           </p>
-                          <p className="text-base text-gray-900">
+                          <p className="text-sm text-gray-900">
                             {latestCompany.actividad_principal}
                           </p>
                         </div>
@@ -311,7 +311,7 @@ export default function CompanyProfile({ history, ruc }: CompanyProfileProps) {
                           <p className="text-sm font-medium text-gray-500 mb-2">
                             Segmento Empresarial
                           </p>
-                          <p className="text-base text-gray-900">
+                          <p className="text-sm text-gray-900">
                             {latestCompany.segmento_empresa}
                           </p>
                         </div>

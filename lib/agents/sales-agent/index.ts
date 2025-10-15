@@ -32,6 +32,7 @@ export async function chatWithSalesAgent(
     conversationId?: string;
     projectName?: string;
     runName?: string;
+    modelName?: string;
   }
 ): Promise<ReadableStream> {
   const userMessage = new HumanMessage(message);
@@ -78,6 +79,7 @@ export async function chatWithSalesAgent(
             retryCount: 0,
             todo: [],
             toolOutputs: [],
+            modelName: options?.modelName || "gemini-2.5-flash",
           },
           {
             ...config,

@@ -8,7 +8,7 @@ import {
   Building,
   CreditCard,
   Settings,
-  Sparkles,
+  Infinity,
   FileText,
   LucideIcon,
   LayoutDashboard,
@@ -25,7 +25,7 @@ const Sidebar = () => {
 
   const navItems = [
     { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-    { href: "/chat", icon: Sparkles, label: "Agente" },
+    { href: "/chat", icon: Infinity, label: "Agente" },
     { href: "/offerings", icon: Package, label: "Servicios" },
     { href: "/companies", icon: Building, label: "Empresas" },
     { href: "/pricing", icon: CreditCard, label: "Suscripción" },
@@ -44,12 +44,12 @@ const Sidebar = () => {
     >
       <div className="flex items-center justify-center h-16 relative">
         <div className={cn("flex items-center gap-2")}>
-          <Image src="/logo.svg" alt="Camella Logo" width={35} height={35} />
+          <Image src="/logo.svg" alt="Camella Logo" width={28} height={28} />
           <Image
             src="/camella-logo.svg"
             alt="Camella Logo text"
-            width={95}
-            height={35}
+            width={75}
+            height={28}
             className={cn("hidden", !isCollapsed && "md:block")}
           />
         </div>
@@ -71,11 +71,9 @@ const Sidebar = () => {
                 <Link
                   href={item.href}
                   className={cn(
-                    "group relative flex items-center p-2 rounded-md transition-colors duration-200",
+                    "group relative flex items-center justify-start pl-3 pr-2 py-2 rounded-md transition-colors duration-200",
                     "text-gray-600 hover:bg-white hover:scale-105",
-                    isActive && "bg-white text-gray-900 font-medium",
-                    "justify-center",
-                    !isCollapsed && "md:justify-start"
+                    isActive && "bg-white text-gray-900 font-medium"
                   )}
                 >
                   <span
@@ -88,7 +86,7 @@ const Sidebar = () => {
                   />
                   <div className={cn("flex items-center")}>
                     <Icon
-                      size={16}
+                      size={20}
                       className={cn(
                         "transition-colors transform duration-200",
                         isActive
@@ -99,7 +97,7 @@ const Sidebar = () => {
                   </div>
                   <span
                     className={cn(
-                      "overflow-hidden transition-all duration-200 whitespace-nowrap",
+                      "overflow-hidden transition-all duration-200 whitespace-nowrap text-sm",
                       isCollapsed ? "hidden" : "hidden md:inline ml-2",
                       isActive
                         ? "text-indigo-500"
@@ -119,12 +117,10 @@ const Sidebar = () => {
         <Link
           href="/docs"
           className={cn(
-            "group relative flex items-center p-2 rounded-md transition-colors duration-200",
+            "group relative flex items-center justify-start pl-3 pr-2 py-2 rounded-md transition-colors duration-200",
             "text-gray-600 hover:bg-white hover:scale-105",
             pathname.startsWith("/docs") &&
-              "bg-white text-gray-900 font-medium",
-            "justify-center",
-            !isCollapsed && "md:justify-start"
+              "bg-white text-gray-900 font-medium"
           )}
         >
           <span
@@ -136,7 +132,7 @@ const Sidebar = () => {
             )}
           />
           <FileText
-            size={16}
+            size={18}
             className={cn(
               "transition-colors transform duration-200",
               pathname.startsWith("/docs")
@@ -146,7 +142,7 @@ const Sidebar = () => {
           />
           <span
             className={cn(
-              "overflow-hidden transition-all duration-200 whitespace-nowrap",
+              "overflow-hidden transition-all duration-200 whitespace-nowrap text-sm",
               isCollapsed ? "hidden" : "hidden md:inline ml-2",
               pathname.startsWith("/docs")
                 ? "text-indigo-500"
@@ -159,12 +155,10 @@ const Sidebar = () => {
         <Link
           href="/settings"
           className={cn(
-            "group relative flex items-center p-2 rounded-md transition-colors duration-200",
+            "group relative flex items-center justify-start pl-3 pr-2 py-2 rounded-md transition-colors duration-200",
             "text-gray-600 hover:bg-white hover:scale-105",
             pathname.startsWith("/settings") &&
-              "bg-white text-gray-900 font-medium",
-            "justify-center",
-            !isCollapsed && "md:justify-start"
+              "bg-white text-gray-900 font-medium"
           )}
         >
           <span
@@ -176,7 +170,7 @@ const Sidebar = () => {
             )}
           />
           <Settings
-            size={16}
+            size={18}
             className={cn(
               "transition-colors transform duration-200",
               pathname.startsWith("/settings")
@@ -186,7 +180,7 @@ const Sidebar = () => {
           />
           <span
             className={cn(
-              "overflow-hidden transition-all duration-200 whitespace-nowrap",
+              "overflow-hidden transition-all duration-200 whitespace-nowrap text-sm",
               isCollapsed ? "hidden" : "hidden md:inline ml-2",
               pathname.startsWith("/settings")
                 ? "text-indigo-500"

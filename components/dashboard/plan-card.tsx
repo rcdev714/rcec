@@ -73,7 +73,7 @@ export default function PlanCard() {
     <Card className="bg-white border border-gray-200 shadow-sm text-gray-900">
       <CardHeader className="flex items-center justify-between flex-row">
         <div>
-          <CardTitle className="text-base">Plan Actual</CardTitle>
+          <CardTitle className="text-sm">Plan Actual</CardTitle>
           <div className="mt-1">
             <Badge className={
               summary?.plan === 'PRO' ? 'bg-blue-100 text-blue-800' :
@@ -87,7 +87,7 @@ export default function PlanCard() {
       <CardContent>
         <div className="space-y-3 mb-4">
           {getCurrentPlanFeatures().map((feature, index) => (
-            <div key={index} className="flex items-center justify-between text-sm">
+            <div key={index} className="flex items-center justify-between text-xs">
               <span className="text-gray-700 flex-1">{feature.name}</span>
               <div className="ml-2">
                 {feature.available ? (

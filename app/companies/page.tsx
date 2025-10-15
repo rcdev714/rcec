@@ -80,8 +80,8 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
       <div className="max-w-full mx-0 px-6 py-4">
         {/* Header with logo and auth */}
         <div className="mb-4 px-6">
-          <h1 className="text-2xl font-semibold mb-2">Empresas</h1>
-          <p className="text-gray-600 text-sm">
+          <h1 className="text-xl font-semibold mb-2">Empresas</h1>
+          <p className="text-gray-600 text-xs">
             Explora más de 300,000 empresas ecuatorianas con información financiera, contactos y datos actualizados. Usa filtros avanzados para encontrar tus clientes ideales.
           </p>
         </div>

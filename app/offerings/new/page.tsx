@@ -191,8 +191,8 @@ export default function NewOfferingPage() {
     <div className="min-h-screen bg-background flex justify-center py-8">
       <div className="w-full max-w-2xl px-4">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold">Nuevo Servicio</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-xl font-bold">Nuevo Servicio</h1>
+          <p className="text-gray-600 text-xs mt-1">
             Crea un perfil completo de tu producto o servicio. La plataforma generará un enlace público que podrás compartir con empresas prospecto para presentar tu oferta, precios y documentación.
           </p>
         </div>
@@ -439,8 +439,8 @@ export default function NewOfferingPage() {
               />
             </div>
 
-            {error && <p className="text-destructive text-sm">{error}</p>}
-            {success && <p className="text-green-500 text-sm">{success}</p>}
+            {error && <p className="text-destructive text-xs">{error}</p>}
+            {success && <p className="text-green-500 text-xs">{success}</p>}
 
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Enviando..." : "Crear Oferta de Servicio"}

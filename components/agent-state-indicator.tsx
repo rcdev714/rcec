@@ -55,9 +55,9 @@ export function AgentStateIndicator({ events, isActive }: AgentStateIndicatorPro
           exit={{ opacity: 0, y: -10 }}
           className="mb-3"
         >
-          <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50/50 border border-gray-200/60 rounded-lg px-3 py-2">
             {renderEventIcon(currentEvent)}
-            <span className="flex-1">{renderEventMessage(currentEvent)}</span>
+            <span className="flex-1 font-normal">{renderEventMessage(currentEvent)}</span>
           </div>
         </motion.div>
       )}
@@ -67,32 +67,32 @@ export function AgentStateIndicator({ events, isActive }: AgentStateIndicatorPro
 
 function renderEventIcon(event: AgentStateEvent | null) {
   if (!event) {
-    return <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />;
+    return <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />;
   }
 
   switch (event.type) {
     case 'thinking':
-      return <Brain className="w-4 h-4 text-indigo-600 animate-pulse" />;
+      return <Brain className="w-3.5 h-3.5 text-gray-400 animate-pulse" />;
     case 'tool_call':
-      return <Wrench className="w-4 h-4 text-blue-600 animate-bounce" />;
+      return <Wrench className="w-3.5 h-3.5 text-gray-400" />;
     case 'tool_result':
       return event.success ? (
-        <CheckCircle2 className="w-4 h-4 text-green-600" />
+        <CheckCircle2 className="w-3.5 h-3.5 text-gray-500" />
       ) : (
-        <XCircle className="w-4 h-4 text-red-600" />
+        <XCircle className="w-3.5 h-3.5 text-gray-500" />
       );
     case 'error':
-      return <AlertCircle className="w-4 h-4 text-red-600" />;
+      return <AlertCircle className="w-3.5 h-3.5 text-gray-500" />;
     case 'reflection':
-      return <RefreshCw className="w-4 h-4 text-orange-600 animate-spin" />;
+      return <RefreshCw className="w-3.5 h-3.5 text-gray-400 animate-spin" />;
     case 'todo_update':
-      return <ListTodo className="w-4 h-4 text-purple-600" />;
+      return <ListTodo className="w-3.5 h-3.5 text-gray-400" />;
     case 'iteration':
-      return <Loader2 className="w-4 h-4 text-indigo-600 animate-spin" />;
+      return <Loader2 className="w-3.5 h-3.5 text-gray-400 animate-spin" />;
     case 'finalize':
-      return <CheckCircle2 className="w-4 h-4 text-green-600" />;
+      return <CheckCircle2 className="w-3.5 h-3.5 text-gray-500" />;
     default:
-      return <Loader2 className="w-4 h-4 animate-spin text-gray-600" />;
+      return <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />;
   }
 }
 
@@ -132,7 +132,7 @@ function renderEventMessage(event: AgentStateEvent | null): string {
 function formatToolName(toolName: string): string {
   const toolNames: Record<string, string> = {
     // Company tools
-    'search_companies': 'Búsqueda de empresas',
+    'search_companies': 'Acceder a la base de datos empresarial',
     'get_company_details': 'Obtener detalles de empresa',
     'refine_search': 'Refinar búsqueda',
     'export_companies': 'Exportar empresas a Excel',
@@ -162,7 +162,7 @@ export function AgentStateDetail({ events, isExpanded, onToggle }: AgentStateDet
     <div className="mb-3">
       <button
         onClick={onToggle}
-        className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+        className="flex items-center gap-2 text-[11px] text-gray-400 hover:text-gray-600 transition-colors font-normal"
       >
         <span>{isExpanded ? '▼' : '▶'}</span>
         <span>Ver detalles del agente ({events.length} eventos)</span>
@@ -176,23 +176,20 @@ export function AgentStateDetail({ events, isExpanded, onToggle }: AgentStateDet
             exit={{ height: 0, opacity: 0 }}
             className="mt-2 overflow-hidden"
           >
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 max-h-64 overflow-y-auto">
+            <div className="bg-gray-50/50 border border-gray-200/60 rounded-lg p-3 max-h-64 overflow-y-auto">
               <div className="space-y-2">
                 {events.map((event, index) => (
                   <div
                     key={index}
                     className={cn(
-                      "flex items-start gap-2 text-xs p-2 rounded",
-                      event.type === 'error' && "bg-red-50 border border-red-200",
-                      event.type === 'tool_result' && !event.success && "bg-orange-50 border border-orange-200",
-                      event.type === 'tool_result' && event.success && "bg-green-50 border border-green-200"
+                      "flex items-start gap-2 text-xs p-2 rounded border border-gray-200/60 bg-white/50"
                     )}
                   >
                     <div className="flex-shrink-0 mt-0.5">
                       {renderEventIcon(event)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-700">
+                      <div className="font-normal text-gray-500 text-[11px]">
                         {event.type === 'thinking' && `[${event.node}]`}
                         {event.type === 'tool_call' && `[Tool Call]`}
                         {event.type === 'tool_result' && `[Tool Result]`}
@@ -202,25 +199,25 @@ export function AgentStateDetail({ events, isExpanded, onToggle }: AgentStateDet
                         {event.type === 'iteration' && `[Iteration]`}
                         {event.type === 'finalize' && `[Finalize]`}
                       </div>
-                      <div className="text-gray-600 break-words">
+                      <div className="text-gray-500 break-words text-[11px] font-normal">
                         {renderEventMessage(event)}
                       </div>
                       {event.type === 'tool_call' && (
                         <details className="mt-1">
-                          <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
+                          <summary className="cursor-pointer text-gray-400 hover:text-gray-600 text-[10px]">
                             Ver input
                           </summary>
-                          <pre className="mt-1 text-xs bg-white p-2 rounded border border-gray-200 overflow-x-auto">
+                          <pre className="mt-1 text-[10px] bg-white/50 p-2 rounded border border-gray-200/60 overflow-x-auto text-gray-500">
                             {JSON.stringify(event.input, null, 2)}
                           </pre>
                         </details>
                       )}
                       {event.type === 'tool_result' && event.output != null && (
                         <details className="mt-1">
-                          <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
+                          <summary className="cursor-pointer text-gray-400 hover:text-gray-600 text-[10px]">
                             Ver output
                           </summary>
-                          <pre className="mt-1 text-xs bg-white p-2 rounded border border-gray-200 overflow-x-auto max-h-32">
+                          <pre className="mt-1 text-[10px] bg-white/50 p-2 rounded border border-gray-200/60 overflow-x-auto max-h-32 text-gray-500">
                             {JSON.stringify(event.output, null, 2)}
                           </pre>
                         </details>

@@ -75,40 +75,40 @@ Usuario: "Empresas de Pichincha con más ingresos"
 
 Recuerda: Siempre sé útil, preciso, y usa las herramientas disponibles para proporcionar datos reales en lugar de especulaciones.`;
 
-// Lazily initialize the Gemini model and agent to avoid build-time env checks
-let geminiModel: ChatGoogleGenerativeAI | null = null;
-let langGraphAgentInstance: ReturnType<typeof createReactAgent> | null = null;
+// Lazily initialize the Gemini models and agents per model name to avoid build-time env checks
+const geminiModels: Record<string, ChatGoogleGenerativeAI> = {};
+const langGraphAgentInstances: Record<string, ReturnType<typeof createReactAgent>> = {};
 
-function getGeminiModel(): ChatGoogleGenerativeAI {
-  if (!geminiModel) {
+function getGeminiModel(modelName: string = "gemini-2.5-flash"): ChatGoogleGenerativeAI {
+  if (!geminiModels[modelName]) {
     const apiKey = process.env.GOOGLE_API_KEY || '';
-    geminiModel = new ChatGoogleGenerativeAI({
+    geminiModels[modelName] = new ChatGoogleGenerativeAI({
       apiKey,
-      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+      model: modelName,
       temperature: 0.7,
       maxOutputTokens: 2048,
       maxRetries: 2,
     });
   }
-  return geminiModel;
+  return geminiModels[modelName];
 }
 
-function getLangGraphAgent() {
-  if (!langGraphAgentInstance) {
-    langGraphAgentInstance = createReactAgent({
-      llm: getGeminiModel(),
+function getLangGraphAgent(modelName: string = "gemini-2.5-flash") {
+  if (!langGraphAgentInstances[modelName]) {
+    langGraphAgentInstances[modelName] = createReactAgent({
+      llm: getGeminiModel(modelName),
       tools: companyTools,
       messageModifier: SYSTEM_PROMPT,
     });
   }
-  return langGraphAgentInstance;
+  return langGraphAgentInstances[modelName];
 }
 
 // Enhanced chat function with LangGraph
 export async function chatWithLangGraph(
   message: string, 
   conversationHistory: BaseMessage[] = [],
-  options?: { userId?: string; conversationId?: string; projectName?: string; runName?: string }
+  options?: { userId?: string; conversationId?: string; projectName?: string; runName?: string; modelName?: string }
 ): Promise<ReadableStream> {
   const userMessage = new HumanMessage(message);
   
@@ -122,9 +122,10 @@ export async function chatWithLangGraph(
         let finalResponse = '';
         let searchResult: CompanySearchResult | undefined;
         
-        // Execute the React agent
+        // Execute the React agent with selected model
+        const modelName = options?.modelName || "gemini-2.5-flash";
         const tracer = getLangChainTracer(options?.projectName);
-        const result = await getLangGraphAgent().invoke(
+        const result = await getLangGraphAgent(modelName).invoke(
           {
             messages: initialMessages,
           },

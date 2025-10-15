@@ -163,7 +163,7 @@ export default function ConversationSidebar({
       {/* Sidebar container: mobile drawer + desktop static */}
       <div
         className={`
-          z-40 bg-gray-50 transition-all duration-300 ease-in-out
+          z-40 bg-transparent transition-all duration-300 ease-in-out
           fixed inset-y-0 left-0 w-64 ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static md:ml-12
           ${isCollapsed ? 'md:w-16 md:ml-12' : 'md:w-64 md:ml-12'}
           flex flex-col h-full
@@ -175,7 +175,7 @@ export default function ConversationSidebar({
             {!isCollapsed ? (
               <>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-lg font-semibold text-gray-800">Agentes</h2>
+                  <h2 className="text-sm font-normal text-gray-700">Agentes</h2>
                   <div className="flex gap-1">
                     <Button
                       variant="outline"
@@ -257,7 +257,7 @@ export default function ConversationSidebar({
                                 {formatDate(conv.lastActivity)}
                               </span>
                             </div>
-                            <p className="text-sm font-medium text-gray-800 truncate">
+                            <p className="text-xs font-normal text-gray-700 truncate">
                               {conv.title}
                             </p>
                           </div>

@@ -109,12 +109,12 @@ export function CompanyProfileHeader({ company, ruc, totalYears, canAccessLinked
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 {/* Company Name */}
-                <h1 className="text-3xl font-medium text-gray-900 mb-2">
+                <h1 className="text-xl font-medium text-gray-900 mb-2">
                   {companyName}
                 </h1>
                 
                 {/* RUC - Like Twitter handle */}
-                <p className="text-gray-600 font-medium mb-3">
+                <p className="text-sm text-gray-600 font-medium mb-3">
                   @{ruc}
                 </p>
 

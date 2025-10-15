@@ -22,19 +22,19 @@ const MAX_USABLE_TOKENS = MAX_CONTEXT_TOKENS - TOKEN_BUFFER;
 // In-memory store (in production, consider using Redis or database)
 const memoryStore: MemoryStore = {};
 
-// Lazy initialization of the Gemini model to avoid build-time errors
-let model: ChatGoogleGenerativeAI | null = null;
+// Lazy initialization of Gemini models (cached per model name) to avoid build-time errors
+const models: Record<string, ChatGoogleGenerativeAI> = {};
 
-function getModel(): ChatGoogleGenerativeAI {
-  if (!model) {
-    model = new ChatGoogleGenerativeAI({
+function getModel(modelName: string = "gemini-2.0-flash-exp"): ChatGoogleGenerativeAI {
+  if (!models[modelName]) {
+    models[modelName] = new ChatGoogleGenerativeAI({
       apiKey: process.env.GOOGLE_API_KEY || '',
-      model: "gemini-2.0-flash-exp", // Latest model with largest context window
+      model: modelName,
       temperature: 0.7,
       maxOutputTokens: 8192, // Reasonable output limit
     });
   }
-  return model;
+  return models[modelName];
 }
 
 // Unified accurate token counter with fallback
@@ -187,14 +187,14 @@ async function manageMemory(conversationId: string, newMessage: BaseMessage): Pr
 }
 
 // Enhanced chat function with memory management
-async function chatWithMemory(message: string, conversationId: string = 'default') {
+async function chatWithMemory(message: string, conversationId: string = 'default', modelName?: string) {
   const userMessage = new HumanMessage(message);
   
   // Manage memory and get conversation history
   const conversationMessages = await manageMemory(conversationId, userMessage);
   
   // Stream response from Gemini
-  const aiModel = getModel();
+  const aiModel = getModel(modelName);
   const config: RunnableConfig = {
     callbacks: langsmithEnabled ? [getLangChainTracer(process.env.LANGSMITH_PROJECT || "rcec-chat")] : undefined,
     tags: ["memory-agent"],
@@ -292,8 +292,8 @@ function getConversationHistory(conversationId: string = 'default'): BaseMessage
 }
 
 // Legacy simple chat for backward compatibility
-async function simpleChat(message: string) {
-  const aiModel = getModel();
+async function simpleChat(message: string, modelName?: string) {
+  const aiModel = getModel(modelName);
   const stream = await aiModel.stream([new HumanMessage(message)]);
   return stream;
 }

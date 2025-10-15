@@ -72,18 +72,18 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-6 text-gray-900">
+    <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4 text-gray-900">
       {/* Header */}
       <div className="flex items-center space-x-2">
-        <Filter size={16} className="text-gray-500" />
-        <h3 className="font-medium text-gray-900">Filtros</h3>
+        <Filter size={14} className="text-gray-500" />
+        <h3 className="font-medium text-sm text-gray-900">Filtros</h3>
       </div>
 
       {/* Sorting controls (top for quick access) */}
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label htmlFor="sortBy" className="text-sm font-medium text-gray-900">
+            <Label htmlFor="sortBy" className="text-xs font-medium text-gray-900">
               Ordenar por
             </Label>
             <select
@@ -91,7 +91,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
               name="sortBy"
               value={(filters.sortBy as string) || ''}
               onChange={handleSelectChange}
-              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded-md text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
             >
               <option value="">Relevancia (completitud)</option>
               <option value="ingresos_ventas">Ingresos</option>
@@ -102,7 +102,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
             </select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="sortDir" className="text-sm font-medium text-gray-900">
+            <Label htmlFor="sortDir" className="text-xs font-medium text-gray-900">
               Dirección
             </Label>
             <select
@@ -110,7 +110,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
               name="sortDir"
               value={(filters.sortDir as string) || ''}
               onChange={handleSelectChange}
-              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded-md text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
             >
               <option value="">Predeterminado</option>
               <option value="desc">Descendente</option>
@@ -123,7 +123,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
       {/* Quick Filters */}
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="nombre" className="text-sm font-medium text-gray-900">
+          <Label htmlFor="nombre" className="text-xs font-medium text-gray-900">
             Nombre de empresa
           </Label>
           <Input
@@ -133,12 +133,12 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
             value={filters.nombre as string}
             onChange={handleFilterChange}
             placeholder="Buscar por nombre..."
-            className="bg-white border-gray-300"
+            className="bg-white border-gray-300 text-xs py-1.5"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="ruc" className="text-sm font-medium text-gray-900">
+          <Label htmlFor="ruc" className="text-xs font-medium text-gray-900">
             RUC
           </Label>
           <Input
@@ -148,12 +148,12 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
             value={filters.ruc as string}
             onChange={handleFilterChange}
             placeholder="Número de RUC..."
-            className="bg-white border-gray-300"
+            className="bg-white border-gray-300 text-xs py-1.5"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="provincia" className="text-sm font-medium text-gray-900">
+          <Label htmlFor="provincia" className="text-xs font-medium text-gray-900">
             Provincia
           </Label>
           <select
@@ -161,7 +161,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
             name="provincia"
             value={filters.provincia as string}
             onChange={handleSelectChange}
-            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded-md text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
           >
             <option value="">Todas las provincias</option>
             <option value="AZUAY">Azuay</option>
@@ -193,7 +193,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label htmlFor="anio" className="text-sm font-medium text-gray-900">
+            <Label htmlFor="anio" className="text-xs font-medium text-gray-900">
               Año fiscal
             </Label>
             <select
@@ -201,7 +201,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
               name="anio"
               value={filters.anio as string}
               onChange={handleSelectChange}
-              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded-md text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
             >
               <option value="">Todos los años</option>
               <option value="2024">2024</option>
@@ -224,7 +224,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
             </select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="nEmpleadosMin" className="text-sm font-medium text-gray-900">
+            <Label htmlFor="nEmpleadosMin" className="text-xs font-medium text-gray-900">
               Min. empleados
             </Label>
             <Input
@@ -234,14 +234,14 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
               value={filters.nEmpleadosMin as string}
               onChange={handleFilterChange}
               placeholder="0"
-              className="bg-white border-gray-300"
+              className="bg-white border-gray-300 text-xs py-1.5"
             />
           </div>
         </div>
 
         {/* Max empleados */}
         <div className="space-y-2">
-          <Label htmlFor="nEmpleadosMax" className="text-sm font-medium text-gray-900">
+          <Label htmlFor="nEmpleadosMax" className="text-xs font-medium text-gray-900">
             Max. empleados
           </Label>
           <Input
@@ -251,7 +251,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
             value={filters.nEmpleadosMax as string}
             onChange={handleFilterChange}
             placeholder="∞"
-            className="bg-white border-gray-300"
+            className="bg-white border-gray-300 text-xs py-1.5"
           />
         </div>
       </div>
@@ -367,7 +367,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
       <div className="flex gap-2 pt-2 justify-center">
         <Button
           onClick={handleApply}
-          className="text-sm h-9 bg-indigo-500 text-white hover:bg-indigo-600 transition-transform active:scale-95"
+          className="text-xs h-8 bg-indigo-500 text-white hover:bg-indigo-600 transition-transform active:scale-95"
           disabled={isApplying}
         >
           {isApplying ? 'Aplicando...' : 'Aplicar filtros'}
@@ -375,7 +375,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
         <Button
           onClick={handleClear}
           variant="outline"
-          className="px-4 text-sm h-9"
+          className="px-3 text-xs h-8"
         >
           Limpiar
         </Button>

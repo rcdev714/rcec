@@ -3,7 +3,8 @@
 import { useState, FormEvent, ChangeEvent, useRef, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowDown, LoaderCircle, Copy, CopyCheck, ArrowUp } from "lucide-react";
+import { ArrowDown, LoaderCircle, Copy, CopyCheck, ArrowUp, Sparkles, Infinity } from "lucide-react";
+import ModelSelector from "./model-selector";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import UserAvatar from "./user-avatar";
@@ -11,7 +12,6 @@ import ConversationSidebar from "./conversation-sidebar";
 import ConversationManager from "@/lib/conversation-manager";
 import { ChatCompanyResults } from "./chat-company-card";
 import { CompanySearchResult } from "@/types/chat";
-import { StarField } from "./star-field";
 import { EmailDraftCard } from "./email-draft-card";
 import { type AgentStateEvent } from "./agent-state-indicator";
 
@@ -54,18 +54,55 @@ const LoadingSpinner = () => (
 const formatToolName = (toolName: string): string => {
   const toolNames: Record<string, string> = {
     // Company tools
-    'search_companies': 'Búsqueda de empresas',
+    'search_companies': 'Búsqueda en base de datos empresarial',
     'get_company_details': 'Obtener detalles de empresa',
-    'refine_search': 'Refinar búsqueda',
-    'export_companies': 'Exportar empresas a Excel',
+    'refine_search': 'Refinar búsqueda en base de datos empresarial',
+    'export_companies': 'Exportar empresas',
     // Web search
     'web_search': 'Búsqueda en internet',
     // Contact tools
-    'enrich_company_contacts': 'Buscar contactos ejecutivos',
+    'enrich_company_contacts': 'Buscar contactos en base de datos empresarial',
     // Email tools (if re-enabled in future)
     'generate_sales_email': 'Generar email de ventas',
   };
   return toolNames[toolName] || toolName;
+};
+
+// Defensive render-time sanitization to prevent any bracketed tags
+function sanitizeForRender(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/\[AGENT_PLAN\][\s\S]*?\[\/AGENT_PLAN\]/g, '')
+    .replace(/\[STATE_EVENT\][\s\S]*?\[\/STATE_EVENT\]/g, '')
+    .replace(/\[SEARCH_RESULTS\][\s\S]*?\[\/SEARCH_RESULTS\]/g, '')
+    .replace(/\[EMAIL_DRAFT\][\s\S]*?\[\/EMAIL_DRAFT\]/g, '');
+}
+
+// Code block component with copy button
+const CodeBlock = ({ children }: { children?: React.ReactNode }) => {
+  const [copied, setCopied] = useState(false);
+  const text = Array.isArray(children) ? children.join('') : (children as string) || '';
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
+  };
+  return (
+    <div className="relative group">
+      <pre className="rounded-md border border-gray-200 bg-gray-50 p-3 overflow-auto text-sm">
+        <code>{text}</code>
+      </pre>
+      <button
+        type="button"
+        onClick={onCopy}
+        className="absolute top-2 right-2 rounded-md border border-gray-200 bg-white/90 px-2 py-1 text-xs text-gray-600 shadow-sm opacity-0 group-hover:opacity-100 transition"
+      >
+        {copied ? 'Copiado' : 'Copiar'}
+      </button>
+    </div>
+  );
 };
 
 interface ChatUIProps {
@@ -91,10 +128,48 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
   const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId || null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [copiedInline, setCopiedInline] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash");
   // Note: currentAgentEvents tracking removed - state events are now stored in message metadata
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const conversationManager = useMemo(() => ConversationManager.getInstance(), []);
+
+  // Markdown components configuration (stable reference)
+  const markdownComponents = useMemo(() => ({
+    a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-600 hover:underline"
+      >
+        {children}
+      </a>
+    ),
+    code: ({ inline, children }: { inline?: boolean; children?: React.ReactNode }) => {
+      const text = Array.isArray(children) ? children.join('') : (children as string) || '';
+      if (inline) {
+        return (
+          <code
+            onClick={async () => {
+              setCopiedInline(text);
+              try {
+                await navigator.clipboard.writeText(text);
+              } catch {}
+              setTimeout(() => setCopiedInline(null), 1200);
+            }}
+            title={copiedInline === text ? 'Copiado' : 'Click para copiar'}
+            className="cursor-pointer rounded bg-gray-100 px-1.5 py-0.5 text-gray-800 hover:bg-gray-200"
+          >
+            {children}
+          </code>
+        );
+      }
+      return <CodeBlock>{children}</CodeBlock>;
+    },
+    pre: ({ children }: { children?: React.ReactNode }) => <CodeBlock>{children}</CodeBlock>,
+  }), [copiedInline]);
 
   const allSuggestions = useMemo(() => [
     'Enseñame empresas del guayas con mas de 1000 empleados',
@@ -109,6 +184,20 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
     const shuffled = [...allSuggestions].sort(() => 0.5 - Math.random());
     setSuggestions(shuffled.slice(0, 3));
   }, [allSuggestions]);
+
+  // Load saved model preference from localStorage
+  useEffect(() => {
+    const savedModel = localStorage.getItem('gemini-model');
+    if (savedModel) {
+      setSelectedModel(savedModel);
+    }
+  }, []);
+
+  // Save model preference to localStorage
+  const handleModelChange = (model: string) => {
+    setSelectedModel(model);
+    localStorage.setItem('gemini-model', model);
+  };
 
   // Helper to sanitize legacy content and extract structured blocks
   const parseAndSanitizeMessage = (role: "user" | "assistant" | "system", content: string) => {
@@ -204,7 +293,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
             metadata: { ...msg.metadata, ...metadata }
           });
         } else {
-          const { agentStateEvents: _drop, ...restMetadata } = (msg.metadata || {}) as any;
+          const { agentStateEvents: _drop, ...restMetadata } = (msg.metadata || {}) as Record<string, unknown>;
           hydrated.push({
             role,
             content: msg.content,
@@ -403,7 +492,8 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
         body: JSON.stringify({ 
           message: userMessage.content,
           conversationId: currentConvId,
-          useLangGraph: true // Enable LangGraph features
+          useLangGraph: true, // Enable LangGraph features
+          model: selectedModel // Send selected model
         }),
       });
 
@@ -647,25 +737,29 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
           }
         } while (emailDraftBlockFound);
         
-        // Update UI with processed text and remaining buffer (which is streaming text)
+        // Update UI with processed text only (not the raw buffer with unparsed tags)
         setMessages((prev) => {
           const newMessages = [...prev];
           const lastMessage = newMessages[newMessages.length - 1];
           if (lastMessage?.role === "assistant") {
-            lastMessage.content = assistantResponseText + buffer;
+            lastMessage.content = assistantResponseText;
           }
           return newMessages;
         });
       }
       
-      assistantResponseText += buffer; // Add any remaining text from buffer
+      // Process any remaining buffer content
+      assistantResponseText += buffer;
       
-      // Clean up any remaining tags from final content
+      // Clean up ALL remaining tags from the complete response before final render
       assistantResponseText = assistantResponseText
         .replace(/\[AGENT_PLAN\][\s\S]*?\[\/AGENT_PLAN\]/g, '')
+        .replace(/\[STATE_EVENT\][\s\S]*?\[\/STATE_EVENT\]/g, '')
+        .replace(/\[SEARCH_RESULTS\][\s\S]*?\[\/SEARCH_RESULTS\]/g, '')
+        .replace(/\[EMAIL_DRAFT\][\s\S]*?\[\/EMAIL_DRAFT\]/g, '')
         .trim();
 
-      // Final update for UI consistency
+      // Final update for UI consistency with fully cleaned content
       setMessages((prev) => {
           const newMessages = [...prev];
           const lastMessage = newMessages[newMessages.length - 1];
@@ -798,25 +892,28 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
   const formLayout = (
     <div className="w-full flex flex-col items-center space-y-4 px-2 md:px-0">
       <form onSubmit={handleSubmit} className="relative w-full max-w-2xl group">
-        <div className="relative">
+        <div className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-2xl p-3 md:p-4 shadow-sm hover:shadow-md focus-within:ring-4 focus-within:ring-indigo-100 transition-all duration-200">
           <input
             type="text"
             value={input}
             onChange={handleInputChange}
-            placeholder="¿Qué empresa estás buscando?"
-            className="w-full pl-6 pr-20 py-4 md:py-4 bg-white/90 backdrop-blur-sm border-2 border-gray-200/60 rounded-2xl focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 hover:border-gray-300 transition-all duration-200 text-base md:text-base placeholder:text-gray-400 shadow-sm hover:shadow-md focus:shadow-lg touch-manipulation"
+            placeholder="busca, analiza, conecta"
+            className="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-sm md:text-sm placeholder:text-xs md:placeholder:text-xs placeholder:text-gray-400"
           />
-          <button
-            type="submit"
-            disabled={isSending}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-12 h-12 md:w-11 md:h-11 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 active:bg-indigo-800 disabled:bg-gray-400 transition-all duration-200 shadow-lg hover:shadow-xl active:shadow-md disabled:shadow-none flex items-center justify-center touch-manipulation group-hover:scale-105 active:scale-95"
-          >
-            {isSending ? (
-              <LoaderCircle className="w-5 h-5 md:w-5 md:h-5 animate-spin" />
-            ) : (
-              <ArrowUp className="w-5 h-5 md:w-4 md:h-4" />
-            )}
-          </button>
+          <div className="mt-3 flex items-center justify-between">
+            <ModelSelector value={selectedModel} onChange={handleModelChange} disabled={isSending} />
+            <button
+              type="submit"
+              disabled={isSending}
+              className="w-12 h-12 md:w-11 md:h-11 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 active:bg-indigo-800 disabled:bg-gray-400 transition-all duration-200 shadow-lg hover:shadow-xl active:shadow-md disabled:shadow-none flex items-center justify-center touch-manipulation group-hover:scale-105 active:scale-95"
+            >
+              {isSending ? (
+                <LoaderCircle className="w-5 h-5 md:w-5 md:h-5 animate-spin" />
+              ) : (
+                <ArrowUp className="w-5 h-5 md:w-4 md:h-4" />
+              )}
+            </button>
+          </div>
         </div>
       </form>
 
@@ -827,12 +924,11 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
 
   return (
     <div className="relative flex h-screen bg-white overflow-hidden">
-      {/* Night Sky Background Animation - only visible in empty state */}
+      {/* Empty background accent (lightweight) */}
       {messages.length === 0 && (
-        <>
-          {console.log('Rendering StarField - messages.length:', messages.length)}
-          <StarField />
-        </>
+        <div className="pointer-events-none absolute inset-0 flex items-start justify-center opacity-[0.06] -z-10">
+          <Sparkles className="w-[420px] h-[420px] mt-16" />
+        </div>
       )}
 
       {/* Conversation Sidebar as a normal flex child on desktop; mobile drawer handled inside */}
@@ -856,7 +952,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
               <div className="w-full max-w-4xl mx-auto mb-10 md:mb-16">
                 <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 p-6 md:p-8">
                   <div className="text-center">
-                    <h1 className="text-3xl md:text-4xl font-kalice mb-3 text-gray-900 leading-tight">
+                    <h1 className="text-3xl md:text-3xl tracking-tight mb-3 text-gray-900 leading-[1.1]">
                       Agente
                     </h1>
                     <div className="space-y-3">
@@ -864,7 +960,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                         Encuentra oportunidades de negocio y obtén respuestas al
                         instante.
                       </p>
-                      <div className="w-12 h-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 mx-auto"></div>
+                      <div className="w-16 h-0.5 bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-purple-500 mx-auto rounded-full"></div>
                       <p className="text-gray-600 text-xs md:text-sm max-w-xl mx-auto leading-relaxed">
                         Pregúntale sobre finanzas, contacta con ejecutivos y más. Accede a todo nuestro
                         registro empresarial a través del chat.
@@ -874,16 +970,20 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                 </div>
               </div>
 
-              {/* Sugerencias de Prompt */}
+              {/* Sugerencias de Prompt - modern cards */}
               <div className="w-full max-w-2xl mx-auto">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-2 text-center">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {suggestions.map((s, i) => (
                     <button
                       key={i}
                       onClick={() => handleSuggestionClick(s)}
-                      className="p-4 md:p-3 border border-indigo-300 rounded-xl md:rounded-lg text-sm md:text-xs text-gray-600 hover:bg-gray-50 hover:border-indigo-400 transition-all duration-200 bg-white shadow-sm min-h-[48px] md:min-h-auto flex items-center justify-center touch-manipulation"
+                      className="group relative p-4 text-left border rounded-xl text-[13px] text-gray-700 bg-white/90 hover:bg-white transition-all duration-200 shadow-sm hover:shadow-md hover:border-indigo-300/80 border-gray-200"
                     >
-                      {s}
+                      <span className="absolute -top-2 -left-2 bg-indigo-50 text-indigo-600 text-[10px] px-2 py-0.5 rounded-full border border-indigo-100">Sugerencia</span>
+                      <span className="block pr-6 leading-relaxed">
+                        {s}
+                      </span>
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-indigo-500">↵</span>
                     </button>
                   ))}
                 </div>
@@ -913,7 +1013,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                             <div className="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs font-semibold">
                               AI
                             </div>
-                            <h4 className="font-medium text-indigo-900 text-sm">Pasos del Agente</h4>
+                            <h4 className="font-medium text-indigo-900 text-sm">Acciones del agente</h4>
                           </div>
                           <div className="space-y-2">
                             {msg.todos.map((todo, todoIndex) => (
@@ -958,16 +1058,16 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                         <UserAvatar />
                       </div>
                     ) : (
-                      <div className="w-8 h-8 md:w-8 md:h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs md:text-sm font-medium bg-white text-indigo-500 border border-indigo-300 mt-1">
-                        AI
+                      <div className="w-8 h-8 md:w-8 md:h-8 rounded-full flex-shrink-0 flex items-center justify-center bg-white text-indigo-500 border border-indigo-300 mt-1">
+                        <Infinity className="w-4 h-4" />
                       </div>
                     )}
                     <div
                       className={cn(
-                        "max-w-[85%] md:max-w-[90%] px-4 md:px-4 py-3 md:py-3 rounded-2xl shadow-sm relative group border touch-manipulation",
+                        "max-w-[85%] md:max-w-[90%] px-4 md:px-4 py-3 md:py-3 rounded-2xl relative group border touch-manipulation",
                         msg.role === "user"
-                          ? "bg-white text-gray-800 border-indigo-300 rounded-br-md self-end"
-                          : "bg-gray-100 text-gray-800 border-indigo-300 rounded-bl-md self-start"
+                          ? "bg-white text-gray-900 border-gray-200 rounded-br-md self-end"
+                          : "bg-gray-50 text-gray-900 border-gray-200 rounded-bl-md self-start"
                       )}
                     >
                       {msg.role === 'assistant' && msg.content === '' && isSending ? (
@@ -978,47 +1078,37 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                         <div className="space-y-4">
                           {/* Show agent execution steps as persistent inline cards */}
                           {msg.role === 'assistant' && msg.agentStateEvents && msg.agentStateEvents.length > 0 && (
-                            <div className="mb-4 p-4 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg shadow-sm">
-                              <div className="flex items-center gap-2 mb-3">
-                                <div className="w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs">
-                                  🔧
-                                </div>
-                                <span className="text-sm font-semibold text-indigo-900">Pasos del Agente</span>
-                                <span className="ml-auto text-xs text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">
+                            <div className="mb-3 p-3 bg-gray-50/50 border border-gray-200/60 rounded-lg">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-4 h-4 rounded-full bg-gray-200/60 text-gray-500 flex items-center justify-center text-[10px]">🔧</div>
+                                <span className="text-[11px] font-normal text-gray-500">Pasos del Agente</span>
+                                <span className="ml-auto text-[10px] text-gray-400 bg-gray-100/60 px-1.5 py-0.5 rounded-full">
                                   {msg.agentStateEvents.filter(e => e.type === 'tool_call').length} acciones
                                 </span>
                               </div>
-                              <div className="space-y-2">
+                              <div className="space-y-1.5">
                                 {msg.agentStateEvents
                                   .filter(e => e.type === 'tool_call' || e.type === 'tool_result')
                                   .map((event, eventIndex) => (
-                                    <div key={eventIndex} className="flex items-start gap-3 text-sm">
+                                    <div key={eventIndex} className="flex items-start gap-2 text-[11px]">
                                       {event.type === 'tool_call' && (
                                         <>
-                                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">
+                                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-gray-200/60 text-gray-500 flex items-center justify-center text-[10px] font-normal">
                                             {Math.floor(eventIndex / 2) + 1}
                                           </span>
                                           <div className="flex-1">
-                                            <div className="font-medium text-gray-900">
+                                            <div className="font-normal text-gray-500">
                                               {formatToolName(event.toolName)}
                                             </div>
                                           </div>
                                         </>
                                       )}
                                       {event.type === 'tool_result' && (
-                                        <div className="ml-9 pl-3 border-l-2 border-gray-300">
-                                          <div className={cn(
-                                            "flex items-center gap-2 text-sm",
-                                            event.success ? "text-green-700" : "text-red-700"
-                                          )}>
-                                            <span className={cn(
-                                              "flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold",
-                                              event.success ? "bg-green-500 text-white" : "bg-red-500 text-white"
-                                            )}>
-                                              {event.success ? '✓' : '✗'}
-                                            </span>
-                                            <span className="font-medium">
-                                              {event.success ? 'Completado exitosamente' : `Error: ${event.error}`}
+                                        <div className="ml-7 pl-2 border-l border-gray-200/60">
+                                          <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                                            <span className="flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-normal bg-gray-200/60 text-gray-500">{event.success ? '✓' : '✗'}</span>
+                                            <span className="font-normal text-gray-500">
+                                              {event.success ? 'Completado' : `Error: ${event.error}`}
                                             </span>
                                           </div>
                                         </div>
@@ -1030,9 +1120,9 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                           )}
                           
                           {msg.content && (
-                            <div className="prose prose-sm max-w-none chat-content overflow-x-auto">
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {msg.content}
+                            <div className="prose prose-xs max-w-none chat-content overflow-x-auto">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                                {sanitizeForRender(msg.content)}
                               </ReactMarkdown>
                             </div>
                           )}
@@ -1092,6 +1182,8 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                 )}
               </AnimatePresence>
             </div>
+
+            {/* Sticky Agent Actions Panel removed per request - inline actions remain in assistant messages */}
 
             {/* Input Area */}
             <motion.div

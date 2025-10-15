@@ -21,7 +21,7 @@ export default async function CompanyDetail({ params }: CompanyDetailProps) {
   if (history.length === 0) {
     return (
       <div className="min-h-screen bg-background p-8">
-        <p>No data found for RUC {ruc}.</p>
+        <p className="text-sm">No data found for RUC {ruc}.</p>
       </div>
     );
   }

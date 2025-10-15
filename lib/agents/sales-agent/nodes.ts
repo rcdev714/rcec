@@ -5,27 +5,26 @@ import { SALES_AGENT_SYSTEM_PROMPT } from "./prompt";
 import { createClient } from "@/lib/supabase/server";
 import { UserOffering } from "@/types/user-offering";
 
-// Initialize Gemini model (lazy)
-let geminiModel: ChatGoogleGenerativeAI | null = null;
+// Initialize Gemini models (lazy, cached per model name)
+const geminiModels: Record<string, ChatGoogleGenerativeAI> = {};
 
-function getGeminiModel(): ChatGoogleGenerativeAI {
+function getGeminiModel(modelName: string = "gemini-2.5-flash"): ChatGoogleGenerativeAI {
   // Always recreate in development to pick up config changes
   if (process.env.NODE_ENV === 'development') {
-    geminiModel = null;
+    delete geminiModels[modelName];
   }
   
-  if (!geminiModel) {
-    const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  if (!geminiModels[modelName]) {
     console.log('[getGeminiModel] Initializing model:', modelName);
     
-    geminiModel = new ChatGoogleGenerativeAI({
+    geminiModels[modelName] = new ChatGoogleGenerativeAI({
       apiKey: process.env.GOOGLE_API_KEY || '',
       model: modelName,
       temperature: 0.3, // Lower temperature for more consistent tool usage
       maxOutputTokens: 8192, // Increased for longer, complete responses
     });
   }
-  return geminiModel;
+  return geminiModels[modelName];
 }
 
 /**
@@ -199,9 +198,11 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
       enrichCompanyContactsTool,
     ];
     
-    // Bind tools to the model
-    const model = getGeminiModel().bindTools(allTools);
+    // Bind tools to the model (use state.modelName for dynamic selection)
+    const modelName = state.modelName || "gemini-2.5-flash";
+    const model = getGeminiModel(modelName).bindTools(allTools);
     
+    console.log('[think] Using model:', modelName);
     console.log('[think] Tools bound to model:', allTools.map(t => t.name));
 
     // Build context message

@@ -61,9 +61,9 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
   };
 
   return (
-    <div className="flex gap-6">
+    <div className="flex gap-4">
       {/* Sidebar with filters */}
-      <div className="w-96 flex-shrink-0">
+      <div className="w-72 flex-shrink-0">
         <div className="sticky top-8">
           <CompanyFilter
             initialFilters={initialFilters}
@@ -102,10 +102,10 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
           </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               No se encontraron empresas que coincidan con los criterios de búsqueda.
             </p>
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className="text-xs text-muted-foreground mt-2">
               Prueba ajustando los filtros para obtener más resultados.
             </p>
           </div>

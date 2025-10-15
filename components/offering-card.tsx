@@ -226,7 +226,7 @@ export default function OfferingCard({ offering, onUpdate: _onUpdate, onDelete }
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
-              <CardTitle className="text-lg mb-2 truncate">{typedOffering.offering_name}</CardTitle>
+              <CardTitle className="text-base mb-2 truncate">{typedOffering.offering_name}</CardTitle>
               <div className="flex items-center gap-2">
                 {typedOffering.industry && typedOffering.industry.trim() && (
                   <Badge variant="outline" className="text-[10px] text-gray-600">{typedOffering.industry}</Badge>
@@ -248,14 +248,14 @@ export default function OfferingCard({ offering, onUpdate: _onUpdate, onDelete }
         <CardContent className="space-y-4">
           {/* Description */}
           {typedOffering.description && (
-            <p className="text-sm text-gray-600 leading-relaxed">{typedOffering.description}</p>
+            <p className="text-xs text-gray-600 leading-relaxed">{typedOffering.description}</p>
           )}
 
           {/* Price Information */}
           {priceDisplay && (
             <div className="flex items-center gap-2">
               <BanknotesIcon className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-semibold text-green-700">{priceDisplay}</span>
+              <span className="text-xs font-semibold text-green-700">{priceDisplay}</span>
               <Badge variant="outline" className="text-[10px] text-gray-600">{paymentTypeDisplay}</Badge>
             </div>
           )}
@@ -272,7 +272,7 @@ export default function OfferingCard({ offering, onUpdate: _onUpdate, onDelete }
                   aria-label="Ver redes sociales"
                 >
                   <ChatBubbleLeftRightIcon className="h-3 w-3" />
-                  <span>{typedOffering.social_media_links.length} redes</span>
+                  <span className="text-xs">{typedOffering.social_media_links.length} redes</span>
                 </a>
               )}
               {typedOffering.documentation_urls && typedOffering.documentation_urls.length > 0 && (
@@ -284,14 +284,14 @@ export default function OfferingCard({ offering, onUpdate: _onUpdate, onDelete }
                   aria-label="Ver documentación"
                 >
                   <DocumentIcon className="h-3 w-3" />
-                  <span>{typedOffering.documentation_urls.length} docs</span>
+                  <span className="text-xs">{typedOffering.documentation_urls.length} docs</span>
                 </a>
               )}
             </div>
             {formattedDate && (
               <div className="flex items-center gap-1 text-gray-500 whitespace-nowrap">
                 <CalendarDaysIcon className="h-3 w-3" />
-                <span>{formattedDate}</span>
+                <span className="text-xs">{formattedDate}</span>
               </div>
             )}
           </div>
@@ -367,10 +367,10 @@ export default function OfferingCard({ offering, onUpdate: _onUpdate, onDelete }
                 </DialogTrigger>
                 <DialogContent className="max-w-md">
                   <DialogHeader>
-                    <DialogTitle>Eliminar servicio</DialogTitle>
+                    <DialogTitle className="text-sm">Eliminar servicio</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
-                    <p className="text-sm text-gray-700">
+                    <p className="text-xs text-gray-700">
                       ¿Estás seguro de que quieres eliminar &quot;{typedOffering.offering_name}&quot;?
                     </p>
                     <p className="text-xs text-gray-500">
@@ -394,7 +394,7 @@ export default function OfferingCard({ offering, onUpdate: _onUpdate, onDelete }
           <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Compartir servicio</DialogTitle>
+                <DialogTitle className="text-sm">Compartir servicio</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-3">
@@ -422,7 +422,7 @@ export default function OfferingCard({ offering, onUpdate: _onUpdate, onDelete }
                 
                 {shareUrl && (
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Enlace público</label>
+                    <label className="text-xs font-medium">Enlace público</label>
                     <Input 
                       readOnly 
                       value={shareUrl} 

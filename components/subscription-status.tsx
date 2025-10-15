@@ -151,7 +151,7 @@ export default function SubscriptionStatus() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Estado de Suscripción</CardTitle>
+          <CardTitle className="text-sm">Estado de Suscripción</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="animate-pulse">
@@ -167,7 +167,7 @@ export default function SubscriptionStatus() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Estado de Suscripción</CardTitle>
+          <CardTitle className="text-sm">Estado de Suscripción</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-red-600">No se pudo cargar el estado de la suscripción</p>
@@ -179,18 +179,18 @@ export default function SubscriptionStatus() {
   return (
     <Card className="bg-white text-gray-900 border-gray-200 shadow-sm max-w-sm">
       <CardHeader>
-        <CardTitle>Subscription Status</CardTitle>
+        <CardTitle className="text-sm">Subscription Status</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Plan Actual:</span>
+          <span className="text-xs font-medium">Plan Actual:</span>
           <Badge className={getPlanColor(status.plan)}>
             {translatePlan(status.plan)}
           </Badge>
         </div>
-        
+
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Estado:</span>
+          <span className="text-xs font-medium">Estado:</span>
           <Badge className={getStatusColor(status.status)}>
             {translateStatus(status.status)}
           </Badge>
@@ -198,16 +198,16 @@ export default function SubscriptionStatus() {
 
         {(subscription?.current_period_start || period?.start) && (
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Inicio del período</span>
-            <span className="text-sm text-gray-600">
+            <span className="text-xs font-medium">Inicio del período</span>
+            <span className="text-xs text-gray-600">
               {new Date((subscription?.current_period_start || period?.start) as string).toLocaleDateString()}
             </span>
           </div>
         )}
         {(subscription?.current_period_end || period?.end) && (
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Reinicio (1 mes)</span>
-            <span className="text-sm text-gray-600">
+            <span className="text-xs font-medium">Reinicio (1 mes)</span>
+            <span className="text-xs text-gray-600">
               {new Date((subscription?.current_period_end || period?.end) as string).toLocaleDateString()}
             </span>
           </div>
@@ -215,7 +215,7 @@ export default function SubscriptionStatus() {
 
         {status.cancelAtPeriodEnd && (
           <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-            <p className="text-sm text-yellow-800">
+            <p className="text-xs text-yellow-800">
               Tu suscripción será cancelada al final del período actual.
             </p>
           </div>
