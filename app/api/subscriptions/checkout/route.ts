@@ -1,3 +1,19 @@
+/**
+ * @deprecated This checkout route is deprecated in favor of Stripe Pricing Table.
+ * 
+ * The Stripe Pricing Table (embedded on /pricing page) now handles checkout directly.
+ * This route is kept for backward compatibility and legacy integrations only.
+ * 
+ * For new integrations, use the Stripe Pricing Table component which provides:
+ * - Automatic price updates from Stripe Dashboard
+ * - Built-in promotional code support
+ * - Better mobile experience
+ * - Automatic tax calculation
+ * - No need for server-side checkout session creation
+ * 
+ * See STRIPE_SETUP.md for migration guide.
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import Stripe from 'stripe';

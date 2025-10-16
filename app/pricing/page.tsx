@@ -1,4 +1,5 @@
-import PricingPlans from '@/components/pricing-plans';
+import { createClient } from '@/lib/supabase/server';
+import StripePricingTable from '@/components/stripe-pricing-table';
 
 export default async function PricingPage({
   searchParams,
@@ -7,6 +8,10 @@ export default async function PricingPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const upgradeRequired = resolvedSearchParams.upgrade === 'required';
+
+  // Get authenticated user to pre-fill email
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -27,7 +32,9 @@ export default async function PricingPage({
           )}
         </div>
         
-        <PricingPlans />
+        <div className="mt-12 flex justify-center">
+          <StripePricingTable customerEmail={user?.email} />
+        </div>
       </div>
     </div>
   );

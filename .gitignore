@@ -43,6 +43,7 @@ next-env.d.ts
 supabase
 .vscode
 .env.local
+.env.example
 company-data
 scripts-data
 scripts-sql

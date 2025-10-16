@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "next-themes";
+import Script from "next/script";
 import "./globals.css";
 import ClientLayout from "@/components/client-layout";
 import { Inter } from 'next/font/google';
@@ -83,6 +84,10 @@ export default function RootLayout({
         >
           <ClientLayout>{children}</ClientLayout>
         </ThemeProvider>
+        <Script 
+          src="https://js.stripe.com/v3/pricing-table.js" 
+          strategy="afterInteractive" 
+        />
       </body>
     </html>
   );

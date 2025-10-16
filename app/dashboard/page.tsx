@@ -2,12 +2,37 @@ import SubscriptionStatus from "@/components/subscription-status";
 import PlanCard from "@/components/dashboard/plan-card";
 import AnalyticsCard from "@/components/dashboard/analytics-card";
 import Link from "next/link";
-import { FileText, Sparkles, Building, Package } from "lucide-react";
+import { FileText, Sparkles, Building, Package, CheckCircle } from "lucide-react";
 
-export default function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ session_id?: string }>;
+}) {
+  const resolvedSearchParams = await searchParams;
+  const sessionId = resolvedSearchParams.session_id;
+  
+  // Show success message if redirected from successful checkout
+  const showSuccessMessage = !!sessionId;
+
   return (
     <div className="min-h-screen bg-white text-gray-900 p-6">
       <div className="max-w-5xl mx-auto">
+        {/* Success Message Banner */}
+        {showSuccessMessage && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+            <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-semibold text-green-900">
+                ¡Suscripción activada exitosamente!
+              </h3>
+              <p className="mt-1 text-sm text-green-700">
+                Tu plan ha sido actualizado. Ya puedes disfrutar de todas las funciones premium.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-end justify-between mb-4">
           <div className="text-left">
