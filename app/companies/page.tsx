@@ -1,7 +1,5 @@
 import { CompaniesUI } from "@/components/companies-ui";
 import { fetchCompanies } from "@/lib/data/companies";
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 
 // Define the expected search parameters for the page.
 interface CompaniesPageProps {
@@ -33,16 +31,6 @@ interface CompaniesPageProps {
 }
 
 export default async function CompaniesPage({ searchParams }: CompaniesPageProps) {
-  // Check if user is authenticated
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/auth/login");
-  }
-
   const { page: pageStr, ruc, nombre, provincia, anio, nEmpleadosMin, nEmpleadosMax, ingresosVentasMin, ingresosVentasMax, activosMin, activosMax, patrimonioMin, patrimonioMax, utilidadAnImpMin, utilidadAnImpMax, utilidadNetaMin, utilidadNetaMax, nombreComercial } = await searchParams;
   const { sortBy, sortDir, requireIngresos, requireEmpleados } = await searchParams;
 
