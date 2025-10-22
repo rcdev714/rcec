@@ -13,8 +13,9 @@ interface UsageRecord {
   period_end: string;   // ISO
   searches: number;
   exports: number;
-  prompt_input_tokens: number;
-  prompt_output_tokens: number;
+  prompts_count: number; // Count of prompts (for rate limiting)
+  prompt_input_tokens: number; // Actual input tokens (for analytics)
+  prompt_output_tokens: number; // Actual output tokens (for analytics)
   prompt_dollars: number;
   created_at?: string;
   updated_at?: string;
@@ -74,6 +75,7 @@ async function getOrCreateUsageRow(userId: string, periodStart: Date, periodEnd:
     period_end: periodEnd.toISOString(),
     searches: 0,
     exports: 0,
+    prompts_count: 0,
     prompt_input_tokens: 0,
     prompt_output_tokens: 0,
     prompt_dollars: 0,
@@ -167,45 +169,59 @@ export async function ensureSearchAllowedAndIncrement(userId: string): Promise<{
   const usage = await getOrCreateUsageRow(userId, start, end);
   const limits = await getLimits(plan);
 
-  if (limits.searches !== -1 && usage.searches >= limits.searches) {
-    return { allowed: false, remaining: 0 };
+  // Use atomic increment with limit checking to prevent race conditions
+  try {
+    const { atomicIncrementWithLimit } = await import('./usage-atomic');
+    const limit = limits.searches;
+    const result = await atomicIncrementWithLimit(userId, usage.period_start, 'searches', limit);
+
+    if (!result.success) {
+      return { allowed: false, remaining: limit === -1 ? undefined : Math.max(0, limit - (result.newValue ?? 0)) };
+    }
+
+    const remaining = limit === -1 ? undefined : Math.max(0, limit - result.newValue);
+    
+    // Track daily events (non-blocking)
+    trackDailyEvent(supabase, userId, 'search').catch(err => {
+      console.error('[NON-CRITICAL] Failed to track daily event:', err);
+    });
+
+    return { allowed: true, remaining };
+  } catch (error) {
+    console.error('[CRITICAL] Usage increment failed:', error);
+    throw error;
   }
 
-  const { data, error } = await supabase
-    .from('user_usage')
-    .update({ searches: usage.searches + 1 })
-    .eq('user_id', userId)
-    .eq('period_start', usage.period_start)
-    .select()
-    .single();
+}
 
-  if (error) throw error;
+/**
+ * Track daily usage event for analytics (non-blocking)
+ */
+async function trackDailyEvent(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  kind: 'search' | 'export'
+): Promise<void> {
+  const todayKey = new Date().toISOString().slice(0, 10);
+  
+  try {
+    // Atomic increment using INSERT ... ON CONFLICT DO UPDATE
+    // No fallback needed - the RPC handles everything atomically
+    const rpcRes = await supabase.rpc('increment_usage_event', {
+      p_user_id: userId,
+      p_event_date: todayKey,
+      p_kind: kind,
+      p_delta: 1
+    });
 
-  // Also increment daily events for timeseries
-  const today = new Date();
-  const todayKey = today.toISOString().slice(0,10);
-  await supabase
-    .from('user_usage_events')
-    .upsert({ user_id: userId, event_date: todayKey, kind: 'search', count: 0 }, { onConflict: 'user_id,event_date,kind' });
-  const rpcRes = await supabase
-    .rpc('increment_usage_event', { p_user_id: userId, p_event_date: todayKey, p_kind: 'search', p_delta: 1 });
-  if (rpcRes.error) {
-    const { data: ev } = await supabase
-      .from('user_usage_events')
-      .select('count')
-      .eq('user_id', userId)
-      .eq('event_date', todayKey)
-      .eq('kind', 'search')
-      .single();
-    await supabase
-      .from('user_usage_events')
-      .update({ count: (ev?.count || 0) + 1 })
-      .eq('user_id', userId)
-      .eq('event_date', todayKey)
-      .eq('kind', 'search');
+    if (rpcRes.error) {
+      // Log error but don't throw - event tracking is non-critical
+      console.error('[EVENT_TRACKING] Failed to increment event:', rpcRes.error);
+    }
+  } catch (error) {
+    // Non-critical: log but don't throw
+    console.error('[EVENT_TRACKING] Failed:', error);
   }
-  const remaining = limits.searches === -1 ? undefined : Math.max(0, limits.searches - (data.searches as number));
-  return { allowed: true, remaining };
 }
 
 export async function ensureExportAllowedAndIncrement(userId: string): Promise<{ allowed: boolean; remaining?: number }>
@@ -232,21 +248,28 @@ export async function ensureExportAllowedAndIncrement(userId: string): Promise<{
   const usage = await getOrCreateUsageRow(userId, start, end);
   const limits = await getLimits(plan);
 
-  if (limits.exports !== -1 && usage.exports >= limits.exports) {
-    return { allowed: false, remaining: 0 };
+  // Use atomic increment with limit checking
+  try {
+    const { atomicIncrementWithLimit } = await import('./usage-atomic');
+    const limit = limits.exports;
+    const result = await atomicIncrementWithLimit(userId, usage.period_start, 'exports', limit);
+
+    if (!result.success) {
+      return { allowed: false, remaining: limit === -1 ? undefined : Math.max(0, limit - (result.newValue ?? 0)) };
+    }
+
+    const remaining = limit === -1 ? undefined : Math.max(0, limit - result.newValue);
+    
+    // Track daily events (non-blocking)
+    trackDailyEvent(supabase, userId, 'export').catch(err => {
+      console.error('[NON-CRITICAL] Failed to track export event:', err);
+    });
+
+    return { allowed: true, remaining };
+  } catch (error) {
+    console.error('[CRITICAL] Export increment failed:', error);
+    throw error;
   }
-
-  const { data, error } = await supabase
-    .from('user_usage')
-    .update({ exports: usage.exports + 1 })
-    .eq('user_id', userId)
-    .eq('period_start', usage.period_start)
-    .select()
-    .single();
-
-  if (error) throw error;
-  const remaining = limits.exports === -1 ? undefined : Math.max(0, limits.exports - (data.exports as number));
-  return { allowed: true, remaining };
 }
 
 export async function ensurePromptAllowedAndTrack(
@@ -279,22 +302,31 @@ export async function ensurePromptAllowedAndTrack(
   const usage = await getOrCreateUsageRow(userId, start, end);
   const limits = await getLimits(plan);
 
-  // Count-based limit for all plans
-  const usedCount = Math.floor(usage.prompt_input_tokens); // repurpose prompt_input_tokens as counter
-  if (usedCount >= limits.prompt_count) {
-    return { allowed: false, remainingPrompts: 0 };
+  // Use atomic increment with limit checking for prompt count
+  try {
+    const { atomicIncrementWithLimit } = await import('./usage-atomic');
+    const limit = limits.prompt_count;
+    const result = await atomicIncrementWithLimit(userId, usage.period_start, 'prompts_count', limit);
+
+    if (!result.success) {
+      return { allowed: false, remainingPrompts: limit === -1 ? undefined : Math.max(0, limit - (result.newValue ?? 0)) };
+    }
+
+    // Track actual input tokens for analytics (non-blocking, best effort)
+    if (_options.inputTokensEstimate > 0) {
+      const { atomicIncrementUsageBy } = await import('./usage-atomic');
+      atomicIncrementUsageBy(userId, usage.period_start, 'prompt_input_tokens', _options.inputTokensEstimate)
+        .catch(error => {
+          console.warn('[ANALYTICS] Failed to track input tokens:', error);
+        });
+    }
+
+    const remainingPrompts = limits.prompt_count === -1 ? undefined : Math.max(0, limits.prompt_count - result.newValue);
+    return { allowed: true, remainingPrompts };
+  } catch (error) {
+    console.error('[CRITICAL] Prompt increment failed:', error);
+    throw error;
   }
-
-  // Track prompt usage
-  const { error } = await supabase
-    .from('user_usage')
-    .update({ prompt_input_tokens: usedCount + 1 })
-    .eq('user_id', userId)
-    .eq('period_start', usage.period_start);
-  if (error) throw error;
-
-  const remainingPrompts = Math.max(0, limits.prompt_count - (usedCount + 1));
-  return { allowed: true, remainingPrompts };
 }
 
 export async function trackOutputTokensAndDollars(

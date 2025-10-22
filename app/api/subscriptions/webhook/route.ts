@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/server-admin';
 import { getPlanFromStripePriceId } from '@/lib/plans';
-import { updateUserSubscription } from '@/lib/subscription';
 import { logValidationError, logValidationSuccess } from '@/lib/subscription-validation';
 import Stripe from 'stripe';
 import { isPostgrestError } from '@/lib/type-guards';
@@ -86,7 +85,8 @@ export async function POST(request: NextRequest) {
     console.log('Received Stripe event:', event.type);
   }
 
-  const supabase = await createClient();
+  // Use service client for webhook logging (bypass RLS)
+  const supabase = createServiceClient();
 
   // Log webhook event for idempotency and audit
   const simplifiedEvent: SimplifiedStripeEvent = {
@@ -141,7 +141,8 @@ export async function POST(request: NextRequest) {
 }
 
 async function handleStripeEvent(event: Stripe.Event) {
-  const supabase = await createClient();
+  // Use service client for all webhook DB writes
+  const supabase = createServiceClient();
 
   switch (event.type) {
     case 'customer.created': {
@@ -213,49 +214,64 @@ async function handleStripeEvent(event: Stripe.Event) {
     }
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.metadata?.supabase_user_id;
-      const planId = session.metadata?.plan_id;
+      const userId = (session.metadata?.supabase_user_id || session.client_reference_id || '').toString();
 
-      if (!userId || !planId) {
-        console.error('Missing metadata in checkout session');
+      if (!userId) {
+        console.error('Unable to resolve userId from checkout.session.completed');
         return;
       }
 
-      // Update or create user subscription with validation
+      // Determine plan by retrieving the subscription and mapping the price ID
+      let resolvedPlan: 'FREE' | 'PRO' | 'ENTERPRISE' = 'FREE';
+      try {
+        if (session.subscription) {
+          const sub = await getStripe().subscriptions.retrieve(session.subscription as string);
+          const priceId = sub.items.data[0]?.price.id || '';
+          const plan = await getPlanFromStripePriceId(priceId || '');
+          if (plan === 'PRO' || plan === 'ENTERPRISE' || plan === 'FREE') {
+            resolvedPlan = plan;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to resolve plan from subscription:', e);
+      }
+
       try {
         const subscriptionData = {
           customer_id: session.customer as string,
           subscription_id: session.subscription as string,
-          plan: planId.toUpperCase() as 'FREE' | 'PRO' | 'ENTERPRISE',
+          plan: resolvedPlan,
           status: 'active' as const,
           current_period_start: new Date().toISOString(),
-          current_period_end: null, // Will be updated by subscription.created
+          current_period_end: null,
+          updated_at: new Date().toISOString(),
         };
 
-        // Try to update existing subscription first
-        const existingSubscription = await supabase
+        // Upsert by user_id to ensure record exists regardless of prior state
+        const { error: upsertError } = await supabase
           .from('user_subscriptions')
-          .select('*')
-          .eq('user_id', userId)
-          .single();
+          .upsert({ user_id: userId, ...subscriptionData }, { onConflict: 'user_id' });
+        if (upsertError) throw upsertError;
 
-        if (existingSubscription.data) {
-          // Update existing subscription
-          await updateUserSubscription(userId, subscriptionData);
-        } else {
-          // Create new subscription
-          const { createUserSubscription } = await import('@/lib/subscription');
-          await createUserSubscription(userId, subscriptionData);
+        // Attempt to persist mapping onto the Stripe customer for future events
+        if (session.customer) {
+          try {
+            await getStripe().customers.update(session.customer as string, {
+              metadata: { supabase_user_id: userId },
+            });
+          } catch (e) {
+            console.warn('Failed to update Stripe customer metadata:', e);
+          }
         }
 
-        logValidationSuccess('webhook_checkout_completed', { userId, plan: planId });
+        logValidationSuccess('webhook_checkout_completed', { userId, plan: resolvedPlan });
       } catch (error) {
-        console.error('Error updating subscription after checkout:', error);
-        logValidationError('webhook_checkout_completed', {
-          isValid: false,
-          errors: [error instanceof Error ? error.message : 'Unknown error'],
-          warnings: []
-        }, { userId, planId });
+        console.error('Error upserting subscription after checkout:', error);
+        logValidationError(
+          'webhook_checkout_completed',
+          { isValid: false, errors: [error instanceof Error ? error.message : 'Unknown error'], warnings: [] },
+          { userId, planId: resolvedPlan }
+        );
       }
       break;
     }
@@ -272,11 +288,34 @@ async function handleStripeEvent(event: Stripe.Event) {
         return;
       }
 
-      const userId = customer.metadata?.supabase_user_id;
+      let userId = customer.metadata?.supabase_user_id as string | undefined;
       if (!userId) {
-        console.error('No supabase_user_id in customer metadata');
+        // Fallback: try to lookup by customer_id or subscription_id from our DB
+        const { data: byCustomer } = await supabase
+          .from('user_subscriptions')
+          .select('user_id')
+          .eq('customer_id', subscription.customer as string)
+          .limit(1)
+          .maybeSingle();
+        userId = byCustomer?.user_id as string | undefined;
+      }
+      if (!userId) {
+        const { data: bySub } = await supabase
+          .from('user_subscriptions')
+          .select('user_id')
+          .eq('subscription_id', subscription.id)
+          .limit(1)
+          .maybeSingle();
+        userId = bySub?.user_id as string | undefined;
+      }
+      if (!userId) {
+        console.error('Unable to resolve user for subscription update');
         return;
       }
+      // Ensure we attach metadata for next time
+      try {
+        await getStripe().customers.update(subscription.customer as string, { metadata: { supabase_user_id: userId } });
+      } catch {}
 
       // Determine plan from price ID - database-driven
       const priceId = subscription.items.data[0]?.price.id;
@@ -287,7 +326,7 @@ async function handleStripeEvent(event: Stripe.Event) {
         plan = 'FREE';
       }
 
-      // Update subscription with validation
+      // Upsert/update subscription directly with service client
       try {
         const subscriptionData = {
           customer_id: subscription.customer as string,
@@ -297,17 +336,20 @@ async function handleStripeEvent(event: Stripe.Event) {
           current_period_start: subscription.current_period_start ? new Date(subscription.current_period_start * 1000).toISOString() : null,
           current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null,
           cancel_at_period_end: subscription.cancel_at_period_end || false,
+          updated_at: new Date().toISOString(),
         };
-
-        await updateUserSubscription(userId, subscriptionData);
+        const { error: upsertError } = await supabase
+          .from('user_subscriptions')
+          .upsert({ user_id: userId, ...subscriptionData }, { onConflict: 'user_id' });
+        if (upsertError) throw upsertError;
         logValidationSuccess('webhook_subscription_updated', { userId, plan, status: subscription.status });
       } catch (error) {
         console.error('Error updating subscription:', error);
-        logValidationError('webhook_subscription_updated', {
-          isValid: false,
-          errors: [error instanceof Error ? error.message : 'Unknown error'],
-          warnings: []
-        }, { userId, plan, status: subscription.status });
+        logValidationError(
+          'webhook_subscription_updated',
+          { isValid: false, errors: [error instanceof Error ? error.message : 'Unknown error'], warnings: [] },
+          { userId, plan, status: subscription.status }
+        );
       }
       break;
     }

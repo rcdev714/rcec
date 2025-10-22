@@ -37,6 +37,7 @@ export async function GET() {
     const usage = usageRows && usageRows.length > 0 ? usageRows[0] : {
       searches: 0,
       exports: 0,
+      prompts_count: 0,
       prompt_input_tokens: 0,
       prompt_output_tokens: 0,
       prompt_dollars: 0,
@@ -46,8 +47,12 @@ export async function GET() {
       plan,
       limits,
       usage: {
-        ...usage,
-        prompts: Math.floor(usage.prompt_input_tokens), // Use prompt_input_tokens as prompt count
+        searches: usage.searches,
+        exports: usage.exports,
+        prompts: usage.prompts_count ?? 0, // Number of prompt requests
+        input_tokens: usage.prompt_input_tokens, // Actual tokens for analytics
+        output_tokens: usage.prompt_output_tokens,
+        cost_dollars: usage.prompt_dollars,
       },
       period: { start: start.toISOString(), end: end.toISOString() },
     });
