@@ -314,11 +314,15 @@ export async function ensurePromptAllowedAndTrack(
 
     // Track actual input tokens for analytics (non-blocking, best effort)
     if (_options.inputTokensEstimate > 0) {
-      const { atomicIncrementUsageBy } = await import('./usage-atomic');
-      atomicIncrementUsageBy(userId, usage.period_start, 'prompt_input_tokens', _options.inputTokensEstimate)
-        .catch(error => {
-          console.warn('[ANALYTICS] Failed to track input tokens:', error);
-        });
+      try {
+        const { atomicIncrementUsageBy } = await import('./usage-atomic');
+        atomicIncrementUsageBy(userId, usage.period_start, 'prompt_input_tokens', _options.inputTokensEstimate)
+          .catch(error => {
+            console.warn('[ANALYTICS] Failed to track input tokens:', error);
+          });
+      } catch (error) {
+        console.warn('[ANALYTICS] Failed to import atomicIncrementUsageBy:', error);
+      }
     }
 
     const remainingPrompts = limits.prompt_count === -1 ? undefined : Math.max(0, limits.prompt_count - result.newValue);

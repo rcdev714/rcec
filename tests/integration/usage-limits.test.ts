@@ -5,6 +5,16 @@ import {
   ensurePromptAllowedAndTrack 
 } from '@/lib/usage'
 
+// Mock the usage-atomic module
+vi.mock('@/lib/usage-atomic', () => ({
+  atomicIncrementWithLimit: vi.fn(),
+  atomicIncrementUsage: vi.fn(),
+  atomicIncrementUsageBy: vi.fn(() => Promise.resolve({ success: true, newValue: 0 })),
+  rollbackIncrement: vi.fn(() => Promise.resolve(true))
+}))
+
+import { atomicIncrementWithLimit } from '@/lib/usage-atomic'
+
 // Mock Supabase to match actual usage.ts call patterns
 const mockSupabase = {
   auth: {
@@ -102,30 +112,24 @@ describe('Usage Limits', () => {
           eq: vi.fn(() => ({
             eq: vi.fn(() => ({
               single: vi.fn(() => ({
-                data: { searches: 5, user_id: 'user-123' },
+                data: { searches: 5, prompts_count: 0, user_id: 'user-123' },
                 error: null as any
-              }))
-            }))
-          }))
-        })),
-        update: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              select: vi.fn(() => ({
-                single: vi.fn(() => ({
-                  data: { searches: 6 },
-                  error: null as any
-                }))
               }))
             }))
           }))
         })),
       })
 
+      // Mock atomic increment to return new value 6
+      vi.mocked(atomicIncrementWithLimit).mockResolvedValue({
+        success: true,
+        newValue: 6
+      })
+
       const result = await ensureSearchAllowedAndIncrement('user-123')
 
       expect(result.allowed).toBe(true)
-      expect(result.remaining).toBe(4)
+      expect(result.remaining).toBe(4) // 10 - 6 = 4
     })
 
     it('should deny search for FREE user at limit', async () => {
@@ -159,12 +163,19 @@ describe('Usage Limits', () => {
           eq: vi.fn(() => ({
             eq: vi.fn(() => ({
               single: vi.fn(() => ({
-                data: { searches: 10, user_id: 'user-123' },
+                data: { searches: 10, prompts_count: 0, user_id: 'user-123' },
                 error: null as any
               }))
             }))
           }))
         })),
+      })
+
+      // Mock atomic increment to return -1 (limit exceeded)
+      vi.mocked(atomicIncrementWithLimit).mockResolvedValue({
+        success: false,
+        newValue: 10, // Current value stays at 10
+        error: 'Limit exceeded'
       })
 
       const result = await ensureSearchAllowedAndIncrement('user-123')
@@ -203,24 +214,18 @@ describe('Usage Limits', () => {
           eq: vi.fn(() => ({
             eq: vi.fn(() => ({
               single: vi.fn(() => ({
-                data: { searches: 100, user_id: 'user-123' },
+                data: { searches: 100, prompts_count: 0, user_id: 'user-123' },
                 error: null as any
               }))
             }))
           }))
         })),
-        update: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              select: vi.fn(() => ({
-                single: vi.fn(() => ({
-                  data: { searches: 101 },
-                  error: null as any
-                }))
-              }))
-            }))
-          }))
-        })),
+      })
+
+      // Mock atomic increment with limit -1 (unlimited) - should succeed
+      vi.mocked(atomicIncrementWithLimit).mockResolvedValue({
+        success: true,
+        newValue: 101
       })
 
       const result = await ensureSearchAllowedAndIncrement('user-123')
@@ -317,30 +322,24 @@ describe('Usage Limits', () => {
           eq: vi.fn(() => ({
             eq: vi.fn(() => ({
               single: vi.fn(() => ({
-                data: { exports: 25, user_id: 'user-123' },
+                data: { exports: 25, prompts_count: 0, user_id: 'user-123' },
                 error: null as any
-              }))
-            }))
-          }))
-        })),
-        update: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              select: vi.fn(() => ({
-                single: vi.fn(() => ({
-                  data: { exports: 26 },
-                  error: null as any
-                }))
               }))
             }))
           }))
         })),
       })
 
+      // Mock atomic increment to return new value 26 (PRO limit is 50)
+      vi.mocked(atomicIncrementWithLimit).mockResolvedValue({
+        success: true,
+        newValue: 26
+      })
+
       const result = await ensureExportAllowedAndIncrement('user-123')
 
       expect(result.allowed).toBe(true)
-      expect(result.remaining).toBe(24)
+      expect(result.remaining).toBe(24) // 50 - 26 = 24
     })
   })
 
@@ -376,8 +375,9 @@ describe('Usage Limits', () => {
             eq: vi.fn(() => ({
               single: vi.fn(() => ({
                 data: {
+                  prompts_count: 10, // Now using correct column
+                  prompt_input_tokens: 0,
                   prompt_dollars: 0,
-                  prompt_input_tokens: 10, // Repurposed as prompt count
                   user_id: 'user-123'
                 },
                 error: null as any
@@ -385,14 +385,12 @@ describe('Usage Limits', () => {
             }))
           }))
         })),
-        // @ts-ignore - Test update mock
-        update: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              error: null as any
-            }))
-          }))
-        })),
+      })
+
+      // Mock atomic increment to return new value 11
+      vi.mocked(atomicIncrementWithLimit).mockResolvedValue({
+        success: true,
+        newValue: 11
       })
 
       const result = await ensurePromptAllowedAndTrack('user-123', {
@@ -436,8 +434,9 @@ describe('Usage Limits', () => {
             eq: vi.fn(() => ({
               single: vi.fn(() => ({
                 data: {
-                  prompt_dollars: 19.99,
-                  prompt_input_tokens: 50000000,
+                  prompts_count: 100, // At PRO limit
+                  prompt_input_tokens: 0,
+                  prompt_dollars: 0,
                   user_id: 'user-123'
                 },
                 error: null as any
@@ -447,9 +446,16 @@ describe('Usage Limits', () => {
         })),
       })
 
+      // Mock atomic increment to return -1 (limit exceeded)
+      vi.mocked(atomicIncrementWithLimit).mockResolvedValue({
+        success: false,
+        newValue: -1,
+        error: 'Limit exceeded'
+      })
+
       const result = await ensurePromptAllowedAndTrack('user-123', {
         model: 'gemini-2.5-flash',
-        inputTokensEstimate: 100000 // This would exceed the $20 budget
+        inputTokensEstimate: 100000
       })
 
       expect(result.allowed).toBe(false)

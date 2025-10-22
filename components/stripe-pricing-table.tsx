@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { createClient } from '@/lib/supabase/client';
 
 interface StripePricingTableProps {
   customerEmail?: string | null;
@@ -9,8 +8,6 @@ interface StripePricingTableProps {
 
 export default function StripePricingTable({ customerEmail }: StripePricingTableProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const supabase = createClient();
-  const userIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Wait for Stripe script to load
@@ -27,33 +24,24 @@ export default function StripePricingTable({ customerEmail }: StripePricingTable
   const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
   useEffect(() => {
-    // Resolve current user ID to pass as client-reference-id to Stripe Pricing Table
-    // Only proceed if configuration is available
+    // Render Stripe Pricing Table
+    // NOTE: Stripe Pricing Tables don't support client-reference-id
+    // We look up users by email in the webhook instead
     if (!pricingTableId || !publishableKey) {
       return;
     }
 
-    (async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        userIdRef.current = user?.id || null;
-        if (containerRef.current) {
-          containerRef.current.innerHTML = `
-            <stripe-pricing-table
-              pricing-table-id="${pricingTableId}"
-              publishable-key="${publishableKey}"
-              ${customerEmail ? `customer-email="${customerEmail}"` : ''}
-              ${userIdRef.current ? `client-reference-id="${userIdRef.current}"` : ''}
-            >
-            </stripe-pricing-table>
-          `;
-        }
-      } catch {
-        // noop
-      }
-    })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pricingTableId, publishableKey]);
+    if (containerRef.current) {
+      containerRef.current.innerHTML = `
+        <stripe-pricing-table
+          pricing-table-id="${pricingTableId}"
+          publishable-key="${publishableKey}"
+          ${customerEmail ? `customer-email="${customerEmail}"` : ''}
+        >
+        </stripe-pricing-table>
+      `;
+    }
+  }, [pricingTableId, publishableKey, customerEmail]);
 
   // Fail gracefully if configuration is missing
   if (!pricingTableId || !publishableKey) {

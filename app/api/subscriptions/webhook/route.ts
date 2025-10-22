@@ -214,10 +214,40 @@ async function handleStripeEvent(event: Stripe.Event) {
     }
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
-      const userId = (session.metadata?.supabase_user_id || session.client_reference_id || '').toString();
+      let userId = (session.metadata?.supabase_user_id || session.client_reference_id || '').toString();
+
+      // If userId not in metadata/client_reference_id, look up by email
+      // (Stripe Pricing Tables don't support client-reference-id)
+      if (!userId && session.customer_email) {
+        try {
+          const { data: user, error } = await supabase
+            .rpc('get_user_id_by_email', { p_email: session.customer_email });
+          
+          if (error) {
+            console.warn('RPC get_user_id_by_email failed, trying customer lookup', error);
+            // Fallback: check if we have this customer_id in user_subscriptions
+            if (session.customer) {
+              const { data: existingSub } = await supabase
+                .from('user_subscriptions')
+                .select('user_id')
+                .eq('customer_id', session.customer as string)
+                .limit(1)
+                .maybeSingle();
+              userId = existingSub?.user_id || '';
+            }
+          } else {
+            userId = user || '';
+          }
+        } catch (e) {
+          console.error('Failed to lookup user by email:', e);
+        }
+      }
 
       if (!userId) {
-        console.error('Unable to resolve userId from checkout.session.completed');
+        console.error('Unable to resolve userId from checkout.session.completed', {
+          customer_email: session.customer_email,
+          customer: session.customer
+        });
         return;
       }
 
