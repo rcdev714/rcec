@@ -113,11 +113,12 @@ export async function POST(request: NextRequest) {
     });
 
   if (logError && (!isPostgrestError(logError) || logError.code !== '23505')) {
-    console.error('Error logging webhook:', logError);
+    console.error('[WEBHOOK] Error logging webhook:', logError);
     // We don't return here because we should still try to process the event
   } else if (logError && isPostgrestError(logError) && logError.code === '23505') {
-    console.log(`Duplicate webhook event received: ${event.id}`);
-    return NextResponse.json({ received: true, message: 'Duplicate event' });
+    console.log('[WEBHOOK] Duplicate webhook event received:', event.id, ', processing anyway to ensure idempotency');
+    // Don't return early - process the event to ensure idempotency
+    // The actual DB operations use upserts so they're safe to repeat
   }
 
   try {
@@ -128,13 +129,24 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error('Error processing webhook:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    console.error('[WEBHOOK ERROR] Event:', event.type);
+    console.error('[WEBHOOK ERROR] Message:', errorMessage);
+    console.error('[WEBHOOK ERROR] Stack:', errorStack);
+    console.error('[WEBHOOK ERROR] Event ID:', event.id);
     
     // Update webhook log as failed
-    await updateWebhookLog(supabase, event.id, 'failed', Date.now() - startTime, error instanceof Error ? error.message : 'Unknown error');
+    await updateWebhookLog(supabase, event.id, 'failed', Date.now() - startTime, errorMessage);
 
     return NextResponse.json(
-      { error: 'Webhook processing failed' },
+      { 
+        error: 'Webhook processing failed',
+        message: errorMessage,
+        event_type: event.type,
+        event_id: event.id
+      },
       { status: 500 }
     );
   }
@@ -257,13 +269,18 @@ async function handleStripeEvent(event: Stripe.Event) {
         if (session.subscription) {
           const sub = await getStripe().subscriptions.retrieve(session.subscription as string);
           const priceId = sub.items.data[0]?.price.id || '';
+          console.log('[CHECKOUT] Price ID:', priceId);
+          
           const plan = await getPlanFromStripePriceId(priceId || '');
+          console.log('[CHECKOUT] Resolved plan:', plan);
+          
           if (plan === 'PRO' || plan === 'ENTERPRISE' || plan === 'FREE') {
             resolvedPlan = plan;
           }
         }
       } catch (e) {
-        console.error('Failed to resolve plan from subscription:', e);
+        console.error('[CHECKOUT ERROR] Failed to resolve plan from subscription:', e);
+        // Don't fail the whole webhook, just log the error
       }
 
       try {
@@ -277,11 +294,19 @@ async function handleStripeEvent(event: Stripe.Event) {
           updated_at: new Date().toISOString(),
         };
 
+        console.log('[CHECKOUT] Upserting subscription for user:', userId, 'plan:', resolvedPlan);
+        
         // Upsert by user_id to ensure record exists regardless of prior state
         const { error: upsertError } = await supabase
           .from('user_subscriptions')
           .upsert({ user_id: userId, ...subscriptionData }, { onConflict: 'user_id' });
-        if (upsertError) throw upsertError;
+        
+        if (upsertError) {
+          console.error('[CHECKOUT ERROR] Upsert failed:', upsertError);
+          throw upsertError;
+        }
+        
+        console.log('[CHECKOUT] Subscription updated successfully');
 
         // Attempt to persist mapping onto the Stripe customer for future events
         if (session.customer) {

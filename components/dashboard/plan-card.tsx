@@ -70,14 +70,19 @@ export default function PlanCard() {
   };
 
   return (
-    <Card className="bg-white border border-gray-200 shadow-sm text-gray-900">
-      <CardHeader className="flex items-center justify-between flex-row">
-        <div>
-          <CardTitle className="text-sm">Plan Actual</CardTitle>
-          <div className="mt-1">
+    <Card className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 text-gray-900">
+      <CardHeader className="pb-3">
+        <div className="text-center">
+          <CardTitle className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">
+            <div className="w-3.5 h-3.5 mx-auto mb-1 bg-green-500 rounded-full flex items-center justify-center">
+              <div className="w-2 h-2 bg-white rounded-full"></div>
+            </div>
+            Plan Actual
+          </CardTitle>
+          <div className="inline-flex">
             <Badge className={
-              summary?.plan === 'PRO' ? 'bg-blue-100 text-blue-800' :
-              summary?.plan === 'ENTERPRISE' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
+              summary?.plan === 'PRO' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+              summary?.plan === 'ENTERPRISE' ? 'bg-purple-100 text-purple-800 border border-purple-200' : 'bg-gray-100 text-gray-800 border border-gray-200'
             }>
               {summary ? planLabel(summary.plan) : '—'}
             </Badge>

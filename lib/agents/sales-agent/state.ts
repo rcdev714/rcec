@@ -190,10 +190,32 @@ export const SalesAgentState = Annotation.Root({
     default: () => null,
   }),
   
+  // Selected offering for current conversation context
+  selectedOffering: Annotation<UserOffering | null>({
+    reducer: (_, update) => update,
+    default: () => null,
+  }),
+  
   // Model selection
   modelName: Annotation<string>({
     reducer: (_, update) => update,
     default: () => "gemini-2.5-flash",
+  }),
+  
+  // Token tracking
+  totalInputTokens: Annotation<number>({
+    reducer: (current, update) => current + update,
+    default: () => 0,
+  }),
+  
+  totalOutputTokens: Annotation<number>({
+    reducer: (current, update) => current + update,
+    default: () => 0,
+  }),
+  
+  totalTokens: Annotation<number>({
+    reducer: (current, update) => current + update,
+    default: () => 0,
   }),
 });
 

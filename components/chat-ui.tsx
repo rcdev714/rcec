@@ -14,6 +14,7 @@ import { ChatCompanyResults } from "./chat-company-card";
 import { CompanySearchResult } from "@/types/chat";
 import { EmailDraftCard } from "./email-draft-card";
 import { type AgentStateEvent } from "./agent-state-indicator";
+import { TokenUsageDisplay } from "./token-usage-display";
 
 interface EmailDraft {
   subject: string;
@@ -60,8 +61,12 @@ const formatToolName = (toolName: string): string => {
     'export_companies': 'Exportar empresas',
     // Web search
     'web_search': 'Búsqueda en internet',
+    'web_extract': 'Extraer información de páginas web',
     // Contact tools
     'enrich_company_contacts': 'Buscar contactos en base de datos empresarial',
+    // Offerings tools
+    'list_user_offerings': 'Ver mis servicios/productos',
+    'get_offering_details': 'Obtener detalles de mi servicio',
     // Email tools (if re-enabled in future)
     'generate_sales_email': 'Generar email de ventas',
   };
@@ -75,7 +80,8 @@ function sanitizeForRender(text: string): string {
     .replace(/\[AGENT_PLAN\][\s\S]*?\[\/AGENT_PLAN\]/g, '')
     .replace(/\[STATE_EVENT\][\s\S]*?\[\/STATE_EVENT\]/g, '')
     .replace(/\[SEARCH_RESULTS\][\s\S]*?\[\/SEARCH_RESULTS\]/g, '')
-    .replace(/\[EMAIL_DRAFT\][\s\S]*?\[\/EMAIL_DRAFT\]/g, '');
+    .replace(/\[EMAIL_DRAFT\][\s\S]*?\[\/EMAIL_DRAFT\]/g, '')
+    .replace(/\[TOKEN_USAGE\][\s\S]*?\[\/TOKEN_USAGE\]/g, '');
 }
 
 // Code block component with copy button
@@ -130,6 +136,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [copiedInline, setCopiedInline] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash");
+  const [currentTokenUsage, setCurrentTokenUsage] = useState<{ inputTokens: number; outputTokens: number; totalTokens: number } | undefined>();
   // Note: currentAgentEvents tracking removed - state events are now stored in message metadata
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -510,6 +517,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
     let finalEmailDraft: EmailDraft | undefined;
     let agentPlan: TodoItem[] | undefined;
     const agentEvents: AgentStateEvent[] = [];
+    let tokenUsage: { inputTokens: number; outputTokens: number; totalTokens: number } | undefined;
 
     setIsSending(true);
     // Agent events are tracked in agentEvents array and stored in message metadata
@@ -791,6 +799,37 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
             }
           }
         } while (emailDraftBlockFound);
+
+        // Process TOKEN_USAGE blocks
+        const tokenStartTag = '[TOKEN_USAGE]';
+        const tokenEndTag = '[/TOKEN_USAGE]';
+        
+        let tokenUsageBlockFound;
+        do {
+          tokenUsageBlockFound = false;
+          const startIndex = buffer.indexOf(tokenStartTag);
+          const endIndex = buffer.indexOf(tokenEndTag);
+
+          if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+            tokenUsageBlockFound = true;
+            if (process.env.NODE_ENV === 'development') console.log("Found complete token usage block in buffer.");
+            
+            const textBefore = buffer.substring(0, startIndex);
+            const jsonStr = buffer.substring(startIndex + tokenStartTag.length, endIndex);
+            
+            assistantResponseText += textBefore;
+            buffer = buffer.substring(endIndex + tokenEndTag.length);
+
+            try {
+              tokenUsage = JSON.parse(jsonStr);
+              if (process.env.NODE_ENV === 'development') console.log("Successfully parsed token usage:", tokenUsage);
+              // Update current token usage for display
+              setCurrentTokenUsage(tokenUsage);
+            } catch (e) {
+              console.error("Failed to parse token usage JSON:", e, "JSON string was:", jsonStr);
+            }
+          }
+        } while (tokenUsageBlockFound);
         
         // Update UI with processed text only (not the raw buffer with unparsed tags)
         setMessages((prev) => {
@@ -812,6 +851,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
         .replace(/\[STATE_EVENT\][\s\S]*?\[\/STATE_EVENT\]/g, '')
         .replace(/\[SEARCH_RESULTS\][\s\S]*?\[\/SEARCH_RESULTS\]/g, '')
         .replace(/\[EMAIL_DRAFT\][\s\S]*?\[\/EMAIL_DRAFT\]/g, '')
+        .replace(/\[TOKEN_USAGE\][\s\S]*?\[\/TOKEN_USAGE\]/g, '')
         .trim();
 
       // Final update for UI consistency with fully cleaned content
@@ -864,11 +904,33 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
             emailDraft: finalEmailDraft,
             agentStateEvents: agentEvents, // Persist agent workflow for later review
           },
+          tokenCount: tokenUsage?.totalTokens || 0,
           createdAt: new Date(),
         });
 
         // Notify sidebar and other components that conversation was updated
         window.dispatchEvent(new Event('conversation-updated'));
+        
+        // Track token usage in user_usage table for analytics
+        if (tokenUsage && tokenUsage.totalTokens > 0) {
+          try {
+            await fetch('/api/chat/track-tokens', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                inputTokens: tokenUsage.inputTokens,
+                outputTokens: tokenUsage.outputTokens,
+                totalTokens: tokenUsage.totalTokens,
+                model: selectedModel,
+              }),
+            });
+          } catch (error) {
+            // Don't fail the chat if token tracking fails
+            if (process.env.NODE_ENV !== 'production') {
+              console.error('Failed to track token usage:', error);
+            }
+          }
+        }
       }
       
       // Agent events have been stored in the message metadata
@@ -929,6 +991,8 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
       return;
     }
 
+    // Clear current token usage when starting new chat
+    setCurrentTokenUsage(undefined);
     startChat(input);
   };
 
@@ -945,7 +1009,15 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
   };
 
   const formLayout = (
-    <div className="w-full flex flex-col items-center space-y-4 px-2 md:px-0">
+    <div className="w-full flex flex-col items-center space-y-3 px-2 md:px-0">
+      {/* Token Usage Display - Always show when there's a conversation or recent usage */}
+      <TokenUsageDisplay
+        currentMessageTokens={currentTokenUsage}
+        conversationId={conversationId}
+        modelName={selectedModel}
+        className="w-full max-w-2xl justify-start"
+      />
+
       <form onSubmit={handleSubmit} className="relative w-full max-w-2xl group">
         <div className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-2xl p-3 md:p-4 shadow-sm hover:shadow-md focus-within:ring-4 focus-within:ring-indigo-100 transition-all duration-200">
           <input
@@ -1012,8 +1084,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                     </h1>
                     <div className="space-y-3">
                       <p className="text-gray-600 text-xs md:text-sm max-w-xl mx-auto leading-relaxed">
-                        Encuentra oportunidades de negocio y obtén respuestas al
-                        instante.
+                        Busca, analiza, encuentra y conecta con empresas y contactos.
                       </p>
                       <div className="w-16 h-0.5 bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-purple-500 mx-auto rounded-full"></div>
                       <p className="text-gray-600 text-xs md:text-sm max-w-xl mx-auto leading-relaxed">

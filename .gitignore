@@ -64,3 +64,7 @@ playwright-report/
 changes
 
 dev.log
+
+.env.local.backup
+
+/test-payments-local-config

@@ -81,9 +81,14 @@ export default function AnalyticsCard() {
   };
 
   return (
-    <Card className="bg-white border border-gray-200 shadow-sm text-gray-900">
-      <CardHeader className="flex items-center justify-between flex-row">
-        <CardTitle className="text-sm">Tus analíticas</CardTitle>
+    <Card className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 text-gray-900">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-xs font-medium text-gray-600 text-center uppercase tracking-wide">
+          <div className="w-3.5 h-3.5 mx-auto mb-1 bg-blue-500 rounded-full flex items-center justify-center">
+            <div className="w-2 h-2 bg-white rounded-full"></div>
+          </div>
+          Tus Analíticas
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">

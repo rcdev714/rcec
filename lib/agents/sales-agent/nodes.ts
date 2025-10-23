@@ -4,6 +4,7 @@ import { SalesAgentStateType, TodoItem, MAX_ITERATIONS, MAX_RETRIES, ToolOutput 
 import { SALES_AGENT_SYSTEM_PROMPT } from "./prompt";
 import { createClient } from "@/lib/supabase/server";
 import { UserOffering } from "@/types/user-offering";
+import { extractTokenUsageFromMetadata } from "@/lib/token-counter";
 
 // Initialize Gemini models (lazy, cached per model name)
 const geminiModels: Record<string, ChatGoogleGenerativeAI> = {};
@@ -190,12 +191,14 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
     const { companyTools } = await import("@/lib/tools/company-tools");
     const { webSearchTool, webExtractTool } = await import("@/lib/tools/web-search");
     const { enrichCompanyContactsTool } = await import("@/lib/tools/contact-tools");
+    const { offeringTools } = await import("@/lib/tools/offerings-tools");
     
     const allTools = [
       ...companyTools,
       webSearchTool,
       webExtractTool,
       enrichCompanyContactsTool,
+      ...offeringTools,
     ];
     
     // Bind tools to the model (use state.modelName for dynamic selection)
@@ -211,8 +214,41 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
     if (state.userContext) {
       contextParts.push(`Usuario: ${state.userContext.userProfile?.firstName || 'Usuario'}`);
       contextParts.push(`Plan: ${state.userContext.subscription.plan}`);
+      
+      // Include detailed offerings context
       if (state.userContext.offerings.length > 0) {
-        contextParts.push(`Offerings disponibles: ${state.userContext.offerings.length}`);
+        contextParts.push(`\nServicios del usuario: ${state.userContext.offerings.length} ${state.userContext.offerings.length === 1 ? 'servicio' : 'servicios'}`);
+        
+        // List each offering with key details
+        state.userContext.offerings.forEach((offering, idx) => {
+          const offeringParts = [
+            `${idx + 1}. ${offering.offering_name}`,
+            offering.industry ? `(${offering.industry})` : null,
+          ].filter(Boolean).join(' ');
+          contextParts.push(`  ${offeringParts}`);
+          
+          // Add industry targets if available
+          if (offering.industry_targets && offering.industry_targets.length > 0) {
+            contextParts.push(`     - Sectores objetivo: ${offering.industry_targets.join(', ')}`);
+          }
+          
+          // Add description preview if available
+          if (offering.description && offering.description.length > 0) {
+            const preview = offering.description.substring(0, 80);
+            contextParts.push(`     - ${preview}${offering.description.length > 80 ? '...' : ''}`);
+          }
+          
+          // Add offering ID for reference
+          if (offering.id) {
+            contextParts.push(`     - ID: ${offering.id}`);
+          }
+        });
+        
+        // Aggregate target industries across all offerings
+        const allTargetIndustries = [...new Set(state.userContext.offerings.flatMap(o => o.industry_targets || []))];
+        if (allTargetIndustries.length > 0) {
+          contextParts.push(`\nTodos los sectores objetivo: ${allTargetIndustries.join(', ')}`);
+        }
       }
     }
 
@@ -300,6 +336,33 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
                 contextParts.push(`  * ${c.name || 'N/A'} - ${c.position || 'N/A'}`);
               });
             }
+            
+            // For list_user_offerings, include offerings summary
+            if (output.toolName === 'list_user_offerings' && outputData.offerings) {
+              contextParts.push(`\n- list_user_offerings: ${outputData.count} servicios encontrados`);
+              if (outputData.statistics && outputData.statistics.target_industries) {
+                contextParts.push(`  * Industrias objetivo: ${outputData.statistics.target_industries.join(', ')}`);
+              }
+              outputData.offerings.slice(0, 3).forEach((o: any) => {
+                contextParts.push(`  * ${o.offering_name} (${o.industry || 'N/A'})`);
+              });
+            }
+            
+            // For get_offering_details, include detailed offering info
+            if (output.toolName === 'get_offering_details' && outputData.offering) {
+              const offering = outputData.offering;
+              contextParts.push(`\n- get_offering_details: ${offering.offering_name}`);
+              if (offering.description) contextParts.push(`  * ${offering.description.substring(0, 150)}...`);
+              if (offering.pricing) {
+                const priceInfo = offering.pricing.plans.length === 1
+                  ? `$${offering.pricing.plans[0].price}`
+                  : `${offering.pricing.plans.length} planes desde $${Math.min(...offering.pricing.plans.map((p: any) => p.price))}`;
+                contextParts.push(`  * Precio: ${priceInfo}`);
+              }
+              if (offering.industry_targets?.length) {
+                contextParts.push(`  * Sectores objetivo: ${offering.industry_targets.join(', ')}`);
+              }
+            }
           } catch (e) {
             // Ignore parsing errors
             console.warn('[think] Error parsing tool output:', e);
@@ -354,10 +417,28 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
     }
     console.log('[think] Response content preview:', response.content.toString().substring(0, 200));
 
-    // Return the full AI message (which may include tool calls)
+    // Debug: Log the entire response_metadata to see structure
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[think] Response metadata:', JSON.stringify(response.response_metadata, null, 2));
+    }
+
+    // Extract token usage from response metadata
+    const tokenUsage = extractTokenUsageFromMetadata(response.response_metadata);
+    if (tokenUsage) {
+      console.log('[think] ✓ Token usage captured:', tokenUsage);
+    } else {
+      console.log('[think] ⚠️ No token usage found in metadata');
+    }
+
+    // Return the full AI message (which may include tool calls) with token counts
     return {
       messages: [response],
       lastUpdateTime: new Date(),
+      ...(tokenUsage && {
+        totalInputTokens: tokenUsage.inputTokens,
+        totalOutputTokens: tokenUsage.outputTokens,
+        totalTokens: tokenUsage.totalTokens,
+      }),
     };
   } catch (error) {
     console.error('Error in think node:', error);
@@ -570,13 +651,215 @@ export function iterationControl(state: SalesAgentStateType): Partial<SalesAgent
 
 /**
  * Finalize - prepare final response
+ * If the AI hasn't generated a substantial final response, create one here
  */
-export function finalize(_state: SalesAgentStateType): Partial<SalesAgentStateType> {
-  // The final AI message should already be in state.messages
-  // Just mark completion
-  return {
-    lastUpdateTime: new Date(),
-  };
+export async function finalize(state: SalesAgentStateType): Promise<Partial<SalesAgentStateType>> {
+  // Check if we have a substantial final response from the AI
+  const messages = state.messages;
+  const lastMessage = messages[messages.length - 1];
+  
+  // If last message is an AIMessage with substantial content, we're good
+  if (lastMessage && lastMessage._getType() === 'ai') {
+    const content = lastMessage.content.toString().trim();
+    // Check if content is substantial (not just internal context markers or empty)
+    const hasSubstantialContent = content.length > 50 && 
+      !content.startsWith('[CONTEXTO INTERNO]') &&
+      !content.match(/^[,\s]*$/);
+    
+    if (hasSubstantialContent) {
+      console.log('[finalize] Substantial AI response already exists, finalizing');
+      return {
+        lastUpdateTime: new Date(),
+      };
+    }
+  }
+  
+  // If we don't have a substantial response, generate one now
+  console.log('[finalize] No substantial response found, generating final response');
+  
+  try {
+    // Build a comprehensive summary of all tool results
+    const contextParts: string[] = [];
+    contextParts.push('INSTRUCCIÓN: Genera una respuesta final COMPLETA y SUSTANCIAL para el usuario.');
+    contextParts.push('Debes sintetizar TODOS los resultados de las herramientas que ejecutaste.');
+    contextParts.push('NO digas "ya busqué" o "ya encontré" - PRESENTA los resultados directamente.');
+    contextParts.push('');
+    
+    // Include user context
+    if (state.userContext?.userProfile) {
+      contextParts.push(`Usuario: ${state.userContext.userProfile.firstName || 'Usuario'}`);
+    }
+    
+    // Include goal
+    if (state.goal) {
+      const goalNames: Record<string, string> = {
+        'lead_generation': 'Generación de leads',
+        'company_research': 'Investigación de empresas',
+        'contact_enrichment': 'Enriquecimiento de contactos',
+        'email_drafting': 'Redacción de email',
+        'general_query': 'Consulta general',
+      };
+      contextParts.push(`Objetivo: ${goalNames[state.goal] || state.goal}`);
+    }
+    
+    // Include ALL successful tool results
+    const successfulOutputs = state.toolOutputs.filter(output => output.success && output.output);
+    
+    if (successfulOutputs.length > 0) {
+      contextParts.push('');
+      contextParts.push('=== RESULTADOS DE HERRAMIENTAS (USA TODA ESTA INFORMACIÓN) ===');
+      
+      successfulOutputs.forEach((output, index) => {
+        try {
+          const outputData = output.output as any;
+          contextParts.push(`\n${index + 1}. ${output.toolName}:`);
+          
+          // Format each tool's output appropriately
+          if (output.toolName === 'search_companies' && outputData.result) {
+            const companies = outputData.result.companies || [];
+            contextParts.push(`   - Encontradas: ${companies.length} empresas`);
+            if (companies.length > 0) {
+              contextParts.push('   - Datos clave:');
+              companies.slice(0, 10).forEach((c: any) => {
+                const parts = [
+                  c.nombre_comercial || c.nombre,
+                  `RUC: ${c.ruc}`,
+                  c.n_empleados ? `Empleados: ${c.n_empleados}` : null,
+                  c.total_ingresos ? `Ingresos: $${c.total_ingresos.toLocaleString()}` : null,
+                  c.provincia,
+                ].filter(Boolean).join(' | ');
+                contextParts.push(`     * ${parts}`);
+              });
+            }
+          } else if (output.toolName === 'get_company_details' && outputData.company) {
+            const company = outputData.company;
+            contextParts.push(`   - Empresa: ${company.nombre || company.nombre_comercial}`);
+            contextParts.push(`   - RUC: ${company.ruc}`);
+            if (company.provincia) contextParts.push(`   - Ubicación: ${company.provincia}`);
+            if (company.n_empleados) contextParts.push(`   - Empleados: ${company.n_empleados}`);
+            if (company.total_ingresos) contextParts.push(`   - Ingresos: $${company.total_ingresos.toLocaleString()}`);
+            if (company.utilidad_neta) contextParts.push(`   - Utilidad: $${company.utilidad_neta.toLocaleString()}`);
+          } else if (output.toolName === 'web_search' && outputData.results) {
+            const results = outputData.results;
+            contextParts.push(`   - Resultados de búsqueda: ${results.length} páginas encontradas`);
+            results.slice(0, 3).forEach((r: any) => {
+              if (r.title) contextParts.push(`     * ${r.title}`);
+              if (r.snippet) contextParts.push(`       ${r.snippet.substring(0, 150)}...`);
+            });
+          } else if (output.toolName === 'web_extract' && outputData.results) {
+            const results = outputData.results;
+            contextParts.push(`   - Información extraída de ${results.length} página(s)`);
+            results.forEach((r: any) => {
+              if (r.url) contextParts.push(`     * URL: ${r.url}`);
+              if (r.contactInfo) {
+                if (r.contactInfo.emails?.length) {
+                  contextParts.push(`     * Emails: ${r.contactInfo.emails.map((e: any) => e.address).join(', ')}`);
+                }
+                if (r.contactInfo.phones?.length) {
+                  contextParts.push(`     * Teléfonos: ${r.contactInfo.phones.map((p: any) => p.number).join(', ')}`);
+                }
+              }
+            });
+          } else if (output.toolName === 'enrich_company_contacts' && outputData.contacts) {
+            contextParts.push(`   - Contactos encontrados: ${outputData.contacts.length}`);
+            outputData.contacts.slice(0, 5).forEach((c: any) => {
+              contextParts.push(`     * ${c.name || 'N/A'} - ${c.position || 'N/A'}`);
+              if (c.email) contextParts.push(`       Email: ${c.email}`);
+              if (c.phone) contextParts.push(`       Tel: ${c.phone}`);
+            });
+          }
+        } catch (e) {
+          console.warn('[finalize] Error formatting tool output:', e);
+          contextParts.push(`   - [Error formateando resultado]`);
+        }
+      });
+      
+      contextParts.push('');
+      contextParts.push('=== FIN DE RESULTADOS ===');
+      contextParts.push('');
+      contextParts.push('Ahora, genera una respuesta completa, estructurada y profesional que:');
+      contextParts.push('1. Presente TODOS los resultados relevantes de forma clara');
+      contextParts.push('2. Use tablas/listas para datos de empresas');
+      contextParts.push('3. Incluya insights y análisis del contexto');
+      contextParts.push('4. Sugiera próximos pasos al usuario');
+      contextParts.push('5. Sea profesional, útil y directa');
+    } else {
+      // No tool results, but we still need a response
+      contextParts.push('');
+      contextParts.push('No se ejecutaron herramientas. Genera una respuesta apropiada basada en la conversación.');
+    }
+    
+    const finalizationContext = contextParts.join('\n');
+    
+    // Get the original user query
+    const firstUserMessage = messages.find(m => m._getType() === 'human');
+    const userQuery = firstUserMessage?.content?.toString() || 'consulta del usuario';
+    
+    // Create finalization prompt
+    const finalizationPrompt = new SystemMessage(`${finalizationContext}
+
+CONSULTA ORIGINAL DEL USUARIO:
+"${userQuery}"
+
+Genera tu respuesta final ahora. DEBE ser completa, profesional y útil.`);
+    
+    // Invoke model for final response
+    const modelName = state.modelName || "gemini-2.5-flash";
+    const model = getGeminiModel(modelName);
+    
+    console.log('[finalize] Generating final response with model:', modelName);
+    
+    const response = await model.invoke([finalizationPrompt]);
+    
+    console.log('[finalize] Final response generated, length:', response.content.toString().length);
+    
+    // Debug: Log the entire response_metadata to see structure
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[finalize] Response metadata:', JSON.stringify(response.response_metadata, null, 2));
+    }
+    
+    // Extract token usage from response metadata
+    const tokenUsage = extractTokenUsageFromMetadata(response.response_metadata);
+    if (tokenUsage) {
+      console.log('[finalize] ✓ Token usage captured:', tokenUsage);
+    } else {
+      console.log('[finalize] ⚠️ No token usage found in metadata');
+    }
+    
+    return {
+      messages: [response],
+      lastUpdateTime: new Date(),
+      ...(tokenUsage && {
+        totalInputTokens: tokenUsage.inputTokens,
+        totalOutputTokens: tokenUsage.outputTokens,
+        totalTokens: tokenUsage.totalTokens,
+      }),
+    };
+    
+  } catch (error) {
+    console.error('[finalize] Error generating final response:', error);
+    
+    // Fallback: create a basic summary message
+    const summaryParts: string[] = [];
+    summaryParts.push('## Resumen de Acciones Completadas\n');
+    
+    if (state.toolOutputs.length > 0) {
+      summaryParts.push('He completado las siguientes acciones:\n');
+      state.toolOutputs.forEach((output, i) => {
+        summaryParts.push(`${i + 1}. **${output.toolName}**: ${output.success ? '✓ Completado' : '✗ Falló'}`);
+      });
+    }
+    
+    summaryParts.push('\n¿En qué más puedo ayudarte?');
+    
+    const fallbackMessage = new AIMessage(summaryParts.join('\n'));
+    
+    return {
+      messages: [fallbackMessage],
+      lastUpdateTime: new Date(),
+      errorInfo: null,
+    };
+  }
 }
 
 /**
@@ -608,12 +891,14 @@ export async function callTools(state: SalesAgentStateType): Promise<Partial<Sal
     const { companyTools } = await import("@/lib/tools/company-tools");
     const { webSearchTool, webExtractTool } = await import("@/lib/tools/web-search");
     const { enrichCompanyContactsTool } = await import("@/lib/tools/contact-tools");
+    const { offeringTools } = await import("@/lib/tools/offerings-tools");
     
     const allTools = [
       ...companyTools,
       webSearchTool,
       webExtractTool,
       enrichCompanyContactsTool,
+      ...offeringTools,
     ];
     
     // Create a map of tool names to tool functions

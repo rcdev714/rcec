@@ -21,8 +21,9 @@ The agent maintains a rich state object with:
 - `iterationCount`: Loop control
 - `lastTool`/`lastToolSuccess`: Tool execution tracking
 - `toolOutputs`: Complete tool execution history
-- `userContext`: User offerings, profile, subscription, usage
+- `userContext`: User offerings, profile, subscription, usage (auto-loaded with detailed offering summaries)
 - `selectedCompany`/`contactInfo`: Current lead context
+- `selectedOffering`: Currently focused offering for conversation
 - `emailDraft`: Generated email drafts
 - `goal`: Current workflow intent (lead_generation, email_drafting, etc.)
 
@@ -66,30 +67,60 @@ START → load_user_context → plan_todos → think → tools → evaluate_resu
 
 ## Tools
 
-### Existing Company Tools
-- `search_companies`: Natural language company search
-- `get_company_details`: Detailed company information
-- `refine_search`: Filter refinement
-- `export_companies`: Excel export
+### Company Research Tools
+- `search_companies`: Natural language company search with semantic filters
+- `get_company_details`: Detailed financial and contact information
+- `refine_search`: Advanced filter refinement
+- `export_companies`: Excel export for CRM integration
 
-### New Tools
+### Web Research Tools
 
 #### `web_search` (`web-search.ts`)
 - Provider: Tavily API
 - Use cases: Find contacts, company news, LinkedIn profiles
 - Respects privacy and rate limits
 
+#### `web_extract` (`web-search.ts`)
+- Extracts structured data from web pages
+- Finds contact info: emails, phones, social media
+- Confidence scoring for data quality
+
+### Contact Discovery Tools
+
 #### `enrich_company_contacts` (`contact-tools.ts`)
-- Searches directors database
+- Searches directors database for decision-makers
 - Provides safe, ethical contact suggestions
 - Never invents information
-- Suggests web search for additional info
+- Suggests web search for additional verification
+
+### User Offerings Tools
+
+#### `list_user_offerings` (`offerings-tools.ts`)
+- Lists all services/products in user's portfolio
+- Returns: name, industry, target sectors, payment type
+- Use cases:
+  - "¿Qué servicios tengo registrados?"
+  - Understanding user's portfolio before company search
+  - Identifying which offering to pitch
+- **Auto-loaded in context** - tool call only needed for detailed queries
+
+#### `get_offering_details` (`offerings-tools.ts`)
+- Retrieves complete information about a specific offering
+- Returns: full description, pricing plans, website, docs, target industries
+- Use cases:
+  - Personalizing sales emails with accurate service details
+  - Getting pricing information for proposals
+  - Understanding target sectors for company matching
+  - "Cuéntame sobre mi servicio de consultoría en IA"
+- **Critical for email drafting** - ensures accurate, personalized pitches
+
+### Communication Tools
 
 #### `generate_sales_email` (`email-tools.ts`)
 - Uses Gemini to generate personalized emails
-- Inputs: company context + user offering
+- Inputs: company context + user offering details
 - Outputs: subject + body (JSON)
-- **Never sends automatically** - only drafts
+- **Never sends automatically** - only drafts for user review
 
 ## System Prompt (`prompt.ts`)
 
@@ -216,6 +247,37 @@ Agent:
 16. evaluate_result: Success
 17. update_todos: Mark draft complete
 18. finalize: Present draft with [EMAIL_DRAFT] tag
+```
+
+#### Offering-based Company Matching
+```
+User: "¿Qué servicios tengo? Busca empresas en Pichincha para mi servicio de IA"
+Agent:
+1. plan_todos: ["list_offerings", "search_companies"]
+2. think: User wants to see offerings first
+3. tools: list_user_offerings(userId)
+4. evaluate_result: Success (finds 3 offerings including "Consultoría IA" targeting Finance, Healthcare)
+5. think: Now search companies matching AI offering targets in Pichincha
+6. tools: search_companies("empresas Pichincha sector financiero salud tecnología")
+7. evaluate_result: Success
+8. finalize: Present companies with explanation of offering-company fit
+```
+
+#### Detailed Offering Context for Email
+```
+User: "Cuéntame sobre mi servicio de consultoría y redacta email para Banco Pichincha"
+Agent:
+1. plan_todos: ["get_offering", "search_company", "get_details", "draft_email"]
+2. think: User wants offering details first
+3. tools: get_offering_details(offering_id)
+4. evaluate_result: Success (gets full description, $5000/month pricing, target sectors)
+5. think: Now get company info
+6. tools: search_companies("Banco Pichincha")
+7. evaluate_result: Success
+8. tools: get_company_details(ruc)
+9. evaluate_result: Success
+10. think: Ready to draft with full offering context
+11. finalize: Present offering summary + personalized email mentioning specific features and pricing
 ```
 
 ## Iteration and Reflection

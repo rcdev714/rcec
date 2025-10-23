@@ -68,6 +68,9 @@ export async function chatWithSalesAgent(
         let emailDraft: EmailDraft | null = null;
         let previousState: SalesAgentStateType | null = null;
         let currentNode: string | null = null;
+        let totalInputTokens = 0;
+        let totalOutputTokens = 0;
+        let totalTokens = 0;
 
         // Invoke the graph with streaming
         // Initialize with fresh state (no checkpointing = no state pollution)
@@ -255,6 +258,17 @@ export async function chatWithSalesAgent(
             emailDraft = nodeOutput.emailDraft;
           }
 
+          // Track token usage
+          if (nodeOutput.totalInputTokens) {
+            totalInputTokens += nodeOutput.totalInputTokens;
+          }
+          if (nodeOutput.totalOutputTokens) {
+            totalOutputTokens += nodeOutput.totalOutputTokens;
+          }
+          if (nodeOutput.totalTokens) {
+            totalTokens += nodeOutput.totalTokens;
+          }
+
           previousState = { ...previousState, ...nodeOutput } as SalesAgentStateType;
         }
 
@@ -263,6 +277,15 @@ export async function chatWithSalesAgent(
           type: 'finalize',
           message: 'Respuesta completada',
         });
+        
+        // Log final token usage
+        if (totalTokens > 0) {
+          console.log('[Sales Agent] Total token usage:', {
+            input: totalInputTokens,
+            output: totalOutputTokens,
+            total: totalTokens,
+          });
+        }
 
         // Append ALL search results if available (use the last one for primary display, but include all)
         if (searchResults.length > 0) {
@@ -276,6 +299,16 @@ export async function chatWithSalesAgent(
         if (emailDraft) {
           const emailDraftTag = `\n\n[EMAIL_DRAFT]${JSON.stringify(emailDraft)}[/EMAIL_DRAFT]`;
           controller.enqueue(new TextEncoder().encode(emailDraftTag));
+        }
+
+        // Append token usage if available
+        if (totalTokens > 0) {
+          const tokenUsageTag = `\n\n[TOKEN_USAGE]${JSON.stringify({
+            inputTokens: totalInputTokens,
+            outputTokens: totalOutputTokens,
+            totalTokens: totalTokens,
+          })}[/TOKEN_USAGE]`;
+          controller.enqueue(new TextEncoder().encode(tokenUsageTag));
         }
 
         // Flush LangSmith traces before closing
