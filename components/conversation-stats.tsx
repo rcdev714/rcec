@@ -19,20 +19,22 @@ interface ConversationStatsProps {
   onClearConversation?: () => void;
 }
 
-export default function ConversationStats({ 
-  conversationId, 
-  onClearConversation 
+export default function ConversationStats({
+  conversationId,
+  onClearConversation
 }: ConversationStatsProps) {
   const [stats, setStats] = useState<ConversationStats | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const params = conversationId ? `?conversationId=${conversationId}` : '';
       // Usar el endpoint unificado con conteo preciso
       const response = await fetch(`/api/chat/stats${params}`);
-      
+
       if (response.ok) {
         const data = await response.json();
         // Ensure all required properties exist with defaults
@@ -44,9 +46,12 @@ export default function ConversationStats({
           usableTokens: data.usableTokens || 1000000
         };
         setStats(safeStats);
+      } else {
+        setError('Failed to load conversation stats');
       }
     } catch (error) {
       console.error("Error fetching conversation stats:", error);
+      setError('Failed to load conversation stats');
       // Set default stats on error
       setStats({
         messageCount: 0,
@@ -80,6 +85,27 @@ export default function ConversationStats({
   useEffect(() => {
     fetchStats();
   }, [conversationId, fetchStats]);
+
+  if (error) {
+    return (
+      <Card className="p-4 bg-gray-50">
+        <div className="flex items-center justify-center">
+          <div className="text-center">
+            <span className="text-sm text-red-600 block">⚠️ {error}</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={fetchStats}
+              className="mt-2 h-8"
+            >
+              <RefreshCw className="w-3 h-3 mr-1" />
+              Retry
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   if (!stats) {
     return (

@@ -59,21 +59,12 @@ export default function AnalyticsCard() {
           <div className="text-sm text-gray-500">{value} / {limit}</div>
         </div>
         <div className="mt-3">
-          <div className="relative w-full h-4 rounded bg-gray-100 border border-gray-200 overflow-hidden">
-            {/* Qualitative ticks at 70% and 90% */}
-            <div className="absolute top-0 bottom-0 w-px bg-gray-300" style={{ left: '70%' }} />
-            <div className="absolute top-0 bottom-0 w-px bg-gray-300" style={{ left: '90%' }} />
+          <div className="relative w-full h-1 bg-gray-100 border border-gray-200 overflow-hidden">
             {/* Primary measure */}
             <div
-              className={`h-full rounded-r ${isDanger ? 'bg-red-600' : isWarning ? 'bg-yellow-500' : 'bg-gray-900'}`}
+              className={`h-full ${isDanger ? 'bg-red-600' : isWarning ? 'bg-yellow-500' : 'bg-gray-900'}`}
               style={{ width: `${percent}%` }}
             />
-          </div>
-          <div className="mt-2 flex items-center justify-between text-[12px] text-gray-500">
-            <span>0%</span>
-            <span>70%</span>
-            <span>90%</span>
-            <span>100%</span>
           </div>
         </div>
       </div>

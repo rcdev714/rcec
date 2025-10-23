@@ -39,6 +39,8 @@ export default function AnalyticsChartsCard() {
             exports: summary.limits?.exports ?? -1,
             prompts: summary.limits?.prompts ?? -1,
           });
+        } else {
+          console.error('Failed to fetch usage summary:', summaryRes.status, summaryRes.statusText);
         }
 
         // Generate sample time-series data (last 7 days)
@@ -53,14 +55,14 @@ export default function AnalyticsChartsCard() {
         const generateTimeSeries = (total: number) => {
           const data: DataPoint[] = [];
           let remaining = total;
-          
+
           for (let i = 0; i < 7; i++) {
             const isLast = i === 6;
             const value = isLast ? remaining : Math.floor(remaining / (7 - i) * (0.7 + Math.random() * 0.6));
             data.push({ date: last7Days[i], value: Math.max(0, value) });
             remaining -= value;
           }
-          
+
           return data;
         };
 

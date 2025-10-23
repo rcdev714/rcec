@@ -154,8 +154,8 @@ export function formatTokenCount(tokens: number): string {
 
 /**
  * Calculate cost for Gemini API usage
- * Prices are per 1M tokens as of 2024
- * 
+ * Official pricing per 1M tokens as of October 2025
+ *
  * @param modelName - Gemini model name
  * @param inputTokens - Number of input tokens
  * @param outputTokens - Number of output tokens
@@ -166,19 +166,39 @@ export function calculateGeminiCost(
   inputTokens: number,
   outputTokens: number
 ): number {
-  // Pricing per 1M tokens (update these as pricing changes)
-  const pricing: Record<string, { input: number; output: number }> = {
-    "gemini-2.5-flash": { input: 0.075, output: 0.30 },
-    "gemini-2.0-flash-exp": { input: 0.0, output: 0.0 }, // Free during preview
-    "gemini-1.5-flash": { input: 0.075, output: 0.30 },
-    "gemini-1.5-pro": { input: 1.25, output: 5.00 },
+  // Official Gemini pricing per 1M tokens (October 2025)
+  // Note: For gemini-2.5-pro, pricing depends on total prompt size (>200k tokens = higher rate)
+  const pricing: Record<string, { input: number; output: number; inputHighTier?: number; outputHighTier?: number; tierThreshold?: number }> = {
+    "gemini-2.5-pro": {
+      input: 1.25,        // $1.25 for prompts <= 200k tokens
+      output: 10.00,      // $10.00 for prompts <= 200k tokens
+      inputHighTier: 2.50,  // $2.50 for prompts > 200k tokens
+      outputHighTier: 15.00, // $15.00 for prompts > 200k tokens
+      tierThreshold: 200000 // 200k tokens threshold
+    },
+    "gemini-2.5-flash": {
+      input: 0.30,  // $0.30 for text/image/video
+      output: 2.50  // $2.50 output
+    },
+    "gemini-2.5-flash-lite": {
+      input: 0.10,  // $0.10 for text/image/video
+      output: 0.40  // $0.40 output
+    }
   };
-  
+
   const modelPricing = pricing[modelName] || pricing["gemini-2.5-flash"];
-  
-  const inputCost = (inputTokens / 1_000_000) * modelPricing.input;
-  const outputCost = (outputTokens / 1_000_000) * modelPricing.output;
-  
-  return inputCost + outputCost;
+
+  // Handle tiered pricing for Pro model
+  if (modelPricing.tierThreshold && inputTokens > modelPricing.tierThreshold) {
+    // Use high-tier pricing for large prompts
+    const inputCost = (inputTokens / 1_000_000) * (modelPricing.inputHighTier || modelPricing.input);
+    const outputCost = (outputTokens / 1_000_000) * (modelPricing.outputHighTier || modelPricing.output);
+    return inputCost + outputCost;
+  } else {
+    // Standard pricing
+    const inputCost = (inputTokens / 1_000_000) * modelPricing.input;
+    const outputCost = (outputTokens / 1_000_000) * modelPricing.output;
+    return inputCost + outputCost;
+  }
 }
 

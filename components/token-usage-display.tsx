@@ -57,7 +57,7 @@ export function TokenUsageDisplay({
     };
 
     fetchStats();
-  }, [conversationId, currentMessageTokens]); // Re-fetch when new message tokens arrive
+  }, [conversationId, currentMessageTokens?.totalTokens]); // Re-fetch when new message tokens arrive
 
   // Calculate current message cost
   const currentCost = currentMessageTokens

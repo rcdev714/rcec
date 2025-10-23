@@ -904,7 +904,10 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
             emailDraft: finalEmailDraft,
             agentStateEvents: agentEvents, // Persist agent workflow for later review
           },
-          tokenCount: tokenUsage?.totalTokens || 0,
+          tokenCount: tokenUsage?.totalTokens || 0, // Legacy field for backward compatibility
+          inputTokens: tokenUsage?.inputTokens,
+          outputTokens: tokenUsage?.outputTokens,
+          modelName: selectedModel,
           createdAt: new Date(),
         });
 

@@ -21,11 +21,24 @@ interface UsageRecord {
   updated_at?: string;
 }
 
-// Pricing per 1M tokens in USD (approx; update as provider pricing changes)
-// Source: Google Gemini public pricing (values may require adjustment)
+// Official Gemini pricing per 1M tokens in USD (October 2025)
+// Source: https://ai.google.dev/pricing
 export const GEMINI_PRICING_PER_MILLION = {
-  'gemini-2.5-flash': { input: 0.35, output: 0.53 },
-  'gemini-2.5-pro': { input: 3.50, output: 10.50 },
+  'gemini-2.5-pro': {
+    input: 1.25,        // $1.25 for prompts <= 200k tokens
+    output: 10.00,      // $10.00 for prompts <= 200k tokens
+    inputHighTier: 2.50,  // $2.50 for prompts > 200k tokens
+    outputHighTier: 15.00, // $15.00 for prompts > 200k tokens
+    tierThreshold: 200000 // 200k tokens threshold
+  },
+  'gemini-2.5-flash': {
+    input: 0.30,  // $0.30 for text/image/video
+    output: 2.50  // $2.50 output
+  },
+  'gemini-2.5-flash-lite': {
+    input: 0.10,  // $0.10 for text/image/video
+    output: 0.40  // $0.40 output
+  }
 } as const;
 
 export function estimateTokensFromTextLength(characters: number): number {
@@ -35,9 +48,19 @@ export function estimateTokensFromTextLength(characters: number): number {
 
 export function dollarsFromTokens(model: keyof typeof GEMINI_PRICING_PER_MILLION, inputTokens: number, outputTokens: number): number {
   const pricing = GEMINI_PRICING_PER_MILLION[model];
-  const inputCost = (inputTokens / 1_000_000) * pricing.input;
-  const outputCost = (outputTokens / 1_000_000) * pricing.output;
-  return inputCost + outputCost;
+
+  // Handle tiered pricing for Pro model
+  if ('tierThreshold' in pricing && pricing.tierThreshold && inputTokens > pricing.tierThreshold) {
+    // Use high-tier pricing for large prompts
+    const inputCost = (inputTokens / 1_000_000) * (pricing.inputHighTier || pricing.input);
+    const outputCost = (outputTokens / 1_000_000) * (pricing.outputHighTier || pricing.output);
+    return inputCost + outputCost;
+  } else {
+    // Standard pricing
+    const inputCost = (inputTokens / 1_000_000) * pricing.input;
+    const outputCost = (outputTokens / 1_000_000) * pricing.output;
+    return inputCost + outputCost;
+  }
 }
 
 export function getMonthlyPeriodForAnchor(anchorIso: string, now: Date = new Date()): { start: Date; end: Date } {

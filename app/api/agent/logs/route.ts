@@ -20,14 +20,22 @@ export async function GET(req: Request) {
     }
 
     const url = new URL(req.url);
-    const limit = parseInt(url.searchParams.get("limit") || "50");
-    const offset = parseInt(url.searchParams.get("offset") || "0");
+    const limit = Math.max(1, Math.min(100, parseInt(url.searchParams.get("limit") || "50")));
+    const offset = Math.max(0, parseInt(url.searchParams.get("offset") || "0"));
 
     // Fetch conversation messages for this user with token counts
-    const { data: conversations } = await supabase
+    const { data: conversations, error: conversationsError } = await supabase
       .from("conversations")
       .select("id")
       .eq("user_id", user.id);
+
+    if (conversationsError) {
+      console.error("Error fetching conversations:", conversationsError);
+      return NextResponse.json(
+        { error: "Failed to fetch conversations" },
+        { status: 500 }
+      );
+    }
 
     if (!conversations || conversations.length === 0) {
       return NextResponse.json({
@@ -38,10 +46,10 @@ export async function GET(req: Request) {
 
     const conversationIds = conversations.map((c) => c.id);
 
-    // Fetch messages with token counts
+    // Fetch messages with accurate token counts
     const { data: messages, error, count } = await supabase
       .from("conversation_messages")
-      .select("id, conversation_id, role, token_count, metadata, created_at", { count: "exact" })
+      .select("id, conversation_id, role, token_count, input_tokens, output_tokens, model_name, metadata, created_at", { count: "exact" })
       .in("conversation_id", conversationIds)
       .eq("role", "assistant") // Only show assistant messages (agent responses)
       .gt("token_count", 0) // Only messages with token counts
@@ -56,27 +64,29 @@ export async function GET(req: Request) {
       );
     }
 
-    // Transform messages into log entries with cost calculation
+    // Transform messages into log entries with accurate cost calculation
     const logs = (messages || []).map((msg) => {
-      // Estimate input/output split (40% input, 60% output as rough approximation)
-      const totalTokens = msg.token_count || 0;
-      const estimatedInputTokens = Math.round(totalTokens * 0.4);
-      const estimatedOutputTokens = Math.round(totalTokens * 0.6);
-      
+      // Use actual stored token counts (fallback to legacy calculation if not available)
+      const inputTokens = msg.input_tokens || Math.round((msg.token_count || 0) * 0.3); // More conservative estimate for migration period
+      const outputTokens = msg.output_tokens || Math.round((msg.token_count || 0) * 0.7);
+      const totalTokens = inputTokens + outputTokens;
+      const modelName = msg.model_name || "gemini-2.5-flash";
+
       const cost = calculateGeminiCost(
-        "gemini-2.5-flash",
-        estimatedInputTokens,
-        estimatedOutputTokens
+        modelName,
+        inputTokens,
+        outputTokens
       );
 
       return {
         id: msg.id,
         conversationId: msg.conversation_id,
         timestamp: msg.created_at,
-        inputTokens: estimatedInputTokens,
-        outputTokens: estimatedOutputTokens,
-        totalTokens: totalTokens,
-        cost: cost,
+        inputTokens,
+        outputTokens,
+        totalTokens,
+        modelName,
+        cost,
       };
     });
 

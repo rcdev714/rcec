@@ -294,7 +294,7 @@ class ConversationManager {
       const { data: { user } } = await this.supabase.auth.getUser();
       if (!user) return; // Skip Supabase storage for unauthenticated users
 
-      // Store message in Supabase
+      // Store message in Supabase with accurate token tracking
       const { error } = await this.supabase
         .from('conversation_messages')
         .insert({
@@ -302,7 +302,10 @@ class ConversationManager {
           role: message.role,
           content: message.content,
           metadata: message.metadata || {},
-          token_count: message.tokenCount || 0,
+          token_count: (message.inputTokens || 0) + (message.outputTokens || 0), // Legacy field for backward compatibility
+          input_tokens: message.inputTokens || 0,
+          output_tokens: message.outputTokens || 0,
+          model_name: message.modelName || 'gemini-2.5-flash',
           created_at: message.createdAt.toISOString(),
         });
 
@@ -339,7 +342,10 @@ class ConversationManager {
         role: msg.role as 'user' | 'assistant' | 'system',
         content: msg.content,
         metadata: msg.metadata,
-        tokenCount: msg.token_count,
+        tokenCount: msg.token_count, // Legacy field for backward compatibility
+        inputTokens: msg.input_tokens,
+        outputTokens: msg.output_tokens,
+        modelName: msg.model_name,
         createdAt: new Date(msg.created_at),
       })) || [];
     } catch (error) {

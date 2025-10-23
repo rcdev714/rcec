@@ -33,7 +33,8 @@ export async function POST(req: Request) {
       typeof totalTokens !== "number" ||
       inputTokens < 0 ||
       outputTokens < 0 ||
-      totalTokens < 0
+      totalTokens < 0 ||
+      totalTokens !== inputTokens + outputTokens
     ) {
       return NextResponse.json(
         { error: "Invalid token counts" },
@@ -75,7 +76,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // Calculate and track cost
+    // Calculate and track cost using atomic operations to prevent race conditions
     if (totalTokens > 0) {
       try {
         const cost = dollarsFromTokens(
@@ -83,23 +84,38 @@ export async function POST(req: Request) {
           inputTokens,
           outputTokens
         );
-        
-        // Update prompt_dollars using atomic increment (convert dollars to cents for precision)
-        const { data: usage } = await supabase
-          .from("user_usage")
-          .select("prompt_dollars")
-          .eq("user_id", user.id)
-          .eq("period_start", periodStart)
-          .single();
 
-        if (usage) {
-          await supabase
-            .from("user_usage")
-            .update({
-              prompt_dollars: Number(usage.prompt_dollars || 0) + cost,
-            })
-            .eq("user_id", user.id)
-            .eq("period_start", periodStart);
+        // Use atomic SQL update to prevent race conditions
+        // This ensures that concurrent requests don't overwrite each other
+        const { error: costError } = await supabase.rpc('atomic_increment_prompt_dollars', {
+          p_user_id: user.id,
+          p_period_start: periodStart,
+          p_amount: cost
+        });
+
+        if (costError) {
+          console.error("[track-tokens] Error in atomic cost update:", costError);
+          // Fallback to non-atomic update if atomic update fails (less ideal but better than failing)
+          try {
+            const { data: usage } = await supabase
+              .from("user_usage")
+              .select("prompt_dollars")
+              .eq("user_id", user.id)
+              .eq("period_start", periodStart)
+              .single();
+
+            if (usage) {
+              await supabase
+                .from("user_usage")
+                .update({
+                  prompt_dollars: Number(usage.prompt_dollars || 0) + cost,
+                })
+                .eq("user_id", user.id)
+                .eq("period_start", periodStart);
+            }
+          } catch (fallbackError) {
+            console.error("[track-tokens] Fallback cost update also failed:", fallbackError);
+          }
         }
       } catch (error) {
         console.error("[track-tokens] Error tracking cost:", error);
