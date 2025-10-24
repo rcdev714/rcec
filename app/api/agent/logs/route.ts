@@ -67,10 +67,10 @@ export async function GET(req: Request) {
     // Transform messages into log entries with accurate cost calculation
     const logs = (messages || []).map((msg) => {
       // Use actual stored token counts (fallback to legacy calculation if not available)
-      const inputTokens = msg.input_tokens || Math.round((msg.token_count || 0) * 0.3); // More conservative estimate for migration period
-      const outputTokens = msg.output_tokens || Math.round((msg.token_count || 0) * 0.7);
+      const inputTokens = msg.input_tokens ?? Math.round((msg.token_count || 0) * 0.3);
+      const outputTokens = msg.output_tokens ?? Math.round((msg.token_count || 0) * 0.7);
       const totalTokens = inputTokens + outputTokens;
-      const modelName = msg.model_name || "gemini-2.5-flash";
+      const modelName = msg.model_name ?? "gemini-2.5-flash";
 
       const cost = calculateGeminiCost(
         modelName,

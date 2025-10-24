@@ -11,6 +11,19 @@ import { AnimatedCounter } from "@/components/animated-counter";
 import { ScrollAnimation } from "@/components/scroll-animation";
 import { useState, useEffect } from "react";
 import { User } from "@supabase/supabase-js";
+import dynamic from "next/dynamic";
+
+const MapGlobe = dynamic(() => import("@/components/map-globe").then(mod => ({ default: mod.MapGlobe })), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center bg-white rounded-2xl border border-indigo-200/50">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-indigo-600">Cargando mapa...</p>
+      </div>
+    </div>
+  ),
+});
 
 export default function HomeContent() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -213,14 +226,13 @@ export default function HomeContent() {
         </div>
       </section>
 
-
       {/* Statistics Section */}
       <ScrollAnimation delay={200}>
-        <section className="py-8 sm:py-12 bg-white border-y border-gray-100">
+        <section className="py-8 sm:py-12 bg-white border-b border-gray-100">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-            <div className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6 w-full">
-              <ScrollAnimation delay={600}>
-                <div className="group p-3 sm:p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 hover:border-indigo-200 hover:shadow-lg transition-all duration-300 text-center max-w-xs w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 w-full mb-8">
+              <ScrollAnimation delay={400}>
+                <div className="group p-3 sm:p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 hover:border-indigo-200 hover:shadow-lg transition-all duration-300 text-center">
                   <div className="text-sm sm:text-base md:text-lg font-normal text-gray-700 mb-2">
                     <AnimatedCounter targetNumber={300000} />+
                   </div>
@@ -228,8 +240,8 @@ export default function HomeContent() {
                   <p className="text-xs text-gray-500">Base de datos actualizada</p>
                 </div>
               </ScrollAnimation>
-              <ScrollAnimation delay={800}>
-                <div className="group p-3 sm:p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 hover:border-indigo-200 hover:shadow-lg transition-all duration-300 text-center max-w-xs w-full">
+              <ScrollAnimation delay={500}>
+                <div className="group p-3 sm:p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 hover:border-indigo-200 hover:shadow-lg transition-all duration-300 text-center">
                   <div className="text-sm sm:text-base md:text-lg font-normal text-gray-700 mb-2">
                     <AnimatedCounter targetNumber={1500000} />
                   </div>
@@ -237,8 +249,8 @@ export default function HomeContent() {
                   <p className="text-xs text-gray-500">Datos analizados por IA</p>
                 </div>
               </ScrollAnimation>
-              <ScrollAnimation delay={1000}>
-                <div className="group p-3 sm:p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 hover:border-indigo-200 hover:shadow-lg transition-all duration-300 text-center max-w-xs w-full">
+              <ScrollAnimation delay={600}>
+                <div className="group p-3 sm:p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 hover:border-indigo-200 hover:shadow-lg transition-all duration-300 text-center">
                   <div className="text-sm sm:text-base md:text-lg font-normal text-gray-700 mb-2">
                     <AnimatedCounter targetNumber={200000} />
                   </div>
@@ -249,6 +261,37 @@ export default function HomeContent() {
                   <p className="text-xs text-gray-500 leading-tight">Perfiles de directivos, ejecutivos y empleados</p>
                 </div>
               </ScrollAnimation>
+              <ScrollAnimation delay={700}>
+                <div className="group p-3 sm:p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl border border-indigo-200 hover:border-indigo-300 hover:shadow-lg transition-all duration-300">
+                  <div className="text-xs font-semibold text-indigo-900 mb-3">Países con datos empresariales disponibles</div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-600 text-sm">✓</span>
+                      <span className="text-xs font-medium text-gray-900">Ecuador</span>
+                    </div>
+                    <div className="text-xs text-gray-400 font-medium mt-2 mb-1">Próximamente:</div>
+                    <div className="flex flex-col gap-1">
+                      {["Colombia", "México", "USA", "Paraguay", "Chile"].map((country) => (
+                        <div key={country} className="flex items-center gap-2">
+                          <span className="text-gray-300 text-xs">○</span>
+                          <span className="text-xs text-gray-400">{country}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </ScrollAnimation>
+            </div>
+          </div>
+        </section>
+      </ScrollAnimation>
+
+      {/* Interactive Globe Section */}
+      <ScrollAnimation delay={300}>
+        <section className="py-6 sm:py-8 bg-gradient-to-b from-white via-slate-50/30 to-white">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="w-full h-[400px] sm:h-[500px] md:h-[600px] min-h-[400px]">
+              <MapGlobe />
             </div>
           </div>
         </section>
