@@ -29,48 +29,56 @@ export default function AnalyticsChartsCard() {
         const summaryRes = await fetch('/api/usage/summary');
         if (summaryRes.ok) {
           const summary = await summaryRes.json();
-          setTotals({
+          
+          const fetchedTotals = {
             searches: summary.usage?.searches || 0,
             exports: summary.usage?.exports || 0,
             prompts: summary.usage?.prompts || 0,
-          });
+          };
+          
+          setTotals(fetchedTotals);
           setLimits({
             searches: summary.limits?.searches ?? -1,
             exports: summary.limits?.exports ?? -1,
             prompts: summary.limits?.prompts ?? -1,
           });
+
+          // Generate sample time-series data (last 7 days)
+          // In production, this would come from an analytics endpoint
+          const last7Days = Array.from({ length: 7 }, (_, i) => {
+            const date = new Date();
+            date.setDate(date.getDate() - (6 - i));
+            return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+          });
+
+          // For now, distribute totals across the week with a deterministic pattern
+          // This creates a realistic-looking distribution that stays consistent on reload
+          const generateTimeSeries = (total: number) => {
+            // Deterministic distribution weights (sums to 1.0)
+            // Pattern: gradual increase towards recent days
+            const weights = [0.08, 0.10, 0.12, 0.14, 0.16, 0.18, 0.22];
+            
+            const data: DataPoint[] = [];
+            let remaining = total;
+
+            for (let i = 0; i < 7; i++) {
+              const isLast = i === 6;
+              const value = isLast ? remaining : Math.floor(total * weights[i]);
+              data.push({ date: last7Days[i], value: Math.max(0, value) });
+              remaining -= value;
+            }
+
+            return data;
+          };
+
+          setData({
+            searches: generateTimeSeries(fetchedTotals.searches),
+            exports: generateTimeSeries(fetchedTotals.exports),
+            prompts: generateTimeSeries(fetchedTotals.prompts),
+          });
         } else {
           console.error('Failed to fetch usage summary:', summaryRes.status, summaryRes.statusText);
         }
-
-        // Generate sample time-series data (last 7 days)
-        // In production, this would come from an analytics endpoint
-        const last7Days = Array.from({ length: 7 }, (_, i) => {
-          const date = new Date();
-          date.setDate(date.getDate() - (6 - i));
-          return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-        });
-
-        // For now, distribute totals across the week with some randomization
-        const generateTimeSeries = (total: number) => {
-          const data: DataPoint[] = [];
-          let remaining = total;
-
-          for (let i = 0; i < 7; i++) {
-            const isLast = i === 6;
-            const value = isLast ? remaining : Math.floor(remaining / (7 - i) * (0.7 + Math.random() * 0.6));
-            data.push({ date: last7Days[i], value: Math.max(0, value) });
-            remaining -= value;
-          }
-
-          return data;
-        };
-
-        setData({
-          searches: generateTimeSeries(totals.searches),
-          exports: generateTimeSeries(totals.exports),
-          prompts: generateTimeSeries(totals.prompts),
-        });
       } catch (error) {
         console.error('Error fetching analytics data:', error);
       } finally {
@@ -78,7 +86,7 @@ export default function AnalyticsChartsCard() {
       }
     }
     fetchData();
-  }, [totals.searches, totals.exports, totals.prompts]);
+  }, []); // Run only once on mount
 
   const chartConfig = [
     {
