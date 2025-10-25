@@ -65,7 +65,7 @@ export function MapGlobe() {
 
       // Simple approach: Add markers for each country
       const countries = [
-        { name: "Ecuador", coords: [-78.4678, -1.8312] as [number, number], emoji: "✅", color: "#4f46e5", status: "active" },
+        { name: "Ecuador", coords: [-78.4678, -1.8312] as [number, number], emoji: "✅", color: "#ffffff", status: "active" },
         { name: "Colombia", coords: [-74.2973, 4.5709] as [number, number], emoji: "🔜", color: "#f59e0b", status: "soon" },
         { name: "Mexico", coords: [-102.5528, 23.6345] as [number, number], emoji: "🔜", color: "#f59e0b", status: "soon" },
         { name: "USA", coords: [-95.7129, 37.0902] as [number, number], emoji: "🔜", color: "#f59e0b", status: "soon" },
@@ -79,15 +79,15 @@ export function MapGlobe() {
         const el = document.createElement("div");
         el.className = "country-marker";
         el.style.cssText = `
-          width: 40px;
-          height: 40px;
+          width: 28px;
+          height: 28px;
           border-radius: 50%;
           background: ${country.color};
           border: 2px solid white;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 20px;
+          font-size: 14px;
           cursor: pointer;
           box-shadow: 0 4px 12px rgba(0,0,0,0.3);
           transition: transform 0.2s;
@@ -109,14 +109,14 @@ export function MapGlobe() {
           .addTo(map.current!);
       });
 
-      // Animate to Ecuador with zoom
+      // Animate to show more of the globe
       setTimeout(() => {
         if (!map.current) return;
         map.current.flyTo({
           center: [-78.4678, -1.8312], // Ecuador coordinates
-          zoom: 4.5,
-          pitch: 25,
-          bearing: -10,
+          zoom: 2.8,
+          pitch: 15,
+          bearing: -5,
           duration: 3000,
           essential: true,
           easing: (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
@@ -133,7 +133,7 @@ export function MapGlobe() {
   }, []);
 
   return (
-    <div className="relative w-full h-full min-h-[400px] rounded-2xl overflow-hidden shadow-2xl border border-indigo-200/50 bg-white">
+    <div className="relative w-full h-full min-h-[400px] rounded-2xl overflow-hidden bg-white">
       <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
       {!isLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
@@ -143,23 +143,6 @@ export function MapGlobe() {
           </div>
         </div>
       )}
-      {/* Legend */}
-      <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm px-4 py-3 rounded-lg shadow-lg border border-gray-200 z-20">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-lg">✅</span>
-          <div>
-            <p className="text-xs font-semibold text-gray-900">Disponible</p>
-            <p className="text-xs text-gray-600">Ecuador</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-lg">🔜</span>
-          <div>
-            <p className="text-xs font-semibold text-gray-900">Próximamente</p>
-            <p className="text-xs text-gray-600">Colombia, México, USA, Paraguay, Chile</p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
