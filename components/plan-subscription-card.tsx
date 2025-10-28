@@ -111,21 +111,21 @@ export default function PlanAndSubscriptionCard() {
         search: 'Búsqueda limitada (10/mes)',
         export: '🔒 Exportación bloqueada',
         linkedin: '🔒 LinkedIn bloqueado',
-        agent: '🔒 Modo Agente bloqueado'
+        reasoning: '🔒 Modelo de razonamiento avanzado bloqueado'
       },
       PRO: {
         prompts: '100 mensajes/mes',
         search: '✅ Búsqueda ilimitada',
         export: '✅ Exportación disponible',
         linkedin: '✅ LinkedIn disponible',
-        agent: '✅ Modo Agente disponible'
+        reasoning: '✅ Modelo de razonamiento avanzado disponible'
       },
       ENTERPRISE: {
         prompts: '500 mensajes/mes',
         search: '✅ Búsqueda ilimitada',
         export: '✅ Exportación disponible',
         linkedin: '✅ LinkedIn disponible',
-        agent: '✅ Modo Agente disponible'
+        reasoning: '✅ Modelo de razonamiento avanzado disponible'
       }
     };
     return features[plan as keyof typeof features] || features.FREE;
@@ -195,8 +195,8 @@ export default function PlanAndSubscriptionCard() {
               <span>{currentFeatures.linkedin}</span>
             </div>
             <div className="flex justify-between">
-              <span>Modo Agente:</span>
-              <span>{currentFeatures.agent}</span>
+              <span>Razonamiento avanzado:</span>
+              <span>{currentFeatures.reasoning}</span>
             </div>
           </div>
         </div>

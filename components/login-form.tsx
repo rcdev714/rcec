@@ -79,72 +79,76 @@ export function LoginForm({
             <GoogleSignInButton />
           </div>
           
-          {/* Divider */}
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+          {/* Hidden email/password form - logic kept for future use */}
+          <div className="hidden">
+            {/* Divider */}
+            <div className="relative mb-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  O continúa con correo
+                </span>
+              </div>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                O continúa con correo
-              </span>
-            </div>
+
+            <form onSubmit={handleLogin}>
+              <div className="flex flex-col gap-6">
+                <div className="grid gap-2">
+                  <Label htmlFor="email" className="text-sm font-medium text-foreground">Correo electrónico</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="tu@email.com"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-10 transition-all duration-200"
+                    autoComplete="email"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <div className="flex items-center">
+                    <Label htmlFor="password" className="text-sm font-medium text-foreground">Contraseña</Label>
+                    <Link
+                      href="/auth/forgot-password"
+                      className="ml-auto inline-block text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+                    >
+                      ¿Olvidaste tu contraseña?
+                    </Link>
+                  </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-10 transition-all duration-200"
+                    autoComplete="current-password"
+                  />
+                </div>
+                {error && (
+                  <div className="rounded-md bg-red-50 p-3">
+                    <p className="text-sm text-red-800">{error}</p>
+                  </div>
+                )}
+                <Button type="submit" className="w-full bg-indigo-500 text-white hover:bg-indigo-600" disabled={isLoading}>
+                  {isLoading ? "Iniciando sesión..." : "Iniciar sesión"}
+                </Button>
+              </div>
+            </form>
           </div>
-          
-          <form onSubmit={handleLogin}>
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="email" className="text-sm font-medium text-foreground">Correo electrónico</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="tu@email.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="h-10 transition-all duration-200"
-                  autoComplete="email"
-                />
-              </div>
-              <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password" className="text-sm font-medium text-foreground">Contraseña</Label>
-                  <Link
-                    href="/auth/forgot-password"
-                    className="ml-auto inline-block text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
-                  >
-                    ¿Olvidaste tu contraseña?
-                  </Link>
-                </div>
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-10 transition-all duration-200"
-                  autoComplete="current-password"
-                />
-              </div>
-              {error && (
-                <div className="rounded-md bg-red-50 p-3">
-                  <p className="text-sm text-red-800">{error}</p>
-                </div>
-              )}
-              <Button type="submit" className="w-full bg-indigo-500 text-white hover:bg-indigo-600" disabled={isLoading}>
-                {isLoading ? "Iniciando sesión..." : "Iniciar sesión"}
-              </Button>
-            </div>
-            <div className="mt-6 text-center text-sm">
-              <span className="text-muted-foreground">¿No tienes una cuenta?</span>{" "}
-              <Link
-                href="/auth/sign-up"
-                className="text-foreground hover:text-muted-foreground underline underline-offset-4"
-              >
-                Crear cuenta
-              </Link>
-            </div>
-          </form>
+
+          <div className="mt-6 text-center text-sm">
+            <span className="text-muted-foreground">¿No tienes una cuenta?</span>{" "}
+            <Link
+              href="/auth/sign-up"
+              className="text-foreground hover:text-muted-foreground underline underline-offset-4"
+            >
+              Crear cuenta
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>

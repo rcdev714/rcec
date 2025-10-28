@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AnimatedCounter } from '@/components/animated-counter';
 
 type Point = { date: string; searches: number; exports: number };
 
@@ -39,46 +40,22 @@ export default function AnalyticsCard() {
   }), [monthlyCounts]);
 
   const renderBullet = (label: string, value: number, limit: number) => {
-    if (limit === -1) {
-      return (
-        <div className="p-4 rounded border border-gray-200 bg-white">
-          <div className="text-xs text-gray-500">{label}</div>
-          <div className="text-xl font-semibold">{value}</div>
-        </div>
-      );
-    }
-
-    const percent = Math.min(100, (value / limit) * 100);
-    const isWarning = percent >= 70 && percent < 90;
-    const isDanger = percent >= 90;
-
     return (
-      <div className="p-4 rounded border border-gray-200 bg-white">
-        <div className="flex items-center justify-between">
-          <div className="text-xs text-gray-500">{label}</div>
-          <div className="text-sm text-gray-500">{value} / {limit}</div>
+      <div className="bg-white border border-gray-200 p-2 text-center">
+        <div className="text-base text-gray-900 mb-1 border-b border-gray-300 pb-1">
+          <AnimatedCounter targetNumber={value} />
+          {limit !== -1 ? ` / ${limit}` : ''}
         </div>
-        <div className="mt-3">
-          <div className="relative w-full h-1 bg-gray-100 border border-gray-200 overflow-hidden">
-            {/* Primary measure */}
-            <div
-              className={`h-full ${isDanger ? 'bg-red-600' : isWarning ? 'bg-yellow-500' : 'bg-gray-900'}`}
-              style={{ width: `${percent}%` }}
-            />
-          </div>
-        </div>
+        <div className="text-xs text-gray-600 mb-1 uppercase">{label}</div>
       </div>
     );
   };
 
   return (
-    <Card className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 text-gray-900">
+    <Card className="font-mono bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 text-gray-900">
       <CardHeader className="pb-3">
-        <CardTitle className="text-xs font-medium text-gray-600 text-center uppercase tracking-wide">
-          <div className="w-3.5 h-3.5 mx-auto mb-1 bg-blue-500 rounded-full flex items-center justify-center">
-            <div className="w-2 h-2 bg-white rounded-full"></div>
-          </div>
-          Tus Analíticas
+        <CardTitle className="text-xs text-gray-600 text-center uppercase tracking-wide">
+        Tú Uso
         </CardTitle>
       </CardHeader>
       <CardContent>

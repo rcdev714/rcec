@@ -3,7 +3,7 @@
 import { useState, FormEvent, ChangeEvent, useRef, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowDown, LoaderCircle, Copy, CopyCheck, ArrowUp, Sparkles, Infinity } from "lucide-react";
+import { ArrowDown, LoaderCircle, Copy, CopyCheck, ArrowUp, Sparkles, Infinity, CheckCircle2, XCircle } from "lucide-react";
 import ModelSelector from "./model-selector";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -1210,40 +1210,75 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                             <div className="mb-3 p-3 bg-gray-50/50 border border-gray-200/60 rounded-lg">
                               <div className="flex items-center gap-2 mb-2">
                                 <div className="w-4 h-4 rounded-full bg-gray-200/60 text-gray-500 flex items-center justify-center text-[10px]">🔧</div>
-                                <span className="text-[11px] font-normal text-gray-500">Pasos del Agente</span>
+                                <span className="text-[11px] font-normal text-gray-500">Pasos...</span>
                                 <span className="ml-auto text-[10px] text-gray-400 bg-gray-100/60 px-1.5 py-0.5 rounded-full">
                                   {msg.agentStateEvents.filter(e => e.type === 'tool_call').length} acciones
                                 </span>
                               </div>
                               <div className="space-y-1.5">
-                                {msg.agentStateEvents
-                                  .filter(e => e.type === 'tool_call' || e.type === 'tool_result')
-                                  .map((event, eventIndex) => (
-                                    <div key={eventIndex} className="flex items-start gap-2 text-[11px]">
-                                      {event.type === 'tool_call' && (
-                                        <>
-                                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-gray-200/60 text-gray-500 flex items-center justify-center text-[10px] font-normal">
-                                            {Math.floor(eventIndex / 2) + 1}
-                                          </span>
-                                          <div className="flex-1">
-                                            <div className="font-normal text-gray-500">
-                                              {formatToolName(event.toolName)}
+                                {(() => {
+                                  const steps: { call: AgentStateEvent; result?: AgentStateEvent }[] = [];
+                                  const events = msg.agentStateEvents.filter(e => e.type === 'tool_call' || e.type === 'tool_result');
+                                  for (let i = 0; i < events.length; i++) {
+                                    if (events[i].type === 'tool_call') {
+                                      if (i + 1 < events.length && events[i + 1].type === 'tool_result') {
+                                        steps.push({ call: events[i], result: events[i + 1] });
+                                        i++;
+                                      } else {
+                                        steps.push({ call: events[i] });
+                                      }
+                                    }
+                                  }
+
+                                  return (
+                                    <>
+                                      {steps.map((step, stepIndex) => {
+                                        const toolCallEvent = step.call.type === 'tool_call' ? step.call : undefined;
+                                        const toolResultEvent = step.result?.type === 'tool_result' ? step.result : undefined;
+
+                                        if (!toolCallEvent) return null;
+
+                                        return (
+                                          <div key={stepIndex} className="flex items-center gap-3 text-xs p-2 rounded-md bg-white border border-gray-200/80">
+                                            <div className="flex-shrink-0">
+                                              {toolResultEvent ? (
+                                                toolResultEvent.success ? (
+                                                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                                ) : (
+                                                  <XCircle className="w-4 h-4 text-red-500" />
+                                                )
+                                              ) : (
+                                                <LoaderCircle className="w-4 h-4 text-gray-400 animate-spin" />
+                                              )}
                                             </div>
+                                            <div className="flex-1 font-medium text-gray-700">
+                                              {formatToolName(toolCallEvent.toolName)}
+                                            </div>
+                                            {!toolResultEvent && isSending && (
+                                                <div className="flex items-center space-x-1">
+                                                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></span>
+                                                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></span>
+                                                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></span>
+                                                </div>
+                                            )}
                                           </div>
-                                        </>
-                                      )}
-                                      {event.type === 'tool_result' && (
-                                        <div className="ml-7 pl-2 border-l border-gray-200/60">
-                                          <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-                                            <span className="flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-normal bg-gray-200/60 text-gray-500">{event.success ? '✓' : '✗'}</span>
-                                            <span className="font-normal text-gray-500">
-                                              {event.success ? 'Completado' : `Error: ${event.error}`}
-                                            </span>
+                                        );
+                                      })}
+                                      {isSending && (steps.length === 0 || (steps[steps.length - 1].result?.type === 'tool_result')) && (
+                                        <div className="flex items-center gap-3 text-xs p-2">
+                                           <div className="flex items-center space-x-1">
+                                                <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></span>
+                                                <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></span>
+                                                <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></span>
+                                            </div>
+                                          <div className="flex-1 font-medium text-gray-500 italic">
+                                            pensando...
                                           </div>
                                         </div>
                                       )}
-                                    </div>
-                                  ))}
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </div>
                           )}

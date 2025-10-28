@@ -8,6 +8,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { BaseMessage } from "@langchain/core/messages";
 
+// Define a multiplier for profit margin to easily adjust revenue
+const PROFIT_MARGIN_MULTIPLIER = 12;
+
 // Initialize Google AI SDK
 let genAI: GoogleGenerativeAI | null = null;
 
@@ -193,12 +196,12 @@ export function calculateGeminiCost(
     // Use high-tier pricing for large prompts
     const inputCost = (inputTokens / 1_000_000) * (modelPricing.inputHighTier || modelPricing.input);
     const outputCost = (outputTokens / 1_000_000) * (modelPricing.outputHighTier || modelPricing.output);
-    return inputCost + outputCost;
+    return (inputCost + outputCost) * PROFIT_MARGIN_MULTIPLIER;
   } else {
     // Standard pricing
     const inputCost = (inputTokens / 1_000_000) * modelPricing.input;
     const outputCost = (outputTokens / 1_000_000) * modelPricing.output;
-    return inputCost + outputCost;
+    return (inputCost + outputCost) * PROFIT_MARGIN_MULTIPLIER;
   }
 }
 

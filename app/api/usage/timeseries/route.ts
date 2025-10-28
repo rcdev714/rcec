@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     start.setUTCDate(start.getUTCDate() - (days - 1));
     start.setUTCHours(0, 0, 0, 0);
 
+    // Fetch usage events (searches and exports)
     const { data, error } = await supabase
       .from('user_usage_events')
       .select('event_date, kind, count')
@@ -24,17 +25,47 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
+    // Fetch conversations for this user
+    const { data: conversations, error: convError } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('user_id', user.id);
+
+    if (convError) throw convError;
+
+    const conversationIds = conversations?.map(c => c.id) || [];
+
+    // Fetch assistant messages (prompts) with timestamps
+    const promptsByDate = new Map<string, number>();
+    if (conversationIds.length > 0) {
+      const { data: messages, error: msgError } = await supabase
+        .from('conversation_messages')
+        .select('created_at')
+        .in('conversation_id', conversationIds)
+        .eq('role', 'assistant')
+        .gte('created_at', start.toISOString());
+
+      if (!msgError && messages) {
+        // Group messages by date
+        for (const msg of messages) {
+          const dateKey = msg.created_at.slice(0, 10); // Extract YYYY-MM-DD
+          promptsByDate.set(dateKey, (promptsByDate.get(dateKey) || 0) + 1);
+        }
+      }
+    }
+
     // Build zero-filled series
-    const series: { date: string; searches: number; exports: number }[] = [];
-    const byKey = new Map<string, { searches: number; exports: number }>();
+    const series: { date: string; searches: number; exports: number; prompts: number }[] = [];
+    const byKey = new Map<string, { searches: number; exports: number; prompts: number }>();
     for (let i = 0; i < days; i++) {
       const d = new Date(start);
       d.setUTCDate(start.getUTCDate() + i);
       const key = d.toISOString().slice(0,10);
-      series.push({ date: key, searches: 0, exports: 0 });
-      byKey.set(key, { searches: 0, exports: 0 });
+      series.push({ date: key, searches: 0, exports: 0, prompts: 0 });
+      byKey.set(key, { searches: 0, exports: 0, prompts: 0 });
     }
 
+    // Add usage events data
     for (const row of (data || [])) {
       const bucket = byKey.get(row.event_date);
       if (!bucket) continue;
@@ -42,11 +73,20 @@ export async function GET(request: NextRequest) {
       if (row.kind === 'export') bucket.exports += row.count as number;
     }
 
+    // Add prompts data
+    for (const [dateKey, count] of promptsByDate.entries()) {
+      const bucket = byKey.get(dateKey);
+      if (bucket) {
+        bucket.prompts = count;
+      }
+    }
+
     // Copy back aggregated values in date order
     const out = series.map(s => ({
       date: s.date,
       searches: byKey.get(s.date)!.searches,
       exports: byKey.get(s.date)!.exports,
+      prompts: byKey.get(s.date)!.prompts,
     }));
 
     return NextResponse.json({ days, data: out });

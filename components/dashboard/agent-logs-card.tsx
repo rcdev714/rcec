@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatTokenCount } from '@/lib/token-counter';
@@ -14,6 +15,7 @@ interface AgentLog {
   outputTokens: number;
   totalTokens: number;
   cost: number;
+  modelName: string;
 }
 
 export default function AgentLogsCard() {
@@ -42,22 +44,12 @@ export default function AgentLogsCard() {
 
   const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Hace un momento';
-    if (diffMins < 60) return `Hace ${diffMins}m`;
-    if (diffHours < 24) return `Hace ${diffHours}h`;
-    if (diffDays < 7) return `Hace ${diffDays}d`;
-    
-    return date.toLocaleDateString('es-ES', { 
-      day: 'numeric', 
+    return date.toLocaleString('es-ES', {
       month: 'short',
+      day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: true,
     });
   };
 
@@ -105,10 +97,10 @@ export default function AgentLogsCard() {
   }
 
   return (
-    <Card className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+    <Card className="font-mono bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
       <CardHeader className="pb-3">
         <div className="text-center">
-          <CardTitle className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-1">
+          <CardTitle className="text-xs text-gray-600 uppercase tracking-wide mb-1">
             <Activity className="w-3.5 h-3.5 mx-auto mb-1" />
             Registros del Agente
           </CardTitle>
@@ -118,54 +110,46 @@ export default function AgentLogsCard() {
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="overflow-x-auto rounded-lg border border-gray-100">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/50">
-                <th className="text-left py-4 px-6 font-medium text-gray-500 uppercase tracking-wide text-xs">Fecha</th>
-                <th className="text-right py-4 px-6 font-medium text-gray-500 uppercase tracking-wide text-xs">Tokens Entrada</th>
-                <th className="text-right py-4 px-6 font-medium text-gray-500 uppercase tracking-wide text-xs">Tokens Salida</th>
-                <th className="text-right py-4 px-6 font-medium text-gray-500 uppercase tracking-wide text-xs">Total</th>
-                <th className="text-right py-4 px-6 font-medium text-gray-500 uppercase tracking-wide text-xs">Costo</th>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="text-xs text-gray-500 uppercase">
+              <tr>
+                <th scope="col" className="px-6 py-3">Fecha</th>
+                <th scope="col" className="px-6 py-3">Modelo</th>
+                <th scope="col" className="px-6 py-3 text-right">Tokens Usados</th>
+                <th scope="col" className="px-6 py-3 text-right">Costo</th>
               </tr>
             </thead>
             <tbody>
               {logs.slice(0, isExpanded ? logs.length : 5).map((log) => (
-                <tr key={log.id} className="border-b border-gray-50 hover:bg-gray-50/70 transition-colors duration-150">
-                  <td className="py-4 px-6 text-gray-700 whitespace-nowrap font-medium text-sm">
-                    {formatDate(log.timestamp)}
+                <tr key={log.id} className="border-b border-gray-200">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <Link href={`/chat/${log.conversationId}`} className="text-blue-600 hover:underline">
+                      {formatDate(log.timestamp)}
+                    </Link>
                   </td>
-                  <td className="py-4 px-6 text-right text-gray-600 font-mono text-sm font-medium">
-                    {formatTokenCount(log.inputTokens)}
+                  <td className="px-6 py-4">
+                    {log.modelName}
                   </td>
-                  <td className="py-4 px-6 text-right text-gray-600 font-mono text-sm font-medium">
-                    {formatTokenCount(log.outputTokens)}
-                  </td>
-                  <td className="py-4 px-6 text-right font-semibold text-gray-900 font-mono text-sm">
+                  <td className="px-6 py-4 text-right">
                     {formatTokenCount(log.totalTokens)}
                   </td>
-                  <td className="py-4 px-6 text-right text-emerald-600 font-semibold font-mono text-sm">
-                    ${log.cost.toFixed(4)}
+                  <td className="px-6 py-4 text-right">
+                    ${log.cost.toFixed(2)}
                   </td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="border-t border-gray-200 bg-gray-50/30 font-medium">
-                <td className="py-4 px-6 text-gray-800 font-bold text-sm">
-                  Total {isExpanded ? '' : '(mostrando 5)'}
+              <tr className="border-t">
+                <td colSpan={2} className="px-6 py-4">
+                  Total
                 </td>
-                <td className="py-4 px-6 text-right text-gray-900 font-mono text-sm font-bold">
-                  {formatTokenCount(logs.slice(0, isExpanded ? logs.length : 5).reduce((sum, log) => sum + log.inputTokens, 0))}
+                <td className="px-6 py-4 text-right">
+                  {formatTokenCount(logs.reduce((sum, log) => sum + log.totalTokens, 0))}
                 </td>
-                <td className="py-4 px-6 text-right text-gray-900 font-mono text-sm font-bold">
-                  {formatTokenCount(logs.slice(0, isExpanded ? logs.length : 5).reduce((sum, log) => sum + log.outputTokens, 0))}
-                </td>
-                <td className="py-4 px-6 text-right font-bold text-gray-900 font-mono text-sm">
-                  {formatTokenCount(logs.slice(0, isExpanded ? logs.length : 5).reduce((sum, log) => sum + log.totalTokens, 0))}
-                </td>
-                <td className="py-4 px-6 text-right font-bold text-emerald-700 font-mono text-sm">
-                  ${logs.slice(0, isExpanded ? logs.length : 5).reduce((sum, log) => sum + log.cost, 0).toFixed(4)}
+                <td className="px-6 py-4 text-right">
+                  ${logs.reduce((sum, log) => sum + log.cost, 0).toFixed(2)}
                 </td>
               </tr>
             </tfoot>

@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import SubscriptionStatus from "@/components/subscription-status";
-import PlanCard from "@/components/dashboard/plan-card";
+import PlanAndSubscriptionCard from "@/components/plan-subscription-card";
 import AnalyticsCard from "@/components/dashboard/analytics-card";
 import AnalyticsChartsCard from "@/components/dashboard/analytics-charts-card";
 import AgentLogsCard from "@/components/dashboard/agent-logs-card";
@@ -116,12 +115,10 @@ export default function DashboardPage() {
           </div>
           
           <div>
-            <SubscriptionStatus />
+            <PlanAndSubscriptionCard />
           </div>
         </div>
 
-        {/* Plan Card at Bottom */}
-        <PlanCard />
       </div>
     </div>
   );

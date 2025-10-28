@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import SubscriptionStatus from '@/components/subscription-status';
+import PlanAndSubscriptionCard from '@/components/plan-subscription-card';
 import { UserSettings } from '@/types/user-profile';
 import { User, Building2, CreditCard, Settings } from 'lucide-react';
 import UserAvatar from '@/components/user-avatar';
+import { LogoutButton } from '@/components/logout-button';
 
 export default function SettingsPage() {
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
@@ -197,6 +198,7 @@ export default function SettingsPage() {
                   )}
                 </div>
                 <UserAvatar />
+                <LogoutButton />
               </div>
             </div>
             <p className="text-gray-600 mt-2">Gestiona tu perfil personal, información de empresa y suscripción</p>
@@ -382,7 +384,7 @@ export default function SettingsPage() {
                     <CardDescription>Estado actual de tu plan</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <SubscriptionStatus />
+                    <PlanAndSubscriptionCard />
                     <Button 
                       onClick={handleManagePayment}
                       className="w-full mt-4"

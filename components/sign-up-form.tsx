@@ -117,99 +117,101 @@ export function SignUpForm({
             <GoogleSignInButton />
           </div>
           
-          {/* Divider */}
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+          {/* Hidden email/password form - logic kept for future use */}
+          <div className="hidden">
+            {/* Divider */}
+            <div className="relative mb-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  O crea una cuenta con correo
+                </span>
+              </div>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                O crea una cuenta con correo
-              </span>
-            </div>
-          </div>
-          
-          <form onSubmit={handleSignUp}>
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="email" className="text-sm font-medium text-foreground">Correo electrónico</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="tu@email.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="h-10 transition-all duration-200"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="password" className="text-sm font-medium text-foreground">Contraseña</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-10 transition-all duration-200"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="repeat-password" className="text-sm font-medium text-foreground">Confirmar contraseña</Label>
-                <Input
-                  id="repeat-password"
-                  type="password"
-                  required
-                  value={repeatPassword}
-                  onChange={(e) => setRepeatPassword(e.target.value)}
-                  className="h-10 transition-all duration-200"
-                />
-              </div>
 
-              {/* User Type Selection */}
-              <div className="flex w-full rounded-md border bg-muted p-0.5">
-                <Button
-                  type="button"
-                  variant={userType === "individual" ? "secondary" : "ghost"}
-                  size="sm"
-                  className="w-1/2 rounded-sm"
-                  onClick={() => setUserType("individual")}
-                >
-                  Regular
-                </Button>
-                <Button
-                  type="button"
-                  variant={userType === "enterprise" ? "secondary" : "ghost"}
-                  size="sm"
-                  className="w-1/2 rounded-sm"
-                  onClick={() => setUserType("enterprise")}
-                >
-                  Empresarial
-                </Button>
-              </div>
+            <form onSubmit={handleSignUp}>
+              <div className="flex flex-col gap-6">
+                <div className="grid gap-2">
+                  <Label htmlFor="email" className="text-sm font-medium text-foreground">Correo electrónico</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="tu@email.com"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-10 transition-all duration-200"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="password" className="text-sm font-medium text-foreground">Contraseña</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-10 transition-all duration-200"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="repeat-password" className="text-sm font-medium text-foreground">Confirmar contraseña</Label>
+                  <Input
+                    id="repeat-password"
+                    type="password"
+                    required
+                    value={repeatPassword}
+                    onChange={(e) => setRepeatPassword(e.target.value)}
+                    className="h-10 transition-all duration-200"
+                  />
+                </div>
 
-              {/* Enterprise Role Selection */}
-              {userType === "enterprise" && (
-                <div className="space-y-3">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-between h-10 font-normal"
-                      >
-                        {enterpriseRole || "Rol en tu empresa"}
-                        <ChevronDown className="h-4 w-4 opacity-50" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
-                      {enterpriseRoles.map((role) => (
-                        <DropdownMenuItem
-                          key={role}
-                          onSelect={() => setEnterpriseRole(role)}
+                {/* User Type Selection */}
+                <div className="flex w-full rounded-md border bg-muted p-0.5">
+                  <Button
+                    type="button"
+                    variant={userType === "individual" ? "secondary" : "ghost"}
+                    size="sm"
+                    className="w-1/2 rounded-sm"
+                    onClick={() => setUserType("individual")}
+                  >
+                    Regular
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={userType === "enterprise" ? "secondary" : "ghost"}
+                    size="sm"
+                    className="w-1/2 rounded-sm"
+                    onClick={() => setUserType("enterprise")}
+                  >
+                    Empresarial
+                  </Button>
+                </div>
+
+                {/* Enterprise Role Selection */}
+                {userType === "enterprise" && (
+                  <div className="space-y-3">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-between h-10 font-normal"
                         >
-                          {role}
-                        </DropdownMenuItem>
-                      ))}
+                          {enterpriseRole || "Rol en tu empresa"}
+                          <ChevronDown className="h-4 w-4 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                        {enterpriseRoles.map((role) => (
+                          <DropdownMenuItem
+                            key={role}
+                            onSelect={() => setEnterpriseRole(role)}
+                          >
+                            {role}
+                          </DropdownMenuItem>
+                        ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
 
@@ -225,20 +227,22 @@ export function SignUpForm({
                     />
                   )}
                 </div>
-              )}
+                )}
 
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full bg-indigo-500 text-white hover:bg-indigo-600" disabled={isLoading}>
-                {isLoading ? "Creando cuenta..." : "Crear cuenta"}
-              </Button>
-            </div>
-            <div className="mt-6 text-center text-sm">
-              <span className="text-muted-foreground">¿Ya tienes una cuenta?</span>{" "}
-              <Link href="/auth/login" className="text-foreground hover:text-muted-foreground underline underline-offset-4">
-                Iniciar sesión
-              </Link>
-            </div>
-          </form>
+                {error && <p className="text-sm text-red-500">{error}</p>}
+                <Button type="submit" className="w-full bg-indigo-500 text-white hover:bg-indigo-600" disabled={isLoading}>
+                  {isLoading ? "Creando cuenta..." : "Crear cuenta"}
+                </Button>
+              </div>
+            </form>
+          </div>
+
+          <div className="mt-6 text-center text-sm">
+            <span className="text-muted-foreground">¿Ya tienes una cuenta?</span>{" "}
+            <Link href="/auth/login" className="text-foreground hover:text-muted-foreground underline underline-offset-4">
+              Iniciar sesión
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>
