@@ -15,42 +15,48 @@ export default function AnalyticsCard() {
 
   useEffect(() => {
     async function load() {
-      // Fetch summary, timeseries, and agent logs for accurate data
-      const [sumRes, timeseriesRes, logsRes] = await Promise.all([
+      // Fetch summary and cost summary for accurate data
+      const [sumRes, costSummaryRes] = await Promise.all([
         fetch('/api/usage/summary'),
-        fetch('/api/usage/timeseries?days=30'),
-        fetch('/api/agent/logs?limit=1000') // Fetch all logs for current period
+        fetch('/api/agent/cost-summary') // New dedicated endpoint for accurate cost aggregation
       ]);
       
-      if (sumRes.ok && timeseriesRes.ok) {
+      if (sumRes.ok) {
         const summary = await sumRes.json();
-        const timeseries = await timeseriesRes.json();
         
-        // Calculate total tokens from timeseries (more accurate as it comes from actual messages)
-        const totalTokens = timeseries.data.reduce((sum: number, d: any) => sum + (d.tokens || 0), 0);
+        // Get accurate cost from dedicated aggregation endpoint
+        let totalDollars = summary.usage?.cost_dollars || 0; // Fallback to DB value
+        let totalTokens = (summary.usage?.input_tokens || 0) + (summary.usage?.output_tokens || 0);
         
-        // Calculate total dollars from agent logs (uses official pricing with multiplier)
-        let totalDollars = 0;
-        if (logsRes.ok) {
-          const logsData = await logsRes.json();
-          totalDollars = logsData.logs?.reduce((sum: number, log: any) => sum + (log.cost || 0), 0) || 0;
+        if (costSummaryRes.ok) {
+          const costData = await costSummaryRes.json();
+          totalDollars = costData.totalCost || 0;
+          totalTokens = costData.totalTokens || 0;
+          
+          console.log('[Analytics] Using cost summary data:', { 
+            totalTokens, 
+            totalDollars,
+            messageCount: costData.messageCount 
+          });
+        } else {
+          console.error('[Analytics] Failed to fetch cost summary, falling back to summary data');
+          console.log('[Analytics] Using fallback data:', { 
+            totalTokens, 
+            totalDollars 
+          });
         }
-        
-        console.log('[Analytics] Usage data:', { 
-          totalTokens, 
-          totalDollars, 
-          dbDollars: summary.usage?.cost_dollars 
-        });
         
         setMonthlyCounts({
           searches: summary.usage?.searches || 0,
           tokens: totalTokens,
-          dollars: totalDollars // Use calculated total from agent logs (matches "Registros del Agente")
+          dollars: totalDollars
         });
         setLimits({
           searches: summary.limits?.searches ?? -1,
           dollars: summary.limits?.prompt_dollars ?? -1
         });
+      } else {
+        console.error('[Analytics] Failed to fetch usage summary');
       }
     }
     load();

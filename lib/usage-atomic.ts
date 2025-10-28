@@ -274,13 +274,20 @@ export async function atomicIncrementWithLimit(
 }
 
 /**
- * Atomically increment dollar usage by delta with limit checking
+ * Check if adding a dollar amount would exceed the limit (ATOMICALLY with row locking)
+ * 
+ * This function uses PostgreSQL's SELECT FOR UPDATE to lock the user_usage row,
+ * preventing race conditions where multiple concurrent requests could bypass the limit.
+ * 
+ * NOTE: This function does NOT increment the value. The actual increment happens
+ * in the track-tokens API after the prompt completes using atomic_increment_prompt_dollars RPC.
+ * This function only checks if the increment would be allowed.
  *
  * @param userId - User ID
  * @param periodStart - Period start timestamp
  * @param delta - Dollar amount to add
  * @param dollarLimit - Maximum allowed dollar amount (-1 for unlimited)
- * @returns Current dollar value after increment, or error if limit exceeded
+ * @returns Current dollar value from user_usage table, or error if limit exceeded
  */
 export async function atomicIncrementDollarsWithLimit(
   userId: string,
@@ -291,64 +298,42 @@ export async function atomicIncrementDollarsWithLimit(
   const supabase = await createClient();
 
   try {
-    // Calculate actual current dollar usage from conversation messages (most accurate)
-    // This matches what the analytics dashboard shows
-    const periodStartDate = new Date(periodStart);
-    const periodEndDate = new Date(periodStartDate);
-    periodEndDate.setMonth(periodEndDate.getMonth() + 1);
-    
-    // Import the dollarsFromTokens function to calculate costs
-    const { dollarsFromTokens } = await import('./usage');
-    
-    // Get all user conversations
-    const { data: conversations } = await supabase
-      .from('conversations')
-      .select('id')
-      .eq('user_id', userId);
-    
-    const conversationIds = conversations?.map(c => c.id) || [];
-    
-    // Calculate total from messages in current period
-    let currentDollars = 0;
-    if (conversationIds.length > 0) {
-      const { data: messages } = await supabase
-        .from('conversation_messages')
-        .select('input_tokens, output_tokens, model_name')
-        .in('conversation_id', conversationIds)
-        .gte('created_at', periodStartDate.toISOString())
-        .lt('created_at', periodEndDate.toISOString());
-      
-      if (messages) {
-        currentDollars = messages.reduce((sum, msg) => {
-          const input = msg.input_tokens || 0;
-          const output = msg.output_tokens || 0;
-          const model = msg.model_name || 'gemini-2.5-flash';
-          const cost = dollarsFromTokens(model as any, input, output);
-          return sum + cost;
-        }, 0);
-      }
-    }
+    // Use the new atomic RPC function that uses SELECT FOR UPDATE to prevent race conditions
+    const { data, error } = await supabase
+      .rpc('check_dollar_limit_with_lock', {
+        p_user_id: userId,
+        p_period_start: periodStart,
+        p_delta: delta,
+        p_limit: dollarLimit
+      });
 
-    const newDollars = currentDollars + delta;
-
-    // Check if limit would be exceeded (unlimited if -1)
-    if (dollarLimit !== -1 && newDollars > dollarLimit) {
+    if (error) {
+      console.error('check_dollar_limit_with_lock RPC error:', error);
       return {
         success: false,
-        newValue: currentDollars,
-        error: `Dollar limit exceeded: ${newDollars.toFixed(4)} > ${dollarLimit}`
+        newValue: -1,
+        error: error.message
       };
     }
 
-    // Don't actually increment user_usage.prompt_dollars here since it will be
-    // updated by track-tokens API after the message completes
-    // Just return success with the projected new value
+    const currentValue = data as number;
+
+    // If RPC returned -1, limit would be exceeded
+    if (currentValue === -1) {
+      return {
+        success: false,
+        newValue: -1,
+        error: 'Dollar limit would be exceeded'
+      };
+    }
+
+    // Return success with current value (not incremented - that happens later in track-tokens)
     return {
       success: true,
-      newValue: newDollars
+      newValue: currentValue + delta // Projected value for display purposes
     };
   } catch (error) {
-    console.error('Error in atomic dollar increment with limit:', error);
+    console.error('Error in atomic dollar limit check:', error);
     return {
       success: false,
       newValue: -1,

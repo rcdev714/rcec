@@ -14,7 +14,6 @@ import { ChatCompanyResults } from "./chat-company-card";
 import { CompanySearchResult } from "@/types/chat";
 import { EmailDraftCard } from "./email-draft-card";
 import { type AgentStateEvent } from "./agent-state-indicator";
-import { TokenUsageDisplay } from "./token-usage-display";
 
 interface EmailDraft {
   subject: string;
@@ -136,8 +135,8 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [copiedInline, setCopiedInline] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash");
-  const [currentTokenUsage, setCurrentTokenUsage] = useState<{ inputTokens: number; outputTokens: number; totalTokens: number } | undefined>();
   const [userPlan, setUserPlan] = useState<'FREE' | 'PRO' | 'ENTERPRISE'>('FREE');
+  const [planLoaded, setPlanLoaded] = useState(false);
   // Note: currentAgentEvents tracking removed - state events are now stored in message metadata
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -259,6 +258,8 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
         }
       } catch (error) {
         console.error('Error fetching user plan:', error);
+      } finally {
+        setPlanLoaded(true);
       }
     }
     fetchUserPlan();
@@ -266,17 +267,28 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
 
   // Load saved model preference from localStorage and validate access
   useEffect(() => {
+    // Only run after the plan has been loaded to avoid resetting pro users' models
+    if (!planLoaded) {
+      return;
+    }
+
     const savedModel = localStorage.getItem('gemini-model');
     if (savedModel) {
       // If user has a pro model saved but they're on free plan, reset to flash
       if (savedModel === 'gemini-2.5-pro' && userPlan === 'FREE') {
-        setSelectedModel('gemini-2.5-flash');
-        localStorage.setItem('gemini-model', 'gemini-2.5-flash');
+        // Only update if different from current state to avoid unnecessary writes
+        if (selectedModel !== 'gemini-2.5-flash') {
+          setSelectedModel('gemini-2.5-flash');
+          localStorage.setItem('gemini-model', 'gemini-2.5-flash');
+        }
       } else {
-        setSelectedModel(savedModel);
+        // Only update if different from current state to avoid unnecessary writes
+        if (selectedModel !== savedModel) {
+          setSelectedModel(savedModel);
+        }
       }
     }
-  }, [userPlan]);
+  }, [planLoaded, userPlan, selectedModel]);
 
   // Save model preference to localStorage and validate access
   const handleModelChange = (model: string) => {
@@ -814,8 +826,6 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
             try {
               tokenUsage = JSON.parse(jsonStr);
               if (process.env.NODE_ENV === 'development') console.log("Successfully parsed token usage:", tokenUsage);
-              // Update current token usage for display
-              setCurrentTokenUsage(tokenUsage);
             } catch (e) {
               console.error("Failed to parse token usage JSON:", e, "JSON string was:", jsonStr);
             }
@@ -1008,8 +1018,6 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
       return;
     }
 
-    // Clear current token usage when starting new chat
-    setCurrentTokenUsage(undefined);
     startChat(input);
   };
 
@@ -1027,14 +1035,6 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
 
   const formLayout = (
     <div className="w-full flex flex-col items-center space-y-3 px-2 md:px-0">
-      {/* Token Usage Display - Always show when there's a conversation or recent usage */}
-      <TokenUsageDisplay
-        currentMessageTokens={currentTokenUsage}
-        conversationId={conversationId}
-        modelName={selectedModel}
-        className="w-full max-w-2xl justify-start"
-      />
-
       <form onSubmit={handleSubmit} className="relative w-full max-w-2xl group">
         <div className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-2xl p-3 md:p-4 shadow-sm hover:shadow-md focus-within:ring-4 focus-within:ring-indigo-100 transition-all duration-200">
           <input

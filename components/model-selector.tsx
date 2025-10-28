@@ -61,6 +61,7 @@ export function ModelSelector({ value, onChange, disabled, className, userPlan =
                         e.stopPropagation();
                         window.location.href = '/pricing';
                       }}
+                      aria-label="Actualizar plan para desbloquear este modelo"
                       className="text-[10px] font-medium text-blue-600 hover:text-blue-700 px-2 py-0.5 rounded hover:bg-blue-50 transition-colors"
                     >
                       Actualizar
