@@ -1,10 +1,16 @@
 'use client';
 
+import { useState } from "react";
 import { Company } from "@/types/company";
-import { Building2, MapPin, Users, Calendar, ArrowLeft, LinkedinIcon } from "lucide-react";
-import Link from "next/link";
+import { Building2, MapPin, Users, Calendar, ArrowLeft, LinkedinIcon, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface CompanyProfileHeaderProps {
   company: Company;
@@ -14,6 +20,8 @@ interface CompanyProfileHeaderProps {
 }
 
 export function CompanyProfileHeader({ company, ruc, totalYears, canAccessLinkedIn }: CompanyProfileHeaderProps) {
+  const [showLinkedInModal, setShowLinkedInModal] = useState(false);
+  
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -78,15 +86,15 @@ export function CompanyProfileHeader({ company, ruc, totalYears, canAccessLinked
                 </Button>
               </a>
             ) : (
-              <Link href="/pricing">
-                <Button 
-                  size="sm"
-                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-                >
-                  <LinkedinIcon className="h-4 w-4 mr-2" />
-                  LinkedIn
-                </Button>
-              </Link>
+              <Button 
+                size="sm"
+                onClick={() => setShowLinkedInModal(true)}
+                className="bg-gray-400 hover:bg-gray-500 text-white shadow-lg"
+              >
+                <Lock className="h-4 w-4 mr-2" />
+                <LinkedinIcon className="h-4 w-4 mr-1" />
+                LinkedIn
+              </Button>
             )
           )}
         </div>
@@ -180,6 +188,49 @@ export function CompanyProfileHeader({ company, ruc, totalYears, canAccessLinked
           </div>
         </div>
       </div>
+
+      {/* LinkedIn Blocked Modal */}
+      <Dialog open={showLinkedInModal} onOpenChange={setShowLinkedInModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-blue-600" />
+              Búsqueda LinkedIn - Función Pro
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600 mb-4">
+            La búsqueda de contactos en LinkedIn está disponible exclusivamente para usuarios con plan Pro o Enterprise.
+          </p>
+          <div className="space-y-4 py-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="text-sm font-semibold text-blue-900 mb-2">
+                ¿Qué obtienes con Pro?
+              </h4>
+              <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                <li>Búsqueda ilimitada en LinkedIn</li>
+                <li>Búsquedas de empresas ilimitadas</li>
+                <li>100 prompts del agente por mes</li>
+                <li>Acceso a modelos avanzados de razonamiento</li>
+              </ul>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => window.location.href = '/pricing'}
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+              >
+                Ver Planes
+              </Button>
+              <Button
+                onClick={() => setShowLinkedInModal(false)}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

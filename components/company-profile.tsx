@@ -24,7 +24,7 @@ function canAccessFeature(plan: 'FREE' | 'PRO' | 'ENTERPRISE', feature: string):
     'advanced_filtering': ['PRO', 'ENTERPRISE'],
     'export_data': ['PRO', 'ENTERPRISE'],
     'priority_support': ['PRO', 'ENTERPRISE'],
-    'linkedin_search': ['FREE', 'PRO', 'ENTERPRISE'],
+    'linkedin_search': ['PRO', 'ENTERPRISE'],
 
     // Enterprise features
     'custom_integrations': ['ENTERPRISE'],

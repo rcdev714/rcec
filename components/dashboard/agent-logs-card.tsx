@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { formatTokenCount } from '@/lib/token-counter';
 import { Activity, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -158,25 +157,23 @@ export default function AgentLogsCard() {
 
         {/* Expand/Collapse Button */}
         {logs.length > 5 && (
-          <div className="flex justify-center mt-4">
-            <Button
-              variant="ghost"
-              size="sm"
+          <div className="flex justify-center mt-3">
+            <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors duration-200"
+              className="inline-flex items-center gap-0.5 px-2 py-1 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded transition-all duration-200 border border-transparent hover:border-gray-200"
             >
               {isExpanded ? (
                 <>
-                  <ChevronUp className="w-3.5 h-3.5 mr-1" />
-                  Mostrar menos
+                  <ChevronUp className="w-3 h-3" />
+                  <span>Menos</span>
                 </>
               ) : (
                 <>
-                  <ChevronDown className="w-3.5 h-3.5 mr-1" />
-                  Mostrar más ({logs.length - 5} registros)
+                  <ChevronDown className="w-3 h-3" />
+                  <span>Más ({logs.length - 5})</span>
                 </>
               )}
-            </Button>
+            </button>
           </div>
         )}
       </CardContent>

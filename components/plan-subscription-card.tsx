@@ -107,25 +107,25 @@ export default function PlanAndSubscriptionCard() {
   const getPlanFeatures = (plan: string) => {
     const features = {
       FREE: {
-        prompts: '10 mensajes/mes',
+        prompts: '$5.00 en tokens/mes',
         search: 'Búsqueda limitada (10/mes)',
-        export: '🔒 Exportación bloqueada',
         linkedin: '🔒 LinkedIn bloqueado',
-        reasoning: '🔒 Modelo de razonamiento avanzado bloqueado'
+        reasoning: '🔒 Modelo de razonamiento avanzado bloqueado',
+        analytics: '🔒 Analíticas avanzadas de uso bloqueadas'
       },
       PRO: {
-        prompts: '100 mensajes/mes',
+        prompts: '$20.00 en tokens/mes',
         search: '✅ Búsqueda ilimitada',
-        export: '✅ Exportación disponible',
         linkedin: '✅ LinkedIn disponible',
-        reasoning: '✅ Modelo de razonamiento avanzado disponible'
+        reasoning: '✅ Modelo de razonamiento avanzado disponible',
+        analytics: '✅ Analíticas avanzadas de uso disponibles'
       },
       ENTERPRISE: {
-        prompts: '500 mensajes/mes',
+        prompts: '$200.00 en tokens/mes',
         search: '✅ Búsqueda ilimitada',
-        export: '✅ Exportación disponible',
         linkedin: '✅ LinkedIn disponible',
-        reasoning: '✅ Modelo de razonamiento avanzado disponible'
+        reasoning: '✅ Modelo de razonamiento avanzado disponible',
+        analytics: '✅ Analíticas avanzadas de uso disponibles'
       }
     };
     return features[plan as keyof typeof features] || features.FREE;
@@ -187,16 +187,16 @@ export default function PlanAndSubscriptionCard() {
               <span>{currentFeatures.search}</span>
             </div>
             <div className="flex justify-between">
-              <span>Exportación:</span>
-              <span>{currentFeatures.export}</span>
-            </div>
-            <div className="flex justify-between">
               <span>LinkedIn:</span>
               <span>{currentFeatures.linkedin}</span>
             </div>
             <div className="flex justify-between">
               <span>Razonamiento avanzado:</span>
               <span>{currentFeatures.reasoning}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Analíticas avanzadas:</span>
+              <span>{currentFeatures.analytics}</span>
             </div>
           </div>
         </div>

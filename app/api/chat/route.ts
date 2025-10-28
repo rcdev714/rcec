@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { HumanMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
 import { validateEnvironment } from "@/lib/env-validation";
 import { ensurePromptAllowedAndTrack, estimateTokensFromTextLength } from "@/lib/usage";
+import { getUserSubscription, canAccessFeatureSync } from "@/lib/subscription";
 
 // Use Node.js runtime for full compatibility with LangChain and streaming
 // Edge runtime has limitations with certain Node.js APIs
@@ -47,18 +48,44 @@ export async function POST(req: Request) {
     // Check and track prompt usage before processing
     const inputTokensEstimate = estimateTokensFromTextLength(message);
     const selectedModel = model || "gemini-2.5-flash"; // Default model
+    
+    // Validate model access based on subscription
+    if (selectedModel === 'gemini-2.5-pro') {
+      const subscription = await getUserSubscription(user.id);
+      const plan = (subscription?.plan as 'FREE' | 'PRO' | 'ENTERPRISE') || 'FREE';
+      const canAccessProModels = canAccessFeatureSync(plan, 'advanced_reasoning_models');
+      
+      if (!canAccessProModels) {
+        return new Response(
+          JSON.stringify({
+            error: "Model access denied",
+            message: "El modelo de razonamiento avanzado (gemini-2.5-pro) requiere un plan Pro o Enterprise. Por favor actualiza tu plan.",
+            upgradeUrl: "/pricing",
+          }),
+          {
+            status: 403,
+            headers: { "Content-Type": "application/json" }
+          }
+        );
+      }
+    }
+    
     const promptCheck = await ensurePromptAllowedAndTrack(user.id, {
       model: selectedModel,
       inputTokensEstimate,
     });
 
     if (!promptCheck.allowed) {
+      const remainingAmount = promptCheck.remainingDollars !== undefined 
+        ? `$${promptCheck.remainingDollars.toFixed(2)}` 
+        : 'unlimited';
       return new Response(
         JSON.stringify({
           error: "Rate limit exceeded",
-          message: "Has excedido tu límite mensual de prompts. Actualiza tu plan para continuar usando el chat.",
+          message: `Has excedido tu límite mensual de uso del agente. Saldo restante: ${remainingAmount}. Actualiza tu plan para continuar usando el chat.`,
           upgradeUrl: "/pricing",
-          remainingPrompts: promptCheck.remainingPrompts,
+          remainingDollars: promptCheck.remainingDollars,
+          estimatedCost: promptCheck.estimatedCost,
         }),
         {
           status: 429,

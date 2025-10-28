@@ -21,8 +21,12 @@ interface UsageRecord {
   updated_at?: string;
 }
 
+// Revenue multiplier for profit margin (must match token-counter.ts)
+const PROFIT_MARGIN_MULTIPLIER = 12;
+
 // Official Gemini pricing per 1M tokens in USD (October 2025)
 // Source: https://ai.google.dev/pricing
+// NOTE: These are BASE API costs, we apply PROFIT_MARGIN_MULTIPLIER on top
 export const GEMINI_PRICING_PER_MILLION = {
   'gemini-2.5-pro': {
     input: 1.25,        // $1.25 for prompts <= 200k tokens
@@ -54,12 +58,12 @@ export function dollarsFromTokens(model: keyof typeof GEMINI_PRICING_PER_MILLION
     // Use high-tier pricing for large prompts
     const inputCost = (inputTokens / 1_000_000) * (pricing.inputHighTier || pricing.input);
     const outputCost = (outputTokens / 1_000_000) * (pricing.outputHighTier || pricing.output);
-    return inputCost + outputCost;
+    return (inputCost + outputCost) * PROFIT_MARGIN_MULTIPLIER;
   } else {
-    // Standard pricing
+    // Standard pricing with revenue multiplier
     const inputCost = (inputTokens / 1_000_000) * pricing.input;
     const outputCost = (outputTokens / 1_000_000) * pricing.output;
-    return inputCost + outputCost;
+    return (inputCost + outputCost) * PROFIT_MARGIN_MULTIPLIER;
   }
 }
 
@@ -147,25 +151,25 @@ function getFallbackLimits(plan: Plan) {
     return {
       searches: 10,
       exports: 10,
-      prompt_dollars: 0, // Not used for FREE plan
-      prompt_count: 10,
-    } as const;
+      prompt_dollars: 5.00, // $5 limit for FREE tier
+      prompt_count: -1, // Deprecated - using dollar-based limiting
+    };
   }
   if (plan === 'PRO') {
     return {
       searches: -1, // unlimited
       exports: 50,
-      prompt_dollars: 0, // Not used for PRO plan - using count-based
-      prompt_count: 100,
-    } as const;
+      prompt_dollars: 20.00, // $20 limit for PRO tier
+      prompt_count: -1, // Deprecated - using dollar-based limiting
+    };
   }
   // ENTERPRISE
   return {
     searches: -1,
     exports: -1,
-    prompt_dollars: 0, // Not used for ENTERPRISE plan - using count-based
-    prompt_count: 500,
-  } as const;
+    prompt_dollars: 200.00, // $200 limit for ENTERPRISE tier
+    prompt_count: -1, // Deprecated - using dollar-based limiting
+  };
 }
 
 export async function ensureSearchAllowedAndIncrement(userId: string): Promise<{ allowed: boolean; remaining?: number }>
@@ -301,7 +305,7 @@ export async function ensurePromptAllowedAndTrack(
     model: keyof typeof GEMINI_PRICING_PER_MILLION;
     inputTokensEstimate: number;
   }
-): Promise<{ allowed: boolean; remainingPrompts?: number }>
+): Promise<{ allowed: boolean; remainingDollars?: number; estimatedCost?: number }>
 {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -325,14 +329,30 @@ export async function ensurePromptAllowedAndTrack(
   const usage = await getOrCreateUsageRow(userId, start, end);
   const limits = await getLimits(plan);
 
-  // Use atomic increment with limit checking for prompt count
+  // Estimate the cost of this prompt
+  const estimatedOutputTokens = _options.inputTokensEstimate * 2;
+  const estimatedCost = dollarsFromTokens(_options.model, _options.inputTokensEstimate, estimatedOutputTokens);
+
+  // Check dollar-based limiting using atomicIncrementDollarsWithLimit
   try {
-    const { atomicIncrementWithLimit } = await import('./usage-atomic');
-    const limit = limits.prompt_count;
-    const result = await atomicIncrementWithLimit(userId, usage.period_start, 'prompts_count', limit);
+    const { atomicIncrementDollarsWithLimit } = await import('./usage-atomic');
+    const dollarLimit = limits.prompt_dollars;
+    
+    // Atomically check and increment dollar usage
+    const result = await atomicIncrementDollarsWithLimit(
+      userId,
+      usage.period_start,
+      estimatedCost,
+      dollarLimit
+    );
 
     if (!result.success) {
-      return { allowed: false, remainingPrompts: limit === -1 ? undefined : Math.max(0, limit - (result.newValue ?? 0)) };
+      const remaining = dollarLimit === -1 ? undefined : Math.max(0, dollarLimit - result.newValue);
+      return { 
+        allowed: false, 
+        remainingDollars: remaining,
+        estimatedCost 
+      };
     }
 
     // Track actual input tokens for analytics (non-blocking, best effort)
@@ -348,10 +368,14 @@ export async function ensurePromptAllowedAndTrack(
       }
     }
 
-    const remainingPrompts = limits.prompt_count === -1 ? undefined : Math.max(0, limits.prompt_count - result.newValue);
-    return { allowed: true, remainingPrompts };
+    const remainingDollars = dollarLimit === -1 ? undefined : Math.max(0, dollarLimit - result.newValue);
+    return { 
+      allowed: true, 
+      remainingDollars,
+      estimatedCost
+    };
   } catch (error) {
-    console.error('[CRITICAL] Prompt increment failed:', error);
+    console.error('[CRITICAL] Prompt dollar limit check failed:', error);
     throw error;
   }
 }

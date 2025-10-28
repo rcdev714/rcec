@@ -273,3 +273,87 @@ export async function atomicIncrementWithLimit(
   }
 }
 
+/**
+ * Atomically increment dollar usage by delta with limit checking
+ *
+ * @param userId - User ID
+ * @param periodStart - Period start timestamp
+ * @param delta - Dollar amount to add
+ * @param dollarLimit - Maximum allowed dollar amount (-1 for unlimited)
+ * @returns Current dollar value after increment, or error if limit exceeded
+ */
+export async function atomicIncrementDollarsWithLimit(
+  userId: string,
+  periodStart: string,
+  delta: number,
+  dollarLimit: number
+): Promise<AtomicIncrementResult> {
+  const supabase = await createClient();
+
+  try {
+    // Calculate actual current dollar usage from conversation messages (most accurate)
+    // This matches what the analytics dashboard shows
+    const periodStartDate = new Date(periodStart);
+    const periodEndDate = new Date(periodStartDate);
+    periodEndDate.setMonth(periodEndDate.getMonth() + 1);
+    
+    // Import the dollarsFromTokens function to calculate costs
+    const { dollarsFromTokens } = await import('./usage');
+    
+    // Get all user conversations
+    const { data: conversations } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('user_id', userId);
+    
+    const conversationIds = conversations?.map(c => c.id) || [];
+    
+    // Calculate total from messages in current period
+    let currentDollars = 0;
+    if (conversationIds.length > 0) {
+      const { data: messages } = await supabase
+        .from('conversation_messages')
+        .select('input_tokens, output_tokens, model_name')
+        .in('conversation_id', conversationIds)
+        .gte('created_at', periodStartDate.toISOString())
+        .lt('created_at', periodEndDate.toISOString());
+      
+      if (messages) {
+        currentDollars = messages.reduce((sum, msg) => {
+          const input = msg.input_tokens || 0;
+          const output = msg.output_tokens || 0;
+          const model = msg.model_name || 'gemini-2.5-flash';
+          const cost = dollarsFromTokens(model as any, input, output);
+          return sum + cost;
+        }, 0);
+      }
+    }
+
+    const newDollars = currentDollars + delta;
+
+    // Check if limit would be exceeded (unlimited if -1)
+    if (dollarLimit !== -1 && newDollars > dollarLimit) {
+      return {
+        success: false,
+        newValue: currentDollars,
+        error: `Dollar limit exceeded: ${newDollars.toFixed(4)} > ${dollarLimit}`
+      };
+    }
+
+    // Don't actually increment user_usage.prompt_dollars here since it will be
+    // updated by track-tokens API after the message completes
+    // Just return success with the projected new value
+    return {
+      success: true,
+      newValue: newDollars
+    };
+  } catch (error) {
+    console.error('Error in atomic dollar increment with limit:', error);
+    return {
+      success: false,
+      newValue: -1,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+

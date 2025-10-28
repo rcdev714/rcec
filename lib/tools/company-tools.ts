@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { SearchFilters, CompanySearchResult } from '@/types/chat';
 import { FilterTranslator } from './filter-translator';
 import { fetchCompanies } from '@/lib/data/companies';
-import { exportCompaniesToExcel } from '@/app/actions/export-companies';
 import { sortByRelevanceAndCompleteness, getCompletenessStats } from '@/lib/data-completeness-scorer';
 
 // Schema for search filters validation
@@ -109,65 +108,6 @@ La herramienta automáticamente traducirá lenguaje natural a filtros apropiados
       query: z.string().describe('Consulta en lenguaje natural describiendo las empresas a buscar'),
       limit: z.number().optional().default(10).describe('Número máximo de resultados a retornar (por defecto: 10, máximo: 50)'),
       page: z.number().optional().default(1).describe('Número de página para paginación'),
-    }),
-  }
-);
-
-/**
- * Tool for exporting companies to Excel based on search criteria
- */
-export const exportCompaniesTool = tool(
-  async ({ query, sessionId }: { query: string; sessionId?: string }) => {
-    try {
-      // Translate query to filters
-      const filters = FilterTranslator.translateQuery(query);
-      const validatedFilters = FilterTranslator.validateFilters(filters);
-      
-      // Generate export using existing functionality
-      const exportParams = {
-        ...validatedFilters,
-        exportAll: true, // Export all matching records, not just first page
-      };
-      
-      const exportResult = await exportCompaniesToExcel(exportParams, sessionId);
-      
-      // Generate summary
-      const filterSummary = FilterTranslator.generateFilterSummary(validatedFilters);
-      
-      return {
-        success: true,
-        filename: exportResult.filename,
-        recordCount: exportResult.recordCount,
-        summary: `Exportación generada: ${exportResult.recordCount} empresas que coinciden con ${filterSummary}`,
-        downloadReady: true,
-        filters: validatedFilters,
-        // Note: In a real implementation, you'd need to handle file storage and provide download URL
-        // For now, the file buffer is generated but needs proper file serving
-      };
-      
-    } catch (error) {
-      console.error('Error in exportCompaniesTool:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'La exportación falló',
-        suggestion: 'Intenta simplificar tus criterios de búsqueda o verifica si los filtros son válidos',
-      };
-    }
-  },
-  {
-    name: 'export_companies',
-    description: `Exportar empresas a archivo Excel basado en criterios de búsqueda. Esta herramienta genera archivos Excel descargables con datos de empresas que coinciden con los filtros especificados.
-
-Usa esta herramienta cuando los usuarios quieren:
-- Descargar resultados de búsqueda
-- Exportar listas filtradas de empresas
-- Generar reportes para análisis offline
-- Crear datos para presentaciones o análisis
-
-La exportación incluye toda la información disponible de la empresa: datos financieros, detalles de contacto, ubicación, etc.`,
-    schema: z.object({
-      query: z.string().describe('Consulta en lenguaje natural describiendo qué empresas exportar'),
-      sessionId: z.string().optional().describe('ID de sesión para rastrear progreso de exportación'),
     }),
   }
 );
@@ -322,7 +262,6 @@ Usa esto cuando los usuarios quieren:
 // Export all tools as an array for easy use in LangGraph
 export const companyTools = [
   searchCompaniesTool,
-  exportCompaniesTool,
   getCompanyDetailsTool,
   refineSearchTool,
 ];

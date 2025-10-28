@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Brain, ChevronUp } from "lucide-react";
+import { Brain, ChevronUp, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ModelSelectorProps {
@@ -9,17 +9,21 @@ interface ModelSelectorProps {
   onChange: (model: string) => void;
   disabled?: boolean;
   className?: string;
+  userPlan?: 'FREE' | 'PRO' | 'ENTERPRISE';
 }
 
-export function ModelSelector({ value, onChange, disabled, className }: ModelSelectorProps) {
+export function ModelSelector({ value, onChange, disabled, className, userPlan = 'FREE' }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const options = useMemo(() => ([
-    { value: 'gemini-2.5-pro', label: 'gemini-2.5-pro', thinking: true },
-    { value: 'gemini-2.5-flash', label: 'gemini-2.5-flash', thinking: true },
-    { value: 'gemini-2.5-flash-lite', label: 'gemini-2.5-flash-lite', thinking: false },
+    { value: 'gemini-2.5-pro', label: 'gemini-2.5-pro', thinking: true, requiresPro: true },
+    { value: 'gemini-2.5-flash', label: 'gemini-2.5-flash', thinking: true, requiresPro: false },
+    { value: 'gemini-2.5-flash-lite', label: 'gemini-2.5-flash-lite', thinking: false, requiresPro: false },
   ]), []);
 
   const selected = options.find(o => o.value === value);
+  
+  // Check if user can access advanced reasoning models
+  const canAccessProModels = userPlan === 'PRO' || userPlan === 'ENTERPRISE';
 
   return (
     <div className={cn("relative", className)}>
@@ -42,25 +46,49 @@ export function ModelSelector({ value, onChange, disabled, className }: ModelSel
         )} />
       </button>
       {open && (
-        <div className="absolute z-20 bottom-full mb-1 w-52 bg-white border border-gray-200 rounded-md shadow-lg p-1">
-          {options.map(opt => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => { onChange(opt.value); setOpen(false); }}
-              className={cn(
-                "w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-gray-50 text-gray-700",
-                value === opt.value && "bg-gray-50"
-              )}
-            >
-              {opt.thinking ? (
-                <Brain className="w-3.5 h-3.5 text-gray-500" />
-              ) : (
-                <span className="inline-block w-3.5 h-3.5" />
-              )}
-              <span className="truncate">{opt.label}</span>
-            </button>
-          ))}
+        <div className="absolute z-20 bottom-full mb-1 w-60 bg-white border border-gray-200 rounded-md shadow-lg p-1">
+          {options.map(opt => {
+            const isLocked = opt.requiresPro && !canAccessProModels;
+            return (
+              <div key={opt.value} className="relative">
+                {isLocked ? (
+                  <div className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded bg-gray-50/50">
+                    <Lock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                    <span className="truncate flex-1 text-left text-gray-400">{opt.label}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.location.href = '/pricing';
+                      }}
+                      className="text-[10px] font-medium text-blue-600 hover:text-blue-700 px-2 py-0.5 rounded hover:bg-blue-50 transition-colors"
+                    >
+                      Actualizar
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { 
+                      onChange(opt.value); 
+                      setOpen(false); 
+                    }}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-gray-50 text-gray-700 cursor-pointer",
+                      value === opt.value && "bg-gray-50"
+                    )}
+                  >
+                    {opt.thinking ? (
+                      <Brain className="w-3.5 h-3.5 text-gray-500" />
+                    ) : (
+                      <span className="inline-block w-3.5 h-3.5" />
+                    )}
+                    <span className="truncate flex-1 text-left">{opt.label}</span>
+                  </button>
+                )}
+              </div>
+            );
+          })}
           <div className="my-1 h-px bg-gray-200" />
           <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-gray-400">Coming soon</div>
           <div className="space-y-0.5 pb-1">

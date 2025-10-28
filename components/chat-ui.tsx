@@ -137,6 +137,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
   const [copiedInline, setCopiedInline] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash");
   const [currentTokenUsage, setCurrentTokenUsage] = useState<{ inputTokens: number; outputTokens: number; totalTokens: number } | undefined>();
+  const [userPlan, setUserPlan] = useState<'FREE' | 'PRO' | 'ENTERPRISE'>('FREE');
   // Note: currentAgentEvents tracking removed - state events are now stored in message metadata
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -247,16 +248,43 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
     setSuggestions(shuffled.slice(0, 3));
   }, [allSuggestions]);
 
-  // Load saved model preference from localStorage
+  // Fetch user subscription plan
+  useEffect(() => {
+    async function fetchUserPlan() {
+      try {
+        const response = await fetch('/api/subscriptions/status');
+        if (response.ok) {
+          const data = await response.json();
+          setUserPlan(data.status?.plan || 'FREE');
+        }
+      } catch (error) {
+        console.error('Error fetching user plan:', error);
+      }
+    }
+    fetchUserPlan();
+  }, []);
+
+  // Load saved model preference from localStorage and validate access
   useEffect(() => {
     const savedModel = localStorage.getItem('gemini-model');
     if (savedModel) {
-      setSelectedModel(savedModel);
+      // If user has a pro model saved but they're on free plan, reset to flash
+      if (savedModel === 'gemini-2.5-pro' && userPlan === 'FREE') {
+        setSelectedModel('gemini-2.5-flash');
+        localStorage.setItem('gemini-model', 'gemini-2.5-flash');
+      } else {
+        setSelectedModel(savedModel);
+      }
     }
-  }, []);
+  }, [userPlan]);
 
-  // Save model preference to localStorage
+  // Save model preference to localStorage and validate access
   const handleModelChange = (model: string) => {
+    // Check if user can access gemini-2.5-pro
+    if (model === 'gemini-2.5-pro' && userPlan === 'FREE') {
+      alert('El modelo de razonamiento avanzado (gemini-2.5-pro) requiere un plan Pro o Enterprise. Por favor actualiza tu plan.');
+      return;
+    }
     setSelectedModel(model);
     localStorage.setItem('gemini-model', model);
   };
@@ -417,43 +445,6 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
     conversationManager.setCurrentConversation(id);
   };
 
-  const handleExportCompanies = async (searchResult: CompanySearchResult) => {
-    try {
-      const filters = searchResult.filters;
-      const params = new URLSearchParams();
-      
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value) {
-          params.append(key, value);
-        }
-      });
-      
-      // Add a unique session ID for progress tracking
-      const sessionId = `export_${Date.now()}`;
-      params.append('sessionId', sessionId);
-      
-      // Open export in new tab
-      const exportUrl = `/api/companies/export?${params.toString()}`;
-      window.open(exportUrl, '_blank');
-      
-      // Show success message
-      setMessages((prev) => [...prev, {
-        role: "assistant",
-        content: `Iniciando exportación de ${searchResult.totalCount} empresas. El archivo se descargará automáticamente cuando esté listo.`,
-        metadata: { type: 'text' }
-      }]);
-      
-    } catch (error) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Error exporting companies:', error);
-      }
-      setMessages((prev) => [...prev, {
-        role: "assistant", 
-        content: "Error al exportar las empresas. Por favor, intenta de nuevo.",
-        metadata: { type: 'text' }
-      }]);
-    }
-  };
 
   const handleLoadMoreResults = async (searchResult: CompanySearchResult) => {
     try {
@@ -959,22 +950,45 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
 
   const checkUsageAndWarn = async (): Promise<boolean> => {
     try {
-      const response = await fetch('/api/usage/summary');
-      if (response.ok) {
-        const data = await response.json();
-        // Use the 'prompts' field which is the correct counter from the API
-        const promptsUsed = data.usage?.prompts || 0;
+      // Fetch actual calculated costs from agent logs (same as analytics card)
+      const [summaryRes, logsRes] = await Promise.all([
+        fetch('/api/usage/summary'),
+        fetch('/api/agent/logs?limit=1000')
+      ]);
+      
+      if (summaryRes.ok) {
+        const data = await summaryRes.json();
         const isFreePlan = data.plan === 'FREE';
-        const promptLimit = data.limits?.prompts || (isFreePlan ? 10 : 100);
+        const dollarLimit = data.limits?.prompt_dollars || (isFreePlan ? 5.00 : 20.00);
 
-        // Warn at 80% usage for all plans
-        const warningThreshold = Math.floor(promptLimit * 0.8);
-        if (promptsUsed >= warningThreshold && promptLimit > 0) {
-          const shouldContinue = confirm(
-            `Has usado ${promptsUsed} de ${promptLimit} prompts este mes (${Math.round((promptsUsed / promptLimit) * 100)}%). ¿Quieres continuar? ${isFreePlan ? 'Considera actualizar tu plan para más prompts.' : ''}`
-          );
-          if (!shouldContinue) {
+        // Calculate actual dollars from agent logs (matches analytics card)
+        let dollarsUsed = 0;
+        if (logsRes.ok) {
+          const logsData = await logsRes.json();
+          dollarsUsed = logsData.logs?.reduce((sum: number, log: any) => sum + (log.cost || 0), 0) || 0;
+        }
+
+        // Block at 100% usage, warn at 80%
+        if (dollarLimit > 0) {
+          const usagePercentage = (dollarsUsed / dollarLimit) * 100;
+          
+          // Hard block if over limit
+          if (dollarsUsed >= dollarLimit) {
+            alert(
+              `Has excedido tu límite mensual de $${dollarLimit.toFixed(2)}. Has usado $${dollarsUsed.toFixed(2)}. Por favor actualiza tu plan para continuar.`
+            );
+            window.location.href = '/pricing';
             return false;
+          }
+          
+          // Warn at 80% usage
+          if (usagePercentage >= 80) {
+            const shouldContinue = confirm(
+              `Has usado $${dollarsUsed.toFixed(2)} de $${dollarLimit.toFixed(2)} en tokens este mes (${Math.round(usagePercentage)}%). ¿Quieres continuar? ${isFreePlan ? 'Considera actualizar tu plan para más uso del agente.' : ''}`
+            );
+            if (!shouldContinue) {
+              return false;
+            }
           }
         }
       }
@@ -1031,7 +1045,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
             className="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-sm md:text-sm placeholder:text-xs md:placeholder:text-xs placeholder:text-gray-400"
           />
           <div className="mt-3 flex items-center justify-between">
-            <ModelSelector value={selectedModel} onChange={handleModelChange} disabled={isSending} />
+            <ModelSelector value={selectedModel} onChange={handleModelChange} disabled={isSending} userPlan={userPlan} />
             <button
               type="submit"
               disabled={isSending}
@@ -1297,7 +1311,6 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                               companies={msg.searchResult.companies}
                               totalCount={msg.searchResult.totalCount}
                               query={msg.searchResult.query}
-                              onExport={() => handleExportCompanies(msg.searchResult!)}
                               hasMore={msg.searchResult.companies.length < msg.searchResult.totalCount}
                               onLoadMore={() => handleLoadMoreResults(msg.searchResult!)}
                             />

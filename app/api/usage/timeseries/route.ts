@@ -35,42 +35,46 @@ export async function GET(request: NextRequest) {
 
     const conversationIds = conversations?.map(c => c.id) || [];
 
-    // Fetch assistant messages (prompts) with timestamps
+    // Fetch assistant messages (prompts) with timestamps and tokens
     const promptsByDate = new Map<string, number>();
+    const tokensByDate = new Map<string, number>();
     if (conversationIds.length > 0) {
       const { data: messages, error: msgError } = await supabase
         .from('conversation_messages')
-        .select('created_at')
+        .select('created_at, input_tokens, output_tokens, token_count')
         .in('conversation_id', conversationIds)
         .eq('role', 'assistant')
         .gte('created_at', start.toISOString());
 
       if (!msgError && messages) {
-        // Group messages by date
+        // Group messages and tokens by date
         for (const msg of messages) {
           const dateKey = msg.created_at.slice(0, 10); // Extract YYYY-MM-DD
           promptsByDate.set(dateKey, (promptsByDate.get(dateKey) || 0) + 1);
+          
+          // Sum tokens (use new fields if available, fallback to legacy token_count)
+          const totalTokens = (msg.input_tokens || 0) + (msg.output_tokens || 0) || msg.token_count || 0;
+          tokensByDate.set(dateKey, (tokensByDate.get(dateKey) || 0) + totalTokens);
         }
       }
     }
 
     // Build zero-filled series
-    const series: { date: string; searches: number; exports: number; prompts: number }[] = [];
-    const byKey = new Map<string, { searches: number; exports: number; prompts: number }>();
+    const series: { date: string; searches: number; prompts: number; tokens: number }[] = [];
+    const byKey = new Map<string, { searches: number; prompts: number; tokens: number }>();
     for (let i = 0; i < days; i++) {
       const d = new Date(start);
       d.setUTCDate(start.getUTCDate() + i);
       const key = d.toISOString().slice(0,10);
-      series.push({ date: key, searches: 0, exports: 0, prompts: 0 });
-      byKey.set(key, { searches: 0, exports: 0, prompts: 0 });
+      series.push({ date: key, searches: 0, prompts: 0, tokens: 0 });
+      byKey.set(key, { searches: 0, prompts: 0, tokens: 0 });
     }
 
-    // Add usage events data
+    // Add usage events data (only searches now)
     for (const row of (data || [])) {
       const bucket = byKey.get(row.event_date);
       if (!bucket) continue;
       if (row.kind === 'search') bucket.searches += row.count as number;
-      if (row.kind === 'export') bucket.exports += row.count as number;
     }
 
     // Add prompts data
@@ -81,12 +85,20 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Add tokens data
+    for (const [dateKey, count] of tokensByDate.entries()) {
+      const bucket = byKey.get(dateKey);
+      if (bucket) {
+        bucket.tokens = count;
+      }
+    }
+
     // Copy back aggregated values in date order
     const out = series.map(s => ({
       date: s.date,
       searches: byKey.get(s.date)!.searches,
-      exports: byKey.get(s.date)!.exports,
       prompts: byKey.get(s.date)!.prompts,
+      tokens: byKey.get(s.date)!.tokens,
     }));
 
     return NextResponse.json({ days, data: out });

@@ -107,23 +107,20 @@ export default function PlanAndSubscriptionCard() {
   const getPlanFeatures = (plan: string) => {
     const features = {
       FREE: {
-        prompts: '10 mensajes/mes',
+        prompts: '$5.00 en tokens/mes',
         search: 'Búsqueda limitada (10/mes)',
-        export: '🔒 Exportación bloqueada',
         linkedin: '🔒 LinkedIn bloqueado',
         agent: '🔒 Modo Agente bloqueado'
       },
       PRO: {
-        prompts: '100 mensajes/mes',
+        prompts: '$20.00 en tokens/mes',
         search: '✅ Búsqueda ilimitada',
-        export: '✅ Exportación disponible',
         linkedin: '✅ LinkedIn disponible',
         agent: '✅ Modo Agente disponible'
       },
       ENTERPRISE: {
-        prompts: '500 mensajes/mes',
+        prompts: '$200.00 en tokens/mes',
         search: '✅ Búsqueda ilimitada',
-        export: '✅ Exportación disponible',
         linkedin: '✅ LinkedIn disponible',
         agent: '✅ Modo Agente disponible'
       }
@@ -185,10 +182,6 @@ export default function PlanAndSubscriptionCard() {
             <div className="flex justify-between">
               <span>Búsqueda:</span>
               <span>{currentFeatures.search}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Exportación:</span>
-              <span>{currentFeatures.export}</span>
             </div>
             <div className="flex justify-between">
               <span>LinkedIn:</span>

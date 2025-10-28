@@ -100,21 +100,24 @@ function getPlanLimits(planId: string) {
         searches_per_month: 10,
         exports_per_month: 10,
         companies_per_export: 0,
-        prompts_per_month: 10,
+        prompts_per_month: -1, // Deprecated - using dollar-based limiting
+        prompt_dollars_per_month: 5.00, // $5 limit for FREE tier
       };
     case 'PRO':
       return {
         searches_per_month: -1, // unlimited
         exports_per_month: 50,
         companies_per_export: 1000,
-        prompts_per_month: 100,
+        prompts_per_month: -1, // Deprecated - using dollar-based limiting
+        prompt_dollars_per_month: 20.00, // $20 limit for PRO tier
       };
     case 'ENTERPRISE':
       return {
         searches_per_month: -1, // unlimited
         exports_per_month: -1, // unlimited
         companies_per_export: -1, // unlimited
-        prompts_per_month: 500,
+        prompts_per_month: -1, // Deprecated - using dollar-based limiting
+        prompt_dollars_per_month: 200.00, // $200 limit for ENTERPRISE tier
       };
     default:
       return {
@@ -122,6 +125,7 @@ function getPlanLimits(planId: string) {
         exports_per_month: 0,
         companies_per_export: 0,
         prompts_per_month: 0,
+        prompt_dollars_per_month: 0,
       };
   }
 }

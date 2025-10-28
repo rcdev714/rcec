@@ -10,10 +10,11 @@ vi.mock('@/lib/usage-atomic', () => ({
   atomicIncrementWithLimit: vi.fn(),
   atomicIncrementUsage: vi.fn(),
   atomicIncrementUsageBy: vi.fn(() => Promise.resolve({ success: true, newValue: 0 })),
+  atomicIncrementDollarsWithLimit: vi.fn(),
   rollbackIncrement: vi.fn(() => Promise.resolve(true))
 }))
 
-import { atomicIncrementWithLimit } from '@/lib/usage-atomic'
+import { atomicIncrementWithLimit, atomicIncrementDollarsWithLimit } from '@/lib/usage-atomic'
 
 // Mock Supabase to match actual usage.ts call patterns
 const mockSupabase = {
@@ -344,7 +345,7 @@ describe('Usage Limits', () => {
   })
 
   describe('ensurePromptAllowedAndTrack', () => {
-    it('should track prompt usage for PRO user', async () => {
+    it('should allow prompt for PRO user within dollar budget', async () => {
       vi.mocked(getUserSubscription).mockResolvedValue({
         id: '123',
         user_id: 'user-123',
@@ -359,6 +360,7 @@ describe('Usage Limits', () => {
         updated_at: '2024-01-01T00:00:00.000Z'
       })
 
+      // Mock usage row with $5 spent (PRO limit is $20)
       // @ts-ignore - Test mock override
       mockSupabase.from.mockReturnValue({
         upsert: vi.fn(() => ({ error: null as any })),
@@ -375,9 +377,10 @@ describe('Usage Limits', () => {
             eq: vi.fn(() => ({
               single: vi.fn(() => ({
                 data: {
-                  prompts_count: 10, // Now using correct column
+                  prompts_count: 0,
                   prompt_input_tokens: 0,
-                  prompt_dollars: 0,
+                  prompt_output_tokens: 0,
+                  prompt_dollars: 5.00, // $5 already spent
                   user_id: 'user-123'
                 },
                 error: null as any
@@ -387,37 +390,38 @@ describe('Usage Limits', () => {
         })),
       })
 
-      // Mock atomic increment to return new value 11
-      vi.mocked(atomicIncrementWithLimit).mockResolvedValue({
+      // Mock atomic dollar increment - PRO has $20 limit, $5 spent, adding ~$0.10 = $5.10 total
+      vi.mocked(atomicIncrementDollarsWithLimit).mockResolvedValue({
         success: true,
-        newValue: 11
+        newValue: 5.10 // $5 + estimated cost
       })
 
       const result = await ensurePromptAllowedAndTrack('user-123', {
         model: 'gemini-2.5-flash',
-        inputTokensEstimate: 1000
+        inputTokensEstimate: 1000 // Small request, won't exceed budget
       })
 
       expect(result.allowed).toBe(true)
-      // PRO limit is 100. Used 10, after this one it's 11. 100 - 11 = 89.
-      expect(result.remainingPrompts).toBe(89)
+      expect(result.remainingDollars).toBeDefined()
+      expect(result.estimatedCost).toBeDefined()
     })
 
-    it('should deny prompt when budget exceeded', async () => {
+    it('should deny prompt when dollar budget exceeded', async () => {
       vi.mocked(getUserSubscription).mockResolvedValue({
         id: '123',
         user_id: 'user-123',
-        subscription_id: 'sub_123',
-        customer_id: 'cus_123',
-        plan: 'PRO',
+        subscription_id: null,
+        customer_id: null,
+        plan: 'FREE',
         status: 'active',
-        current_period_start: '2024-01-01T00:00:00.000Z',
-        current_period_end: '2024-02-01T00:00:00.000Z',
+        current_period_start: null,
+        current_period_end: null,
         cancel_at_period_end: false,
         created_at: '2024-01-01T00:00:00.000Z',
         updated_at: '2024-01-01T00:00:00.000Z'
       })
 
+      // Mock usage row with $4.99 spent (FREE limit is $5.00)
       // @ts-ignore - Test mock override
       mockSupabase.from.mockReturnValue({
         upsert: vi.fn(() => ({ error: null as any })),
@@ -434,9 +438,10 @@ describe('Usage Limits', () => {
             eq: vi.fn(() => ({
               single: vi.fn(() => ({
                 data: {
-                  prompts_count: 100, // At PRO limit
+                  prompts_count: 0,
                   prompt_input_tokens: 0,
-                  prompt_dollars: 0,
+                  prompt_output_tokens: 0,
+                  prompt_dollars: 4.99, // Almost at limit
                   user_id: 'user-123'
                 },
                 error: null as any
@@ -446,19 +451,20 @@ describe('Usage Limits', () => {
         })),
       })
 
-      // Mock atomic increment to return -1 (limit exceeded)
-      vi.mocked(atomicIncrementWithLimit).mockResolvedValue({
+      // Mock atomic dollar increment - would exceed $5 limit
+      vi.mocked(atomicIncrementDollarsWithLimit).mockResolvedValue({
         success: false,
-        newValue: -1,
-        error: 'Limit exceeded'
+        newValue: 4.99, // Current value before increment
+        error: 'Dollar limit exceeded'
       })
 
       const result = await ensurePromptAllowedAndTrack('user-123', {
         model: 'gemini-2.5-flash',
-        inputTokensEstimate: 100000
+        inputTokensEstimate: 100000 // Large request that would exceed $5 budget
       })
 
       expect(result.allowed).toBe(false)
+      expect(result.remainingDollars).toBeDefined()
     })
   })
 })

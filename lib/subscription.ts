@@ -242,8 +242,7 @@ function checkFeatureAccess(planId: string, feature: string): boolean {
   // Free features - available to all plans
   const freeFeatures = [
     'basic_search',
-    'basic_support',
-    'linkedin_search'
+    'basic_support'
   ];
 
   // Pro features - available to Pro and Enterprise
@@ -251,7 +250,9 @@ function checkFeatureAccess(planId: string, feature: string): boolean {
     'unlimited_search',
     'advanced_filtering',
     'export_data',
-    'priority_support'
+    'priority_support',
+    'linkedin_search',
+    'advanced_reasoning_models' // gemini-2.5-pro access
   ];
 
   // Enterprise features - available only to Enterprise
@@ -282,8 +283,7 @@ function checkFeatureAccess(planId: string, feature: string): boolean {
 function isFreeFeature(feature: string): boolean {
   const freeFeatures = [
     'basic_search',
-    'basic_support',
-    'linkedin_search'
+    'basic_support'
   ];
   return freeFeatures.includes(feature);
 }

@@ -14,11 +14,12 @@ export async function GET() {
     const subscription = await getUserSubscription(user.id);
     const plan = (subscription?.plan ?? 'FREE') as 'FREE' | 'PRO' | 'ENTERPRISE';
 
-    // Determine plan limits
+    // Determine plan limits (dollar-based for prompts)
     const limits = {
       searches: plan === 'FREE' ? 10 : -1,
       exports: plan === 'FREE' ? 10 : plan === 'PRO' ? 50 : -1,
-      prompts: plan === 'FREE' ? 10 : plan === 'PRO' ? 100 : 500,
+      prompt_dollars: plan === 'FREE' ? 5.00 : plan === 'PRO' ? 20.00 : 200.00, // Dollar-based limits
+      prompts: -1, // Deprecated - keeping for backward compatibility
     } as const;
 
     const { start, end } = getMonthlyPeriodForAnchor(user.created_at || new Date().toISOString());

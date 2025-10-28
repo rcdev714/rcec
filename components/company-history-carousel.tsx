@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Company } from "@/types/company";
 import { CompanyCard } from "@/components/company-card";
-import { ChevronLeft, ChevronRight, LinkedinIcon, Building2, User, Phone } from "lucide-react";
+import { ChevronLeft, ChevronRight, LinkedinIcon, Building2, User, Phone, Lock } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 // Client-side feature access function (avoiding server imports)
@@ -18,7 +18,7 @@ function canAccessFeature(plan: 'FREE' | 'PRO' | 'ENTERPRISE', feature: string):
     'advanced_filtering': ['PRO', 'ENTERPRISE'],
     'export_data': ['PRO', 'ENTERPRISE'],
     'priority_support': ['PRO', 'ENTERPRISE'],
-    'linkedin_search': ['FREE', 'PRO', 'ENTERPRISE'],
+    'linkedin_search': ['PRO', 'ENTERPRISE'],
 
     // Enterprise features
     'custom_integrations': ['ENTERPRISE'],
@@ -137,36 +137,30 @@ export default function CompanyHistoryCarousel({ history, ruc }: CompanyHistoryC
                   <h2 className="text-lg font-semibold text-gray-900">Datos de Contacto</h2>
                 </div>
                 {company.director_representante && (
-                  <div className="relative group">
+                  <>
                     {canAccessLinkedInFeature ? (
                       <a
                         href={`https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(company.director_representante)}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
                       >
+                        <LinkedinIcon className="h-3.5 w-3.5 !text-white" />
                         <span className="!text-white">Buscar</span>
-                        <LinkedinIcon className="h-3 w-3 !text-white" />
                       </a>
                     ) : (
-                      <Link
-                        href="/pricing"
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-                      >
-                        <span className="!text-white">Buscar</span>
-                        <LinkedinIcon className="h-3 w-3 !text-white" />
-                      </Link>
-                    )}
-
-                    {/* Tooltip */}
-                    {!canAccessLinkedInFeature && (
-                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-white text-gray-900 text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10 shadow-lg border border-gray-200">
-                        Actualizar plan para desbloquear
-                        {/* Arrow */}
-                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-white"></div>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 border border-gray-200 text-gray-400 text-xs font-medium rounded-md">
+                        <Lock className="h-3 w-3" />
+                        <LinkedinIcon className="h-3.5 w-3.5" />
+                        <button
+                          onClick={() => window.location.href = '/pricing'}
+                          className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                        >
+                          Actualizar
+                        </button>
                       </div>
                     )}
-                  </div>
+                  </>
                 )}
               </div>
               
@@ -343,6 +337,7 @@ export default function CompanyHistoryCarousel({ history, ruc }: CompanyHistoryC
           </div>
         </div>
       </div>
+
     </div>
   );
 } 

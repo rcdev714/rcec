@@ -174,7 +174,6 @@ interface ChatCompanyResultsProps {
   companies: Company[]
   totalCount: number
   query: string
-  onExport?: () => void
   onLoadMore?: () => void
   hasMore?: boolean
 }
@@ -183,7 +182,6 @@ export function ChatCompanyResults({
   companies, 
   totalCount, 
   query, 
-  onExport,
   onLoadMore,
   hasMore = false 
 }: ChatCompanyResultsProps) {
@@ -195,18 +193,10 @@ export function ChatCompanyResults({
           <h4 className="font-medium text-gray-900">
             Resultados de búsqueda
           </h4>
-                  <p className="text-sm text-gray-600">
-          {totalCount} empresas encontradas para &quot;{query}&quot;
-        </p>
+          <p className="text-sm text-gray-600">
+            {totalCount} empresas encontradas para &quot;{query}&quot;
+          </p>
         </div>
-        {onExport && (
-          <button
-            onClick={onExport}
-            className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-          >
-            Exportar todas
-          </button>
-        )}
       </div>
 
       {/* Company cards grid */}
