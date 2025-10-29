@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Plus, MessageSquare, Trash2, Menu, X } from "lucide-react";
 import ConversationManager, { ConversationItem } from "@/lib/conversation-manager";
+import { cn } from "@/lib/utils";
 
 interface ConversationSidebarProps {
   currentConversationId: string | null;
@@ -20,7 +21,7 @@ export default function ConversationSidebar({
 }: ConversationSidebarProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false); // mobile drawer
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true); // Default to collapsed
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [showAll, setShowAll] = useState(false); // For pagination
   const conversationManager = ConversationManager.getInstance();
@@ -162,35 +163,37 @@ export default function ConversationSidebar({
 
       {/* Sidebar container: mobile drawer + desktop static */}
       <div
-        className={`
-          z-40 bg-transparent transition-all duration-300 ease-in-out
-          fixed inset-y-0 left-0 w-64 ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static md:ml-12
-          ${isCollapsed ? 'md:w-16 md:ml-12' : 'md:w-64 md:ml-12'}
-          flex flex-col h-full
-        `}
+        className={cn(
+          "z-40 bg-white transition-all duration-300 ease-in-out border-r border-gray-200",
+          "fixed inset-y-0 left-0 w-64",
+          isOpen ? "translate-x-0" : "-translate-x-full",
+          "md:translate-x-0 md:static md:left-auto",
+          isCollapsed ? "md:w-16" : "md:w-64",
+          "flex flex-col h-full shrink-0"
+        )}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className={`p-4 ${isCollapsed ? 'px-2' : ''}`}>
+          <div className={cn("p-3 md:p-4", isCollapsed && "px-2")}>
             {!isCollapsed ? (
               <>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-normal text-gray-700">Agentes</h2>
+                  <h2 className="text-sm font-normal text-gray-900">Agentes</h2>
                   <div className="flex gap-1">
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
                       onClick={handleToggleCollapse}
-                      className="hidden md:flex p-2"
+                      className="hidden md:flex p-1.5 h-7 w-7"
                       title="Colapsar"
                     >
                       <Menu className="w-4 h-4" />
                     </Button>
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
                       onClick={() => setIsOpen(false)}
-                      className="md:hidden p-2 min-h-[40px] min-w-[40px] flex items-center justify-center touch-manipulation"
+                      className="md:hidden p-1.5 min-h-[36px] min-w-[36px] flex items-center justify-center touch-manipulation"
                     >
                       <X className="w-5 h-5" />
                     </Button>
@@ -199,7 +202,7 @@ export default function ConversationSidebar({
                 
                 <Button
                   onClick={handleNewConversation}
-                  className="w-full bg-white hover:bg-gray-200 text-black"
+                  className="w-full bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 shadow-sm"
                   size="sm"
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -209,17 +212,17 @@ export default function ConversationSidebar({
             ) : (
               <div className="flex flex-col items-center gap-2">
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   onClick={handleToggleCollapse}
-                  className="p-2 w-full"
+                  className="p-2 w-full h-8"
                   title="Expandir"
                 >
                   <Menu className="w-4 h-4" />
                 </Button>
                 <Button
                   onClick={handleNewConversation}
-                  className="w-full bg-white hover:bg-gray-200 text-black p-2"
+                  className="w-full bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 shadow-sm p-2 h-8"
                   size="sm"
                   title="Nueva Conversación"
                 >
@@ -231,33 +234,46 @@ export default function ConversationSidebar({
 
           {/* Conversations List */}
           {!isCollapsed && (
-            <div className="flex-1 overflow-y-auto p-2">
+            <div className="flex-1 overflow-y-auto px-2 py-1">
               {conversations.length === 0 ? (
-                <div className="text-center text-gray-500 mt-8">
-                  <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No hay conversaciones</p>
+                <div className="text-center text-gray-400 mt-12 px-4">
+                  <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                  <p className="text-xs font-normal">No hay conversaciones</p>
+                  <p className="text-xs text-gray-400 mt-1 font-normal">Crea tu primera conversación</p>
                 </div>
               ) : (
                 <>
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     {(showAll ? conversations : conversations.slice(0, INITIAL_LIMIT)).map((conv) => (
                       <Card
                         key={conv.id}
                         className={`
-                          p-3 cursor-pointer transition-all duration-200 hover:bg-gray-50 group
-                          ${conv.id === currentConversationId ? 'bg-gray-100' : ''}
+                          p-2.5 cursor-pointer transition-all duration-150 hover:bg-gray-50 group border
+                          ${conv.id === currentConversationId 
+                            ? 'bg-indigo-50 border-indigo-200 hover:bg-indigo-50' 
+                            : 'bg-white border-gray-200 hover:border-gray-300'
+                          }
                         `}
                         onClick={() => handleSelectConversation(conv.id)}
                       >
-                        <div className="flex items-start justify-between">
+                        <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <MessageSquare className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                              <span className="text-xs text-gray-500">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <MessageSquare className={cn(
+                                "w-3 h-3 flex-shrink-0",
+                                conv.id === currentConversationId ? "text-indigo-500" : "text-gray-400"
+                              )} />
+                              <span className={cn(
+                                "text-[10px] font-medium",
+                                conv.id === currentConversationId ? "text-indigo-600" : "text-gray-500"
+                              )}>
                                 {formatDate(conv.lastActivity)}
                               </span>
                             </div>
-                            <p className="text-xs font-normal text-gray-700 truncate">
+                            <p className={cn(
+                              "text-xs font-normal truncate leading-snug",
+                              conv.id === currentConversationId ? "text-indigo-900" : "text-gray-700"
+                            )}>
                               {conv.title}
                             </p>
                           </div>
@@ -266,7 +282,7 @@ export default function ConversationSidebar({
                             variant="ghost"
                             size="sm"
                             onClick={(e) => handleDeleteConversation(conv.id, e)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 h-auto text-red-500 hover:text-red-700 hover:bg-red-50"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 h-6 w-6 text-gray-400 hover:text-red-600 hover:bg-red-50 flex-shrink-0"
                           >
                             <Trash2 className="w-3 h-3" />
                           </Button>
@@ -281,7 +297,7 @@ export default function ConversationSidebar({
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowAll(!showAll)}
-                      className="w-full mt-2 text-xs text-gray-600 hover:text-gray-800"
+                      className="w-full mt-2 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-50 h-8"
                     >
                       {showAll ? (
                         <>Mostrar menos</>

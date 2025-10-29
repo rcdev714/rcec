@@ -1,10 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { AuthButton } from "@/components/auth-button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import PublicViewTracker from "@/components/public-view-tracker";
 import { Metadata, ResolvingMetadata } from "next";
+import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -122,22 +122,20 @@ export default async function PublicOfferingPage({ params }: { params: Promise<{
 
   if (!offering) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white text-gray-900">
-        <header className="w-full border-b border-gray-200 bg-white/80 backdrop-blur">
+      <div className="min-h-screen bg-white text-gray-900">
+        <header className="w-full border-b border-gray-200 bg-white">
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-            <Link href="/" className="font-semibold">Camella</Link>
+            <Link href="/" className="font-semibold text-gray-900">Camella</Link>
             <AuthButton />
           </div>
         </header>
         <main className="max-w-3xl mx-auto px-4 py-20">
-          <Card className="border-gray-200">
-            <CardHeader>
-              <CardTitle className="text-xl">Enlace no disponible</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-700">Este contenido no está disponible. Es posible que el enlace haya sido desactivado por el propietario o sea incorrecto.</p>
-            </CardContent>
-          </Card>
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Enlace no disponible</h2>
+            <p className="text-sm text-gray-600">
+              Este contenido no está disponible. Es posible que el enlace haya sido desactivado por el propietario o sea incorrecto.
+            </p>
+          </div>
         </main>
       </div>
     );
@@ -203,96 +201,153 @@ export default async function PublicOfferingPage({ params }: { params: Promise<{
     : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white text-gray-900">
+    <div className="min-h-screen bg-white">
       {jsonLd && (
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       )}
-      <header className="w-full border-b border-gray-200 bg-white/80 backdrop-blur">
+      <header className="w-full border-b border-gray-200 bg-white">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/" className="font-semibold">Camella</Link>
+          <Link href="/" className="font-semibold text-gray-900">Camella</Link>
           <AuthButton />
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-8">
-        <Card className="relative overflow-hidden border-gray-200 shadow-sm">
-          {/* Client-side view tracker */}
-          <PublicViewTracker offeringId={offering.id} />
-          <div className="absolute inset-0 pointer-events-none" aria-hidden>
-            <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full bg-blue-100 blur-3xl opacity-50" />
-          </div>
-          <CardHeader className="pb-2">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <CardTitle className="text-2xl tracking-tight">{offering.offering_name}</CardTitle>
-                {offering.industry && <Badge variant="secondary" className="w-fit mt-2">{offering.industry}</Badge>}
-              </div>
-              {website && (
-                <Link href={website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-300 bg-white text-sm hover:bg-gray-50">
-                  Visitar sitio
-                </Link>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-8">
-            {/* Hero info band */}
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="rounded-xl border bg-white p-4">
-                <div className="text-xs text-gray-500">Precio</div>
-                <div className="text-lg font-semibold text-green-700 mt-1">{priceDisplay || 'Consultar'}</div>
-              </div>
-              <div className="rounded-xl border bg-white p-4">
-                <div className="text-xs text-gray-500">Empresa</div>
-                <div className="text-sm mt-1">{offering.public_company_name || '—'}</div>
-              </div>
-              <div className="rounded-xl border bg-white p-4">
-                <div className="text-xs text-gray-500">Contacto</div>
-                <div className="text-sm mt-1">{offering.public_contact_name || '—'}</div>
-              </div>
-            </div>
+        {/* Client-side view tracker */}
+        <PublicViewTracker offeringId={offering.id} />
+        
+        {/* Breadcrumb */}
+        <div className="mb-4 text-sm text-gray-600">
+          <span>Productos</span>
+          <span className="mx-2">/</span>
+          <span className="text-gray-900 font-medium">{offering.offering_name}</span>
+        </div>
 
-            {/* Contact & company */}
-            <div className="grid sm:grid-cols-2 gap-6">
-              <div className="space-y-1">
+        {/* Product Header */}
+        <div className="mb-6">
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#635BFF] to-[#5548E6] flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-semibold text-lg">
+                  {offering.offering_name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900">{offering.offering_name}</h1>
+                {offering.industry && (
+                  <Badge variant="outline" className="mt-2">{offering.industry}</Badge>
+                )}
+              </div>
+            </div>
+            {website && (
+              <a
+                href={website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                Visitar sitio
+                <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* Product Content */}
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          {/* Pricing Section */}
+          {priceDisplay && (
+            <div className="border-b border-gray-200 px-6 py-4">
+              <div className="text-xs text-gray-500 mb-1">Precio</div>
+              <div className="text-xl font-semibold text-gray-900">{priceDisplay}</div>
+              <div className="text-sm text-gray-500 mt-1">USD</div>
+            </div>
+          )}
+
+          {/* Description */}
+          {offering.description && (
+            <div className="border-b border-gray-200 px-6 py-4">
+              <h2 className="text-sm font-semibold text-gray-900 mb-2">Descripción</h2>
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{offering.description}</p>
+            </div>
+          )}
+
+          {/* Contact Information */}
+          {(offering.public_company_name || offering.public_contact_name || offering.public_contact_email || offering.public_contact_phone) && (
+            <div className="border-b border-gray-200 px-6 py-4">
+              <h2 className="text-sm font-semibold text-gray-900 mb-3">Información de contacto</h2>
+              <div className="grid sm:grid-cols-2 gap-4">
                 {offering.public_company_name && (
-                  <div className="text-sm text-gray-700">
-                    <span className="font-medium">Empresa: </span>{offering.public_company_name}
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Empresa</div>
+                    <div className="text-sm text-gray-900">{offering.public_company_name}</div>
                   </div>
                 )}
                 {offering.public_contact_name && (
-                  <div className="text-sm text-gray-700">
-                    <span className="font-medium">Contacto: </span>{offering.public_contact_name}
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Contacto</div>
+                    <div className="text-sm text-gray-900">{offering.public_contact_name}</div>
                   </div>
                 )}
                 {offering.public_contact_email && (
-                  <div className="text-sm text-gray-700">
-                    <span className="font-medium">Email: </span>
-                    <a className="text-blue-600 hover:underline" href={`mailto:${offering.public_contact_email}`}>{offering.public_contact_email}</a>
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Email</div>
+                    <a
+                      href={`mailto:${offering.public_contact_email}`}
+                      className="text-sm text-[#635BFF] hover:underline"
+                    >
+                      {offering.public_contact_email}
+                    </a>
                   </div>
                 )}
                 {offering.public_contact_phone && (
-                  <div className="text-sm text-gray-700">
-                    <span className="font-medium">Teléfono: </span>
-                    <a className="text-blue-600 hover:underline" href={`tel:${offering.public_contact_phone}`}>{offering.public_contact_phone}</a>
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Teléfono</div>
+                    <a
+                      href={`tel:${offering.public_contact_phone}`}
+                      className="text-sm text-[#635BFF] hover:underline"
+                    >
+                      {offering.public_contact_phone}
+                    </a>
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Links Section */}
+          {(website || (Array.isArray(offering.social_media_links) && offering.social_media_links.length > 0)) && (
+            <div className="border-b border-gray-200 px-6 py-4">
+              <h2 className="text-sm font-semibold text-gray-900 mb-3">Enlaces</h2>
               <div className="space-y-2">
                 {website && (
-                  <div className="text-sm text-gray-700">
-                    <span className="font-medium">Sitio web: </span>
-                    <a className="text-blue-600 hover:underline" href={website} target="_blank" rel="noopener noreferrer">{website}</a>
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-gray-500 w-20">Sitio web:</div>
+                    <a
+                      href={website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-[#635BFF] hover:underline"
+                    >
+                      {website}
+                    </a>
                   </div>
                 )}
                 {Array.isArray(offering.social_media_links) && offering.social_media_links.length > 0 && (
-                  <div className="text-sm text-gray-700">
-                    <span className="text-sm font-medium">Redes sociales: </span>
-                    <div className="flex flex-wrap gap-2 mt-1">
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-gray-500 w-20">Redes sociales:</div>
+                    <div className="flex flex-wrap gap-2">
                       {offering.social_media_links.map((s, idx) => (
-                        <a key={idx} className="text-blue-600 hover:underline" href={s.url} target="_blank" rel="noopener noreferrer">
+                        <a
+                          key={idx}
+                          href={s.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-[#635BFF] hover:underline"
+                        >
                           {s.platform || s.url}
                         </a>
                       ))}
@@ -301,44 +356,41 @@ export default async function PublicOfferingPage({ params }: { params: Promise<{
                 )}
               </div>
             </div>
+          )}
 
-            {/* Description */}
-            {offering.description && (
-              <div>
-                <h2 className="text-lg font-medium mb-1">Descripción</h2>
-                <p className="text-gray-700 leading-relaxed">{offering.description}</p>
+          {/* Industry Targets */}
+          {Array.isArray(offering.industry_targets) && offering.industry_targets.length > 0 && (
+            <div className="border-b border-gray-200 px-6 py-4">
+              <h2 className="text-sm font-semibold text-gray-900 mb-3">Dirigido a</h2>
+              <div className="flex flex-wrap gap-2">
+                {offering.industry_targets.map((t) => (
+                  <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+                ))}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Industry targets */}
-            {Array.isArray(offering.industry_targets) && offering.industry_targets.length > 0 && (
-              <div>
-                <h2 className="text-lg font-medium mb-2">Industrias objetivo</h2>
-                <div className="flex flex-wrap gap-2">
-                  {offering.industry_targets.map((t) => (
-                    <Badge key={t} variant="outline">{t}</Badge>
-                  ))}
-                </div>
+          {/* Documentation */}
+          {Array.isArray(offering.documentation_urls) && offering.documentation_urls.length > 0 && (
+            <div className="px-6 py-4">
+              <h2 className="text-sm font-semibold text-gray-900 mb-3">Documentación</h2>
+              <div className="space-y-2">
+                {offering.documentation_urls.map((d, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <a
+                      href={d.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-[#635BFF] hover:underline"
+                    >
+                      {d.description || d.url}
+                    </a>
+                  </div>
+                ))}
               </div>
-            )}
-
-            {/* Documentation */}
-            {Array.isArray(offering.documentation_urls) && offering.documentation_urls.length > 0 && (
-              <div>
-                <h2 className="text-lg font-medium mb-2">Documentación</h2>
-                <ul className="list-disc pl-6 space-y-1">
-                  {offering.documentation_urls.map((d, idx) => (
-                    <li key={idx} className="text-sm">
-                      <a className="text-blue-600 hover:underline" href={d.url} target="_blank" rel="noopener noreferrer">
-                        {d.description || d.url}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

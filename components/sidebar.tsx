@@ -41,6 +41,7 @@ const Sidebar = () => {
         "fixed top-0 left-0 h-full bg-white text-gray-500 transition-all duration-300 ease-in-out z-50 border-r border-gray-200 flex flex-col",
         isCollapsed ? "w-16" : "w-16 md:w-48"
       )}
+      aria-label="Main navigation"
     >
       <div className="flex items-center justify-center h-16 relative">
         <div className={cn("flex items-center gap-2")}>

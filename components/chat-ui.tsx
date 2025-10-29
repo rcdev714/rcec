@@ -158,16 +158,16 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
       <p className="mb-4 last:mb-0">{children}</p>
     ),
     h1: ({ children }: { children?: React.ReactNode }) => (
-      <h1 className="text-2xl font-bold mb-4 mt-6 first:mt-0">{children}</h1>
+      <h1 className="text-xl font-normal mb-4 mt-6 first:mt-0">{children}</h1>
     ),
     h2: ({ children }: { children?: React.ReactNode }) => (
-      <h2 className="text-xl font-bold mb-3 mt-5 first:mt-0">{children}</h2>
+      <h2 className="text-lg font-normal mb-3 mt-5 first:mt-0">{children}</h2>
     ),
     h3: ({ children }: { children?: React.ReactNode }) => (
-      <h3 className="text-lg font-semibold mb-2 mt-4 first:mt-0">{children}</h3>
+      <h3 className="text-base font-normal mb-2 mt-4 first:mt-0">{children}</h3>
     ),
     h4: ({ children }: { children?: React.ReactNode }) => (
-      <h4 className="text-base font-semibold mb-2 mt-3 first:mt-0">{children}</h4>
+      <h4 className="text-sm font-normal mb-2 mt-3 first:mt-0">{children}</h4>
     ),
     ul: ({ children }: { children?: React.ReactNode }) => (
       <ul className="list-disc list-inside mb-4 space-y-1">{children}</ul>
@@ -190,7 +190,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
       <thead className="bg-gray-100">{children}</thead>
     ),
     th: ({ children }: { children?: React.ReactNode }) => (
-      <th className="border border-gray-300 px-4 py-2 text-left font-semibold">{children}</th>
+      <th className="border border-gray-300 px-4 py-2 text-left font-normal">{children}</th>
     ),
     td: ({ children }: { children?: React.ReactNode }) => (
       <td className="border border-gray-300 px-4 py-2">{children}</td>
@@ -238,13 +238,27 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
     'Busca los websites de las siguientes empresas:',
     'Cuales son las empresas con mayores ingresos en pichincha?',
     'Encuentra el RUC de la siguiente empresa: ',
-    'Realiza un analisis de las finanzas de la siguiente empresa:'
+    'Realiza un analisis de las finanzas de la siguiente empresa:',
+    'Busca en internet las siguientes empresas',
+    'Dame detalles de contacto de estas empresas',
+    'Analiza el historial financiero de esta empresa',
+    'Busca una empresa a la que pueda ofrecer mi servicio'
   ], []);
 
-  // Efecto para seleccionar sugerencias dinámicas al montar
+  // Efecto para seleccionar sugerencias dinámicas al montar y rotarlas cada 30 segundos
   useEffect(() => {
-    const shuffled = [...allSuggestions].sort(() => 0.5 - Math.random());
-    setSuggestions(shuffled.slice(0, 3));
+    const selectRandomSuggestions = () => {
+      const shuffled = [...allSuggestions].sort(() => 0.5 - Math.random());
+      setSuggestions(shuffled.slice(0, 4));
+    };
+
+    // Initial selection
+    selectRandomSuggestions();
+
+    // Rotate every 30 seconds
+    const interval = setInterval(selectRandomSuggestions, 30000);
+
+    return () => clearInterval(interval);
   }, [allSuggestions]);
 
   // Fetch user subscription plan
@@ -1034,35 +1048,33 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
   };
 
   const formLayout = (
-    <div className="w-full flex flex-col items-center space-y-3 px-2 md:px-0">
-      <form onSubmit={handleSubmit} className="relative w-full max-w-2xl group">
-        <div className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-2xl p-3 md:p-4 shadow-sm hover:shadow-md focus-within:ring-4 focus-within:ring-indigo-100 transition-all duration-200">
+    <div className="w-full flex flex-col items-center">
+      <form onSubmit={handleSubmit} className="relative w-full max-w-3xl group">
+        <div className="bg-white/98 backdrop-blur-md border border-gray-200/80 rounded-2xl p-3 md:p-4 shadow-sm hover:shadow-md focus-within:ring-1 focus-within:ring-indigo-500/30 focus-within:border-indigo-300 transition-all duration-200">
           <input
             type="text"
             value={input}
             onChange={handleInputChange}
-            placeholder="busca, analiza, conecta"
-            className="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-sm md:text-sm placeholder:text-xs md:placeholder:text-xs placeholder:text-gray-400"
+            placeholder="busca, analiza, conecta..."
+            className="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-xs md:text-sm placeholder:text-gray-400 placeholder:text-[10px] md:placeholder:text-xs pr-3"
           />
-          <div className="mt-3 flex items-center justify-between">
+          <div className="mt-3 flex items-center justify-between gap-2">
             <ModelSelector value={selectedModel} onChange={handleModelChange} disabled={isSending} userPlan={userPlan} />
             <button
               type="submit"
-              disabled={isSending}
-              className="w-12 h-12 md:w-11 md:h-11 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 active:bg-indigo-800 disabled:bg-gray-400 transition-all duration-200 shadow-lg hover:shadow-xl active:shadow-md disabled:shadow-none flex items-center justify-center touch-manipulation group-hover:scale-105 active:scale-95"
+              disabled={isSending || !input.trim()}
+              className="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 active:from-indigo-800 active:to-purple-800 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md active:shadow-sm disabled:shadow-none flex items-center justify-center touch-manipulation"
+              title="Enviar mensaje"
             >
               {isSending ? (
-                <LoaderCircle className="w-5 h-5 md:w-5 md:h-5 animate-spin" />
+                <LoaderCircle className="w-4 h-4 md:w-4 md:h-4 animate-spin" />
               ) : (
-                <ArrowUp className="w-5 h-5 md:w-4 md:h-4" />
+                <ArrowUp className="w-4 h-4 md:w-4 md:h-4" />
               )}
             </button>
           </div>
         </div>
       </form>
-
-      {/* Token Progress Bar - Centered and same width as input */}
-
     </div>
   );
 
@@ -1088,51 +1100,85 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
         <AnimatePresence>
           {messages.length === 0 && (
             <motion.div
-              initial={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 50 }}
-              transition={{ duration: 0.3 }}
-              className="flex-1 flex flex-col items-center justify-center p-4 md:p-6"
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="flex-1 flex flex-col items-center justify-center p-4 md:p-8 lg:p-12"
             >
-              <div className="w-full max-w-4xl mx-auto mb-10 md:mb-16">
-                <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 p-6 md:p-8">
-                  <div className="text-center">
-                    <h1 className="text-3xl md:text-3xl tracking-tight mb-3 text-gray-900 leading-[1.1]">
-                      Agente
-                    </h1>
-                    <div className="space-y-3">
-                      <p className="text-gray-600 text-xs md:text-sm max-w-xl mx-auto leading-relaxed">
-                        Busca, analiza, encuentra y conecta con empresas y contactos.
-                      </p>
-                      <div className="w-16 h-0.5 bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-purple-500 mx-auto rounded-full"></div>
-                      <p className="text-gray-600 text-xs md:text-sm max-w-xl mx-auto leading-relaxed">
-                        Pregúntale sobre finanzas, contacta con ejecutivos y más. Accede a todo nuestro
-                        registro empresarial a través del chat.
-                      </p>
+              <div className="w-full max-w-5xl mx-auto flex flex-col items-center gap-8 md:gap-12">
+                {/* Hero Section */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1, duration: 0.4 }}
+                  className="w-full max-w-3xl"
+                >
+                  <div className="bg-gradient-to-br from-white to-gray-50/50 backdrop-blur-sm rounded-3xl p-8 md:p-10 lg:p-12">
+                    <div className="text-center space-y-4">
+                      <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 mb-4 shadow-lg">
+                        <Infinity className="w-8 h-8 md:w-10 md:h-10 text-white" />
+                      </div>
+                      <h1 className="text-xl md:text-2xl lg:text-3xl tracking-tight text-gray-900 mb-4 font-normal">
+                        Agente
+                      </h1>
+                      <div className="space-y-4">
+                        <p className="text-xs md:text-sm text-gray-700 max-w-2xl mx-auto leading-relaxed font-normal">
+                          Busca, analiza, encuentra y conecta con empresas y contactos.
+                        </p>
+                        <div className="w-24 h-0.5 bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-purple-500 mx-auto rounded-full"></div>
+                        <p className="text-[11px] md:text-xs text-gray-600 max-w-2xl mx-auto leading-relaxed font-normal">
+                          Busca información de empresas, encuntra sus redes sociales y sitios web, 
+                          analiza estados financieros, contacta con ejecutivos y empleados en Likedin. 
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                </motion.div>
 
-              {/* Sugerencias de Prompt - modern cards */}
-              <div className="w-full max-w-2xl mx-auto">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {suggestions.map((s, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleSuggestionClick(s)}
-                      className="group relative p-4 text-left border rounded-xl text-[13px] text-gray-700 bg-white/90 hover:bg-white transition-all duration-200 shadow-sm hover:shadow-md hover:border-indigo-300/80 border-gray-200"
-                    >
-                      <span className="absolute -top-2 -left-2 bg-indigo-50 text-indigo-600 text-[10px] px-2 py-0.5 rounded-full border border-indigo-100">Sugerencia</span>
-                      <span className="block pr-6 leading-relaxed">
-                        {s}
-                      </span>
-                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-indigo-500">↵</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+                {/* Suggestions */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2, duration: 0.4 }}
+                  className="w-full max-w-4xl"
+                >
+                  <div className="mb-4">
+                    <h2 className="text-[10px] font-normal text-gray-500 uppercase tracking-wider text-center mb-6">
+                      Sugerencias
+                    </h2>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {suggestions.map((s, i) => (
+                      <motion.button
+                        key={i}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.25 + i * 0.05, duration: 0.3 }}
+                        onClick={() => handleSuggestionClick(s)}
+                        className="group relative p-4 text-left border rounded-2xl text-xs text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow-lg hover:border-indigo-300 border-gray-200 hover:-translate-y-0.5"
+                      >
+                        <span className="block pr-6 leading-relaxed">
+                          {s}
+                        </span>
+                        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all text-indigo-500 transform group-hover:translate-x-1">
+                          →
+                        </span>
+                      </motion.button>
+                    ))}
+                  </div>
+                </motion.div>
 
-              <div className="w-full px-4 mt-8">{formLayout}</div>
+                {/* Input Area */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.35, duration: 0.4 }}
+                  className="w-full max-w-3xl mt-4"
+                >
+                  {formLayout}
+                </motion.div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -1142,27 +1188,27 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
           <>
             <div
               ref={scrollContainerRef}
-              className="flex-1 overflow-y-auto p-3 md:p-6 pb-0"
+              className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-0 scroll-smooth"
             >
-              <div className="w-full max-w-6xl mx-auto space-y-3 md:space-y-6">
+              <div className="w-full max-w-4xl lg:max-w-5xl mx-auto space-y-4 md:space-y-6">
                 
                 {messages.map((msg, index) => {
                   // Special rendering for planning messages
                   if (msg.role === "system" && msg.metadata?.type === 'planning' && msg.todos) {
                     return (
-                      <div key={index} className="w-full mb-3">
-                        <div className="bg-indigo-50/50 border border-indigo-200 rounded-xl p-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs font-semibold">
+                      <div key={index} className="w-full mb-4">
+                        <div className="bg-gradient-to-br from-indigo-50 to-purple-50/50 border border-indigo-200/60 rounded-2xl p-5 shadow-sm">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center text-xs font-normal shadow-sm">
                               AI
                             </div>
-                            <h4 className="font-medium text-indigo-900 text-sm">Acciones del agente</h4>
+                            <h4 className="font-normal text-indigo-900 text-xs">Plan de acción</h4>
                           </div>
-                          <div className="space-y-2">
+                          <div className="space-y-2.5">
                             {msg.todos.map((todo, todoIndex) => (
-                              <div key={todoIndex} className="flex items-start gap-3 text-sm">
+                              <div key={todoIndex} className="flex items-start gap-3 text-xs p-2 rounded-lg bg-white/60">
                                 <span className={cn(
-                                  "flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium",
+                                  "flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center text-xs font-normal shadow-sm",
                                   todo.status === 'completed' && "bg-green-500 text-white",
                                   todo.status === 'in_progress' && "bg-amber-500 text-white animate-pulse",
                                   todo.status === 'pending' && "bg-gray-300 text-gray-700",
@@ -1171,11 +1217,11 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                                   {todo.status === 'completed' ? '✓' : todoIndex + 1}
                                 </span>
                                 <span className={cn(
-                                  "flex-1 leading-relaxed",
-                                  todo.status === 'completed' && "text-gray-600",
-                                  todo.status === 'in_progress' && "text-gray-900 font-medium",
-                                  todo.status === 'pending' && "text-gray-500",
-                                  todo.status === 'failed' && "text-red-600"
+                                  "flex-1 leading-relaxed pt-0.5",
+                                  todo.status === 'completed' && "text-gray-600 line-through",
+                                  todo.status === 'in_progress' && "text-gray-900 font-normal",
+                                  todo.status === 'pending' && "text-gray-600",
+                                  todo.status === 'failed' && "text-red-600 font-normal"
                                 )}>
                                   {todo.description}
                                 </span>
@@ -1192,25 +1238,25 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                   <div
                     key={index}
                     className={cn(
-                      "flex items-start gap-2 md:gap-4",
-                      msg.role === "user" && "justify-end"
+                      "flex items-start gap-3 md:gap-4",
+                      msg.role === "user" && "flex-row-reverse"
                     )}
                   >
                     {msg.role === "user" ? (
-                      <div className="order-2 flex-shrink-0">
+                      <div className="flex-shrink-0 mt-1">
                         <UserAvatar />
                       </div>
                     ) : (
-                      <div className="w-8 h-8 md:w-8 md:h-8 rounded-full flex-shrink-0 flex items-center justify-center bg-white text-indigo-500 border border-indigo-300 mt-1">
-                        <Infinity className="w-4 h-4" />
+                      <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-sm border-2 border-white mt-1">
+                        <Infinity className="w-5 h-5 md:w-5 md:h-5" />
                       </div>
                     )}
                     <div
                       className={cn(
-                        "max-w-[85%] md:max-w-[90%] px-4 md:px-4 py-3 md:py-3 rounded-2xl relative group border touch-manipulation",
+                        "max-w-[85%] md:max-w-[75%] lg:max-w-[70%] px-4 md:px-5 py-3 md:py-4 rounded-2xl relative group shadow-sm touch-manipulation transition-all duration-200",
                         msg.role === "user"
-                          ? "bg-white text-gray-900 border-gray-200 rounded-br-md self-end"
-                          : "bg-gray-50 text-gray-900 border-gray-200 rounded-bl-md self-start"
+                          ? "bg-white text-gray-900 border border-gray-200 rounded-br-sm hover:shadow-md"
+                          : "bg-gradient-to-br from-gray-50 to-white text-gray-900 border border-gray-200/60 rounded-bl-sm hover:shadow-md"
                       )}
                     >
                       {msg.role === 'assistant' && msg.content === '' && isSending ? (
@@ -1221,15 +1267,17 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                         <div className="space-y-4">
                           {/* Show agent execution steps as persistent inline cards */}
                           {msg.role === 'assistant' && msg.agentStateEvents && msg.agentStateEvents.length > 0 && (
-                            <div className="mb-3 p-3 bg-gray-50/50 border border-gray-200/60 rounded-lg">
-                              <div className="flex items-center gap-2 mb-2">
-                                <div className="w-4 h-4 rounded-full bg-gray-200/60 text-gray-500 flex items-center justify-center text-[10px]">🔧</div>
-                                <span className="text-[11px] font-normal text-gray-500">Pasos...</span>
-                                <span className="ml-auto text-[10px] text-gray-400 bg-gray-100/60 px-1.5 py-0.5 rounded-full">
+                            <div className="mb-4 p-3.5 bg-gradient-to-br from-indigo-50/50 to-purple-50/30 border border-indigo-200/50 rounded-xl shadow-sm">
+                              <div className="flex items-center gap-2 mb-3">
+                                <div className="w-5 h-5 rounded-lg bg-indigo-500 text-white flex items-center justify-center text-xs font-normal shadow-sm">
+                                  ⚙
+                                </div>
+                                <span className="text-xs font-normal text-indigo-900">Acciones del agente</span>
+                                <span className="ml-auto text-[10px] font-normal text-indigo-600 bg-indigo-100 px-2 py-1 rounded-full">
                                   {msg.agentStateEvents.filter(e => e.type === 'tool_call').length} acciones
                                 </span>
                               </div>
-                              <div className="space-y-1.5">
+                              <div className="space-y-2">
                                 {(() => {
                                   const steps: { call: AgentStateEvent; result?: AgentStateEvent }[] = [];
                                   const events = msg.agentStateEvents.filter(e => e.type === 'tool_call' || e.type === 'tool_result');
@@ -1253,7 +1301,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                                         if (!toolCallEvent) return null;
 
                                         return (
-                                          <div key={stepIndex} className="flex items-center gap-3 text-xs p-2 rounded-md bg-white border border-gray-200/80">
+                                          <div key={stepIndex} className="flex items-center gap-3 text-xs p-2.5 rounded-lg bg-white/80 border border-indigo-100 shadow-sm hover:shadow transition-shadow">
                                             <div className="flex-shrink-0">
                                               {toolResultEvent ? (
                                                 toolResultEvent.success ? (
@@ -1262,30 +1310,30 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                                                   <XCircle className="w-4 h-4 text-red-500" />
                                                 )
                                               ) : (
-                                                <LoaderCircle className="w-4 h-4 text-gray-400 animate-spin" />
+                                                <LoaderCircle className="w-4 h-4 text-indigo-500 animate-spin" />
                                               )}
                                             </div>
-                                            <div className="flex-1 font-medium text-gray-700">
+                                            <div className="flex-1 font-normal text-gray-700">
                                               {formatToolName(toolCallEvent.toolName)}
                                             </div>
                                             {!toolResultEvent && isSending && (
                                                 <div className="flex items-center space-x-1">
-                                                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></span>
-                                                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></span>
-                                                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></span>
+                                                  <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></span>
+                                                  <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></span>
+                                                  <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></span>
                                                 </div>
                                             )}
                                           </div>
                                         );
                                       })}
                                       {isSending && (steps.length === 0 || (steps[steps.length - 1].result?.type === 'tool_result')) && (
-                                        <div className="flex items-center gap-3 text-xs p-2">
+                                        <div className="flex items-center gap-3 text-xs p-2.5 rounded-lg bg-white/60">
                                            <div className="flex items-center space-x-1">
-                                                <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></span>
-                                                <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></span>
-                                                <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></span>
+                                                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></span>
+                                                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></span>
+                                                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></span>
                                             </div>
-                                          <div className="flex-1 font-medium text-gray-500 italic">
+                                          <div className="flex-1 font-normal text-indigo-600 italic">
                                             pensando...
                                           </div>
                                         </div>
@@ -1298,7 +1346,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                           )}
                           
                           {msg.content && (
-                            <div className="max-w-none chat-content overflow-x-auto text-sm leading-relaxed">
+                            <div className="chat-content overflow-x-auto text-xs md:text-sm leading-relaxed prose prose-xs md:prose-sm prose-gray max-w-none">
                               <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                                 {sanitizeForRender(msg.content)}
                               </ReactMarkdown>
@@ -1328,12 +1376,13 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                       {msg.role === 'assistant' && msg.content && !isSending && (
                         <button
                           onClick={() => handleCopy(msg.content, index)}
-                          className="absolute top-2 right-2 p-2 md:p-1.5 rounded-lg bg-gray-200 text-gray-600 hover:bg-gray-300 opacity-0 group-hover:opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity min-h-[36px] min-w-[36px] md:min-h-auto md:min-w-auto flex items-center justify-center touch-manipulation"
+                          className="absolute top-3 right-3 p-2 rounded-lg bg-white/90 backdrop-blur-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-sm border border-gray-200/50 min-h-[36px] min-w-[36px] flex items-center justify-center touch-manipulation"
+                          title="Copiar mensaje"
                         >
                           {copiedMessageIndex === index ? (
-                            <CopyCheck className="w-4 h-4 md:w-3 md:h-3 text-green-600" />
+                            <CopyCheck className="w-4 h-4 text-green-600" />
                           ) : (
-                            <Copy className="w-4 h-4 md:w-3 md:h-3" />
+                            <Copy className="w-4 h-4" />
                           )}
                         </button>
                       )}
@@ -1348,11 +1397,12 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
               <AnimatePresence>
                 {showScrollToBottom && (
                   <motion.button
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, y: 20 }}
                     onClick={scrollToBottom}
-                    className="fixed bottom-20 md:bottom-32 right-4 bg-gray-800 text-white rounded-full p-3 shadow-lg hover:bg-gray-700 z-30 min-h-[48px] min-w-[48px] md:min-h-[44px] md:min-w-[44px] flex items-center justify-center touch-manipulation"
+                    className="fixed bottom-24 md:bottom-32 right-4 md:right-6 bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-full p-3.5 shadow-xl hover:shadow-2xl hover:from-indigo-700 hover:to-purple-700 z-30 min-h-[48px] min-w-[48px] md:min-h-[48px] md:min-w-[48px] flex items-center justify-center touch-manipulation transition-all duration-200 hover:scale-110 active:scale-95"
+                    title="Ir al final"
                   >
                     <ArrowDown className="w-5 h-5 md:w-5 md:h-5" />
                   </motion.button>
@@ -1364,10 +1414,10 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
 
             {/* Input Area */}
             <motion.div
-              initial={{ y: 50, opacity: 0 }}
+              initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.3 }}
-              className="border-t border-gray-200 bg-white p-4 md:p-6 pb-6 md:pb-6"
+              className="border-t border-gray-200/60 bg-gradient-to-b from-white to-gray-50/20 backdrop-blur-sm p-4 md:p-5 lg:p-6 pb-5 md:pb-6 shadow-sm"
             >
               {formLayout}
             </motion.div>
