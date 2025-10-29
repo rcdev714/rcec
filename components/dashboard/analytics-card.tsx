@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import { AnimatedCounter } from '@/components/animated-counter';
 import { formatTokenCount } from '@/lib/token-counter';
 
@@ -69,16 +70,18 @@ export default function AnalyticsCard() {
   }), [monthlyCounts]);
 
   const renderBullet = (label: string, value: number, limit: number, isDollars = false, isTokens = false) => {
+    const progressValue = limit !== -1 ? Math.min((value / limit) * 100, 100) : 0;
+
     return (
       <div className="bg-white border border-gray-200 p-2 text-center">
         <div className="text-base text-gray-900 mb-1 border-b border-gray-300 pb-1">
           {isDollars ? (
-            <span className="font-semibold">
+            <span>
               ${value.toFixed(2)}
               {limit !== -1 ? ` / $${limit.toFixed(2)}` : ''}
             </span>
           ) : isTokens ? (
-            <span className="font-semibold">{formatTokenCount(value)}</span>
+            <span>{formatTokenCount(value)}</span>
           ) : (
             <>
               <AnimatedCounter targetNumber={value} />
@@ -87,6 +90,14 @@ export default function AnalyticsCard() {
           )}
         </div>
         <div className="text-xs text-gray-600 mb-1 uppercase">{label}</div>
+        {isDollars && limit !== -1 && (
+          <div className="mt-2">
+            <Progress
+              value={progressValue}
+              className="h-2 bg-indigo-100 [&>div]:bg-indigo-600"
+            />
+          </div>
+        )}
       </div>
     );
   };
@@ -100,9 +111,9 @@ export default function AnalyticsCard() {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          {renderBullet('Búsquedas', metrics.searches, limits.searches)}
+          {renderBullet('Búsquedas en Base de Datos', metrics.searches, limits.searches)}
           {renderBullet('Uso Agente', metrics.dollars, limits.dollars, true)}
-          {renderBullet('Tokens', metrics.tokens, -1, false, true)}
+          {renderBullet('Tokens Procesados', metrics.tokens, -1, false, true)}
         </div>
       </CardContent>
     </Card>

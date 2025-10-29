@@ -134,12 +134,7 @@ export default function OfferingsPage() {
 
       {offerings.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-gray-500 text-xs mb-4">No tienes servicios registrados aún.</p>
-          <Link href="/offerings/new" passHref>
-            <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-full shadow text-xs">
-              Crear tu primer servicio
-            </button>
-          </Link>
+          <p className="text-gray-500 text-xs">No tienes servicios registrados aún.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-6">
