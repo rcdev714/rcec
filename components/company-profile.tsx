@@ -3,14 +3,10 @@
 import { useState, useEffect } from "react";
 import { Company } from "@/types/company";
 import { CompanyProfileHeader } from "./company-profile-header";
-import { CompanyProfileTabs } from "./company-profile-tabs";
-import { CompanyCard } from "./company-card";
 import { CompanyFinancialTimeline } from "./company-financial-timeline";
-import { CompanyInfoSidebar } from "./company-info-sidebar";
 import dynamic from "next/dynamic";
-import { Building2 } from "lucide-react";
+import { Building2, DollarSign, TrendingUp, Users, Calendar, MapPin, Phone, Briefcase, Activity, BarChart3, FileText } from "lucide-react";
 import Link from "next/link";
-import { Calendar } from "lucide-react";
 
 // Client-side feature access function (avoiding server imports)
 function canAccessFeature(plan: 'FREE' | 'PRO' | 'ENTERPRISE', feature: string): boolean {
@@ -43,10 +39,11 @@ const CompanyHistoryCharts = dynamic(() => import("./company-history-charts"), {
 interface CompanyProfileProps {
   history: Company[];
   ruc: string;
+  returnUrl?: string;
 }
 
-export default function CompanyProfile({ history, ruc }: CompanyProfileProps) {
-  const [activeTab, setActiveTab] = useState('overview');
+export default function CompanyProfile({ history, ruc, returnUrl }: CompanyProfileProps) {
+  const [activeSection, setActiveSection] = useState<'metrics' | 'history' | 'analytics' | 'contacts'>('metrics');
   const [canAccessLinkedInFeature, setCanAccessLinkedInFeature] = useState(false);
 
   useEffect(() => {
@@ -71,11 +68,11 @@ export default function CompanyProfile({ history, ruc }: CompanyProfileProps) {
 
   if (!history || history.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50/50">
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="text-center py-12">
             <Building2 className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-            <h1 className="text-xl font-bold text-gray-900 mb-2">
+            <h1 className="text-xl font-normal text-gray-900 mb-2">
               No se encontraron datos
             </h1>
             <p className="text-sm text-gray-600 mb-8">
@@ -83,7 +80,7 @@ export default function CompanyProfile({ history, ruc }: CompanyProfileProps) {
             </p>
             <Link 
               href="/companies" 
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
             >
               ← Volver a empresas
             </Link>
@@ -95,239 +92,457 @@ export default function CompanyProfile({ history, ruc }: CompanyProfileProps) {
 
   // Get the most recent data for header and overview
   const latestCompany = [...history].sort((a, b) => (b.anio || 0) - (a.anio || 0))[0];
+  
+  // Calculate growth rates
+  const previousYear = history.find(c => c.anio === (latestCompany.anio! - 1));
+  const calculateGrowth = (current: number | null | undefined, previous: number | null | undefined) => {
+    if (!current || !previous || previous === 0) return null;
+    return ((current - previous) / previous) * 100;
+  };
 
-  const tabs = [
-    { id: 'overview', label: 'Resumen', count: undefined },
-    { id: 'history', label: 'Historia', count: history.length },
-    { id: 'charts', label: 'Análisis', count: undefined },
-    { id: 'contact', label: 'Contacto', count: undefined },
-  ];
+  const revenueGrowth = calculateGrowth(latestCompany.ingresos_ventas, previousYear?.ingresos_ventas);
+  const assetsGrowth = calculateGrowth(latestCompany.activos, previousYear?.activos);
+  const profitGrowth = calculateGrowth(latestCompany.utilidad_neta, previousYear?.utilidad_neta);
+
+  const formatCompactCurrency = (value: number | null | undefined) => {
+    if (!value && value !== 0) return '—';
+    const num = value;
+    if (num >= 1000000000) {
+      return `$${(num / 1000000000).toFixed(1)}B`;
+    }
+    if (num >= 1000000) {
+      return `$${(num / 1000000).toFixed(1)}M`;
+    }
+    if (num >= 1000) {
+      return `$${(num / 1000).toFixed(1)}K`;
+    }
+    return `$${num.toFixed(0)}`;
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50/30">
       {/* Profile Header */}
       <CompanyProfileHeader 
         company={latestCompany}
         ruc={ruc}
         totalYears={history.length}
         canAccessLinkedIn={canAccessLinkedInFeature}
+        returnUrl={returnUrl}
       />
 
-      {/* Tab Navigation */}
-      <CompanyProfileTabs 
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        tabs={tabs}
-      />
+      {/* Main Content - Dashboard Style */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Navigation Pills */}
+        <div className="flex gap-2 mb-8">
+          <button
+            onClick={() => setActiveSection('metrics')}
+            className={`px-4 py-2 rounded-lg text-xs font-normal uppercase tracking-wider transition-all ${
+              activeSection === 'metrics'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white/80 text-gray-600 hover:bg-white border border-gray-200/50'
+            }`}
+          >
+            Métricas
+          </button>
+          <button
+            onClick={() => setActiveSection('history')}
+            className={`px-4 py-2 rounded-lg text-xs font-normal uppercase tracking-wider transition-all ${
+              activeSection === 'history'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white/80 text-gray-600 hover:bg-white border border-gray-200/50'
+            }`}
+          >
+            Historia
+          </button>
+          <button
+            onClick={() => setActiveSection('analytics')}
+            className={`px-4 py-2 rounded-lg text-xs font-normal uppercase tracking-wider transition-all ${
+              activeSection === 'analytics'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white/80 text-gray-600 hover:bg-white border border-gray-200/50'
+            }`}
+          >
+            Análisis
+          </button>
+          <button
+            onClick={() => setActiveSection('contacts')}
+            className={`px-4 py-2 rounded-lg text-xs font-normal uppercase tracking-wider transition-all ${
+              activeSection === 'contacts'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white/80 text-gray-600 hover:bg-white border border-gray-200/50'
+            }`}
+          >
+            Contactos
+          </button>
+        </div>
 
-      {/* Main Content Area */}
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content - 2/3 width on desktop */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Overview Tab */}
-            {activeTab === 'overview' && (
-              <div className="space-y-6">
-                <CompanyCard company={latestCompany} variant="overview" />
-                
-                {/* Quick Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-white border border-gray-200 rounded-xl p-5">
-                    <h4 className="text-sm font-semibold text-gray-500 mb-3">
-                      Información General
-                    </h4>
-                    <div className="space-y-2 text-sm">
-                      {latestCompany.provincia && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Provincia:</span>
-                          <span className="font-medium text-gray-900">{latestCompany.provincia}</span>
-                        </div>
-                      )}
-                      {latestCompany.tipo_empresa && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Tipo:</span>
-                          <span className="font-medium text-gray-900">{latestCompany.tipo_empresa}</span>
-                        </div>
-                      )}
-                      {latestCompany.estado_empresa && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Estado:</span>
-                          <span className="font-medium text-gray-900">{latestCompany.estado_empresa}</span>
-                        </div>
-                      )}
-                      {latestCompany.anio && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Último año fiscal:</span>
-                          <span className="font-medium text-gray-900">{latestCompany.anio}</span>
-                        </div>
-                      )}
-                    </div>
+        {/* Metrics Dashboard */}
+        {activeSection === 'metrics' && (
+          <div className="space-y-6">
+            {/* Key Financial Metrics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Revenue Card */}
+              <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl p-6 shadow-lg shadow-gray-900/5 hover:shadow-xl transition-shadow">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="p-2 bg-gray-100/60 rounded-lg border border-gray-200/50">
+                    <DollarSign className="h-4 w-4 text-gray-400" />
                   </div>
+                  {revenueGrowth !== null && (
+                    <span className={`text-xs font-mono px-2 py-0.5 rounded ${
+                      revenueGrowth >= 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                    }`}>
+                      {revenueGrowth >= 0 ? '+' : ''}{revenueGrowth.toFixed(1)}%
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1 font-normal">Ingresos</p>
+                <p className="text-xl font-normal text-gray-900 font-mono mb-1">
+                  {formatCompactCurrency(latestCompany.ingresos_ventas)}
+                </p>
+                <p className="text-xs text-gray-400 font-mono">
+                  {latestCompany.ingresos_ventas?.toLocaleString() || '—'}
+                </p>
+              </div>
 
-                  <div className="bg-white border border-gray-200 rounded-xl p-5">
-                    <h4 className="text-sm font-semibold text-gray-500 mb-3">
-                      Ratios Financieros
-                    </h4>
-                    <div className="space-y-2 text-sm">
-                      {latestCompany.roe !== null && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">ROE:</span>
-                          <span className="font-medium text-gray-900">
-                            {latestCompany.roe?.toFixed(2)}%
-                          </span>
-                        </div>
-                      )}
-                      {latestCompany.roa !== null && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">ROA:</span>
-                          <span className="font-medium text-gray-900">
-                            {latestCompany.roa?.toFixed(2)}%
-                          </span>
-                        </div>
-                      )}
-                      {latestCompany.margen_operacional !== null && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Margen Operacional:</span>
-                          <span className="font-medium text-gray-900">
-                            {latestCompany.margen_operacional?.toFixed(2)}%
-                          </span>
-                        </div>
-                      )}
-                      {latestCompany.liquidez_corriente !== null && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Liquidez Corriente:</span>
-                          <span className="font-medium text-gray-900">
-                            {latestCompany.liquidez_corriente?.toFixed(2)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
+              {/* Assets Card */}
+              <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl p-6 shadow-lg shadow-gray-900/5 hover:shadow-xl transition-shadow">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="p-2 bg-gray-100/60 rounded-lg border border-gray-200/50">
+                    <Building2 className="h-4 w-4 text-gray-400" />
+                  </div>
+                  {assetsGrowth !== null && (
+                    <span className={`text-xs font-mono px-2 py-0.5 rounded ${
+                      assetsGrowth >= 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                    }`}>
+                      {assetsGrowth >= 0 ? '+' : ''}{assetsGrowth.toFixed(1)}%
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1 font-normal">Activos</p>
+                <p className="text-xl font-normal text-gray-900 font-mono mb-1">
+                  {formatCompactCurrency(latestCompany.activos)}
+                </p>
+                <p className="text-xs text-gray-400 font-mono">
+                  {latestCompany.activos?.toLocaleString() || '—'}
+                </p>
+              </div>
+
+              {/* Equity Card */}
+              <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl p-6 shadow-lg shadow-gray-900/5 hover:shadow-xl transition-shadow">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="p-2 bg-gray-100/60 rounded-lg border border-gray-200/50">
+                    <TrendingUp className="h-4 w-4 text-gray-400" />
                   </div>
                 </div>
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1 font-normal">Patrimonio</p>
+                <p className="text-xl font-normal text-gray-900 font-mono mb-1">
+                  {formatCompactCurrency(latestCompany.patrimonio)}
+                </p>
+                <p className="text-xs text-gray-400 font-mono">
+                  {latestCompany.patrimonio?.toLocaleString() || '—'}
+                </p>
               </div>
-            )}
 
-            {/* History Tab */}
-            {activeTab === 'history' && (
+              {/* Employees Card */}
+              <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl p-6 shadow-lg shadow-gray-900/5 hover:shadow-xl transition-shadow">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="p-2 bg-gray-100/60 rounded-lg border border-gray-200/50">
+                    <Users className="h-4 w-4 text-gray-400" />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1 font-normal">Empleados</p>
+                <p className="text-xl font-normal text-gray-900 font-mono mb-1">
+                  {latestCompany.n_empleados?.toLocaleString() || '—'}
+                </p>
+                <p className="text-xs text-gray-400 font-normal">Personal</p>
+              </div>
+            </div>
+
+            {/* Secondary Metrics Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Financial Ratios */}
+              <div className="lg:col-span-2 bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl p-6 shadow-lg shadow-gray-900/5">
+                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-6 flex items-center gap-2">
+                  <BarChart3 className="h-3.5 w-3.5 text-gray-400" />
+                  Ratios Financieros
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  {latestCompany.roe !== null && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-gray-500 font-normal uppercase tracking-wider">ROE</p>
+                      <p className="text-base font-normal text-gray-900 font-mono">
+                        {latestCompany.roe?.toFixed(2)}%
+                      </p>
+                    </div>
+                  )}
+                  {latestCompany.roa !== null && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-gray-500 font-normal uppercase tracking-wider">ROA</p>
+                      <p className="text-base font-normal text-gray-900 font-mono">
+                        {latestCompany.roa?.toFixed(2)}%
+                      </p>
+                    </div>
+                  )}
+                  {latestCompany.margen_operacional !== null && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-gray-500 font-normal uppercase tracking-wider">Margen Op.</p>
+                      <p className="text-base font-normal text-gray-900 font-mono">
+                        {latestCompany.margen_operacional?.toFixed(2)}%
+                      </p>
+                    </div>
+                  )}
+                  {latestCompany.liquidez_corriente !== null && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-gray-500 font-normal uppercase tracking-wider">Liquidez</p>
+                      <p className="text-base font-normal text-gray-900 font-mono">
+                        {latestCompany.liquidez_corriente?.toFixed(2)}
+                      </p>
+                    </div>
+                  )}
+                  {latestCompany.utilidad_neta !== null && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-gray-500 font-normal uppercase tracking-wider">Utilidad Neta</p>
+                      <p className="text-base font-normal text-gray-900 font-mono">
+                        {formatCompactCurrency(latestCompany.utilidad_neta)}
+                      </p>
+                    </div>
+                  )}
+                  {profitGrowth !== null && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-gray-500 font-normal uppercase tracking-wider">Crecimiento</p>
+                      <p className={`text-base font-normal font-mono ${
+                        profitGrowth >= 0 ? 'text-green-700' : 'text-red-700'
+                      }`}>
+                        {profitGrowth >= 0 ? '+' : ''}{profitGrowth.toFixed(1)}%
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Company Info */}
+              <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl p-6 shadow-lg shadow-gray-900/5">
+                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-6 flex items-center gap-2">
+                  <FileText className="h-3.5 w-3.5 text-gray-400" />
+                  Información
+                </h3>
+                <div className="space-y-4">
+                  {latestCompany.provincia && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-3.5 w-3.5 text-gray-400" />
+                      <div>
+                        <p className="text-xs text-gray-500 font-normal uppercase tracking-wider">Provincia</p>
+                        <p className="text-sm font-normal text-gray-900">{latestCompany.provincia}</p>
+                      </div>
+                    </div>
+                  )}
+                  {latestCompany.tipo_empresa && (
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-3.5 w-3.5 text-gray-400" />
+                      <div>
+                        <p className="text-xs text-gray-500 font-normal uppercase tracking-wider">Tipo</p>
+                        <p className="text-sm font-normal text-gray-900">{latestCompany.tipo_empresa}</p>
+                      </div>
+                    </div>
+                  )}
+                  {latestCompany.estado_empresa && (
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-3.5 w-3.5 text-gray-400" />
+                      <div>
+                        <p className="text-xs text-gray-500 font-normal uppercase tracking-wider">Estado</p>
+                        <p className="text-sm font-normal text-gray-900">{latestCompany.estado_empresa}</p>
+                      </div>
+                    </div>
+                  )}
+                  {latestCompany.anio && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                      <div>
+                        <p className="text-xs text-gray-500 font-normal uppercase tracking-wider">Año Fiscal</p>
+                        <p className="text-sm font-normal text-gray-900 font-mono">{latestCompany.anio}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Contact & Additional Info */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Contact Card */}
+              <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl p-6 shadow-lg shadow-gray-900/5">
+                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-6 flex items-center gap-2">
+                  <Phone className="h-3.5 w-3.5 text-gray-400" />
+                  Contacto
+                </h3>
+                <div className="space-y-4">
+                  {latestCompany.director_representante && (
+                    <div>
+                      <p className="text-xs text-gray-500 font-normal uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                        <Briefcase className="h-3 w-3" />
+                        Representante Legal
+                      </p>
+                      <p className="text-sm font-normal text-gray-900">
+                        {latestCompany.director_representante}
+                      </p>
+                    </div>
+                  )}
+                  {latestCompany.director_cargo && (
+                    <div>
+                      <p className="text-xs text-gray-500 font-normal uppercase tracking-wider mb-1">Cargo</p>
+                      <p className="text-sm font-normal text-gray-900">
+                        {latestCompany.director_cargo}
+                      </p>
+                    </div>
+                  )}
+                  {latestCompany.director_telefono && (
+                    <div>
+                      <p className="text-xs text-gray-500 font-normal uppercase tracking-wider mb-1">Teléfono</p>
+                      <a
+                        href={`tel:${latestCompany.director_telefono}`}
+                        className="text-sm font-normal text-gray-900 hover:text-gray-600 transition-colors font-mono"
+                      >
+                        {latestCompany.director_telefono}
+                      </a>
+                    </div>
+                  )}
+                  {!latestCompany.director_representante && 
+                   !latestCompany.director_cargo && 
+                   !latestCompany.director_telefono && (
+                    <p className="text-xs text-gray-500 font-normal">No hay información de contacto disponible</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Additional Details */}
+              {(latestCompany.actividad_principal || latestCompany.segmento_empresa) && (
+                <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl p-6 shadow-lg shadow-gray-900/5">
+                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-6 flex items-center gap-2">
+                    <Building2 className="h-3.5 w-3.5 text-gray-400" />
+                    Detalles
+                  </h3>
+                  <div className="space-y-4">
+                    {latestCompany.actividad_principal && (
+                      <div>
+                        <p className="text-xs text-gray-500 font-normal uppercase tracking-wider mb-1">Actividad Principal</p>
+                        <p className="text-sm text-gray-900 font-normal">
+                          {latestCompany.actividad_principal}
+                        </p>
+                      </div>
+                    )}
+                    {latestCompany.segmento_empresa && (
+                      <div>
+                        <p className="text-xs text-gray-500 font-normal uppercase tracking-wider mb-1">Segmento</p>
+                        <p className="text-sm text-gray-900 font-normal">
+                          {latestCompany.segmento_empresa}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* History Section */}
+        {activeSection === 'history' && (
+          <div className="space-y-6">
+            <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl p-6 shadow-lg shadow-gray-900/5">
+              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                Historia Financiera
+              </h3>
+              <p className="text-xs text-gray-400 font-normal">{history.length} años de datos registrados</p>
+            </div>
+            <CompanyFinancialTimeline history={history} />
+          </div>
+        )}
+
+        {/* Analytics Section */}
+        {activeSection === 'analytics' && (
+          <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl p-6 shadow-lg shadow-gray-900/5">
+            <CompanyHistoryCharts history={history} />
+          </div>
+        )}
+
+        {/* Contacts Section */}
+        {activeSection === 'contacts' && (
+          <div className="space-y-6">
+            {/* Contact Card */}
+            <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl p-6 shadow-lg shadow-gray-900/5">
+              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-6 flex items-center gap-2">
+                <Phone className="h-3.5 w-3.5 text-gray-400" />
+                Información de Contacto
+              </h3>
               <div className="space-y-4">
-                <div className="bg-white border border-gray-200 rounded-xl p-6">
-                  <h3 className="text-base font-medium text-gray-900 mb-1">
-                    Historia Financiera
-                  </h3>
-                  <div className="flex items-center gap-2 text-gray-500">
-                    <Calendar className="h-4 w-4" />
-                    <p className="text-sm font-medium">Año Fiscal</p>
-                  </div>
-                </div>
-                <CompanyFinancialTimeline history={history} />
-              </div>
-            )}
-
-            {/* Charts Tab */}
-            {activeTab === 'charts' && (
-              <div className="bg-white border border-gray-200 rounded-xl p-6">
-                <CompanyHistoryCharts history={history} />
-              </div>
-            )}
-
-            {/* Contact Tab */}
-            {activeTab === 'contact' && (
-              <div className="space-y-6">
-                <div className="bg-white border border-gray-200 rounded-xl p-6">
-                  <h3 className="text-base font-bold text-gray-900 mb-6">
-                    Información de Contacto
-                  </h3>
-                  
-                  <div className="space-y-6">
-                    {latestCompany.director_representante && (
-                      <div>
-                        <p className="text-sm font-medium text-gray-500 mb-2">
-                          Representante Legal
-                        </p>
-                        <p className="text-base font-semibold text-gray-900">
-                          {latestCompany.director_representante}
-                        </p>
-                      </div>
-                    )}
-
-                    {latestCompany.director_cargo && (
-                      <div>
-                        <p className="text-sm font-medium text-gray-500 mb-2">
-                          Cargo
-                        </p>
-                        <p className="text-base font-semibold text-gray-900">
-                          {latestCompany.director_cargo}
-                        </p>
-                      </div>
-                    )}
-
-                    {latestCompany.director_telefono && (
-                      <div>
-                        <p className="text-sm font-medium text-gray-500 mb-2">
-                          Teléfono de Contacto
-                        </p>
-                        <a
-                          href={`tel:${latestCompany.director_telefono}`}
-                          className="text-base font-semibold text-blue-600 hover:text-blue-700 transition-colors"
-                        >
-                          {latestCompany.director_telefono}
-                        </a>
-                      </div>
-                    )}
-
-                    {!latestCompany.director_representante && 
-                     !latestCompany.director_cargo && 
-                     !latestCompany.director_telefono && (
-                      <div className="text-center py-8">
-                        <p className="text-sm text-gray-500">
-                          No hay información de contacto disponible para esta empresa
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Additional Company Info */}
-                {(latestCompany.actividad_principal || latestCompany.segmento_empresa) && (
-                  <div className="bg-white border border-gray-200 rounded-xl p-6">
-                    <h3 className="text-base font-bold text-gray-900 mb-6">
-                      Detalles Adicionales
-                    </h3>
-                    
-                    <div className="space-y-4">
-                      {latestCompany.actividad_principal && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500 mb-2">
-                            Actividad Principal
-                          </p>
-                          <p className="text-sm text-gray-900">
-                            {latestCompany.actividad_principal}
-                          </p>
-                        </div>
-                      )}
-
-                      {latestCompany.segmento_empresa && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500 mb-2">
-                            Segmento Empresarial
-                          </p>
-                          <p className="text-sm text-gray-900">
-                            {latestCompany.segmento_empresa}
-                          </p>
-                        </div>
-                      )}
-                    </div>
+                {latestCompany.director_representante && (
+                  <div>
+                    <p className="text-xs text-gray-500 font-normal uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                      <Briefcase className="h-3 w-3" />
+                      Representante Legal
+                    </p>
+                    <p className="text-sm font-normal text-gray-900">
+                      {latestCompany.director_representante}
+                    </p>
                   </div>
                 )}
+                {latestCompany.director_cargo && (
+                  <div>
+                    <p className="text-xs text-gray-500 font-normal uppercase tracking-wider mb-1">Cargo</p>
+                    <p className="text-sm font-normal text-gray-900">
+                      {latestCompany.director_cargo}
+                    </p>
+                  </div>
+                )}
+                {latestCompany.director_telefono && (
+                  <div>
+                    <p className="text-xs text-gray-500 font-normal uppercase tracking-wider mb-1">Teléfono</p>
+                    <a
+                      href={`tel:${latestCompany.director_telefono}`}
+                      className="text-sm font-normal text-gray-900 hover:text-gray-600 transition-colors font-mono"
+                    >
+                      {latestCompany.director_telefono}
+                    </a>
+                  </div>
+                )}
+                {!latestCompany.director_representante &&
+                 !latestCompany.director_cargo &&
+                 !latestCompany.director_telefono && (
+                  <p className="text-xs text-gray-500 font-normal">No hay información de contacto disponible</p>
+                )}
+              </div>
+            </div>
+
+            {/* Additional Company Info */}
+            {(latestCompany.actividad_principal || latestCompany.segmento_empresa) && (
+              <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl p-6 shadow-lg shadow-gray-900/5">
+                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-6 flex items-center gap-2">
+                  <Building2 className="h-3.5 w-3.5 text-gray-400" />
+                  Detalles Adicionales
+                </h3>
+                <div className="space-y-4">
+                  {latestCompany.actividad_principal && (
+                    <div>
+                      <p className="text-xs text-gray-500 font-normal uppercase tracking-wider mb-1">Actividad Principal</p>
+                      <p className="text-sm text-gray-900 font-normal">
+                        {latestCompany.actividad_principal}
+                      </p>
+                    </div>
+                  )}
+                  {latestCompany.segmento_empresa && (
+                    <div>
+                      <p className="text-xs text-gray-500 font-normal uppercase tracking-wider mb-1">Segmento</p>
+                      <p className="text-sm text-gray-900 font-normal">
+                        {latestCompany.segmento_empresa}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
-
-          {/* Right Sidebar - 1/3 width on desktop */}
-          <div className="lg:col-span-1">
-            <CompanyInfoSidebar company={latestCompany} />
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

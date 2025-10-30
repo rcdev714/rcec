@@ -8,80 +8,81 @@ import { Button } from '@/components/ui/button'
 interface CompanyCardProps {
   company: Company
   variant?: 'grid' | 'overview'
+  returnUrl?: string
 }
 
-export function CompanyCard({ company, variant = 'grid' }: CompanyCardProps) {
+export function CompanyCard({ company, variant = 'grid', returnUrl }: CompanyCardProps) {
   // Overview variant for profile page
   if (variant === 'overview') {
     return (
-      <div className="bg-white border border-gray-200 rounded-xl p-6 text-gray-900">
-        <h3 className="text-base font-medium text-gray-900 mb-6">Resumen Financiero Actual</h3>
+      <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl p-6 shadow-lg shadow-gray-900/5 text-gray-900">
+        <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-6">Resumen Financiero Actual</h3>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-gray-500">
-              <DollarSign className="h-4 w-4" />
-              <p className="text-xs font-medium">Ingresos Ventas</p>
+              <DollarSign className="h-3.5 w-3.5 text-gray-400" />
+              <p className="text-xs font-normal uppercase tracking-wider">Ingresos Ventas</p>
             </div>
-            <p className="text-lg font-normal text-gray-900">
+            <p className="text-base font-normal text-gray-900 font-mono">
               ${company.ingresos_ventas?.toLocaleString() || 'N/A'}
             </p>
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-gray-500">
-              <Building2 className="h-4 w-4" />
-              <p className="text-xs font-medium">Activos</p>
+              <Building2 className="h-3.5 w-3.5 text-gray-400" />
+              <p className="text-xs font-normal uppercase tracking-wider">Activos</p>
             </div>
-            <p className="text-lg font-normal text-gray-900">
+            <p className="text-base font-normal text-gray-900 font-mono">
               ${company.activos?.toLocaleString() || 'N/A'}
             </p>
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-gray-500">
-              <TrendingUp className="h-4 w-4" />
-              <p className="text-xs font-medium">Patrimonio</p>
+              <TrendingUp className="h-3.5 w-3.5 text-gray-400" />
+              <p className="text-xs font-normal uppercase tracking-wider">Patrimonio</p>
             </div>
-            <p className="text-lg font-normal text-gray-900">
+            <p className="text-base font-normal text-gray-900 font-mono">
               ${company.patrimonio?.toLocaleString() || 'N/A'}
             </p>
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-gray-500">
-              <Users className="h-4 w-4" />
-              <p className="text-xs font-medium">Empleados</p>
+              <Users className="h-3.5 w-3.5 text-gray-400" />
+              <p className="text-xs font-normal uppercase tracking-wider">Empleados</p>
             </div>
-            <p className="text-lg font-normal text-gray-900">
+            <p className="text-base font-normal text-gray-900 font-mono">
               {company.n_empleados?.toLocaleString() || 'N/A'}
             </p>
           </div>
         </div>
 
-        <div className="mt-6 pt-6 border-t border-gray-100">
+        <div className="mt-6 pt-6 border-t border-gray-100/50">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="space-y-1">
-              <p className="text-xs text-gray-500">Utilidad Neta</p>
-              <p className="text-sm font-normal text-gray-900">
+              <p className="text-xs text-gray-500 font-normal uppercase tracking-wider">Utilidad Neta</p>
+              <p className="text-sm font-normal text-gray-900 font-mono">
                 ${company.utilidad_neta?.toLocaleString() || 'N/A'}
               </p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-gray-500">Total Gastos</p>
-              <p className="text-sm font-normal text-gray-900">
+              <p className="text-xs text-gray-500 font-normal uppercase tracking-wider">Total Gastos</p>
+              <p className="text-sm font-normal text-gray-900 font-mono">
                 ${company.total_gastos?.toLocaleString() || 'N/A'}
               </p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-gray-500">Impuesto Renta</p>
-              <p className="text-sm font-normal text-gray-900">
+              <p className="text-xs text-gray-500 font-normal uppercase tracking-wider">Impuesto Renta</p>
+              <p className="text-sm font-normal text-gray-900 font-mono">
                 ${company.impuesto_renta?.toLocaleString() || 'N/A'}
               </p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-gray-500">Gastos Financieros</p>
-              <p className="text-sm font-normal text-gray-900">
+              <p className="text-xs text-gray-500 font-normal uppercase tracking-wider">Gastos Financieros</p>
+              <p className="text-sm font-normal text-gray-900 font-mono">
                 ${company.gastos_financieros?.toLocaleString() || 'N/A'}
               </p>
             </div>
@@ -154,7 +155,12 @@ export function CompanyCard({ company, variant = 'grid' }: CompanyCardProps) {
         <div className="flex justify-end items-center text-xs text-gray-500">
           <span>{company.anio}</span>
         </div>
-        <Link href={`/companies/${company.ruc}`} className="w-full flex justify-center">
+        <Link 
+          href={returnUrl 
+            ? `/companies/${company.ruc}?returnUrl=${encodeURIComponent(returnUrl)}` 
+            : `/companies/${company.ruc}`} 
+          className="w-full flex justify-center"
+        >
           <Button variant="outline" className="text-indigo-600 border-indigo-600 hover:bg-indigo-50 px-4 h-9">
             Ver perfil
           </Button>

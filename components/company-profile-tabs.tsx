@@ -16,7 +16,7 @@ interface CompanyProfileTabsProps {
 
 export function CompanyProfileTabs({ activeTab, onTabChange, tabs }: CompanyProfileTabsProps) {
   return (
-    <div className="border-b border-gray-200 bg-white sticky top-0 z-20">
+    <div className="border-b border-gray-200/50 bg-white/80 backdrop-blur-sm sticky top-0 z-20 shadow-sm shadow-gray-900/5">
       <div className="max-w-6xl mx-auto px-6">
         <nav className="flex gap-8" aria-label="Tabs">
           {tabs.map((tab) => (
@@ -24,21 +24,21 @@ export function CompanyProfileTabs({ activeTab, onTabChange, tabs }: CompanyProf
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
               className={cn(
-                "relative py-4 px-1 font-medium text-sm transition-colors",
+                "relative py-4 px-1 font-normal text-xs transition-colors uppercase tracking-wider",
                 "hover:text-gray-900",
                 "focus:outline-none focus:text-gray-900",
                 activeTab === tab.id
                   ? "text-gray-900"
-                  : "text-gray-600"
+                  : "text-gray-500"
               )}
             >
               <span className="flex items-center gap-2">
                 {tab.label}
                 {tab.count !== undefined && (
                   <span className={cn(
-                    "px-2 py-0.5 rounded-full text-xs font-medium",
+                    "px-2 py-0.5 rounded-md text-[10px] font-normal",
                     activeTab === tab.id
-                      ? "bg-indigo-100 text-indigo-700"
+                      ? "bg-gray-900 text-white"
                       : "bg-gray-100 text-gray-600"
                   )}>
                     {tab.count}
@@ -46,9 +46,9 @@ export function CompanyProfileTabs({ activeTab, onTabChange, tabs }: CompanyProf
                 )}
               </span>
               
-              {/* Active indicator - like Twitter/Instagram */}
+              {/* Active indicator */}
               {activeTab === tab.id && (
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-600 rounded-t-full" />
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900" />
               )}
             </button>
           ))}

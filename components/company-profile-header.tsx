@@ -17,9 +17,10 @@ interface CompanyProfileHeaderProps {
   ruc: string;
   totalYears: number;
   canAccessLinkedIn: boolean;
+  returnUrl?: string;
 }
 
-export function CompanyProfileHeader({ company, ruc, totalYears, canAccessLinkedIn }: CompanyProfileHeaderProps) {
+export function CompanyProfileHeader({ company, ruc, totalYears, canAccessLinkedIn, returnUrl }: CompanyProfileHeaderProps) {
   const [showLinkedInModal, setShowLinkedInModal] = useState(false);
   
   const getInitials = (name: string) => {
@@ -36,6 +37,13 @@ export function CompanyProfileHeader({ company, ruc, totalYears, canAccessLinked
 
   const router = useRouter();
   const handleBack = () => {
+    // If returnUrl is provided, use it to preserve filters and sorting
+    if (returnUrl) {
+      router.push(returnUrl);
+      return;
+    }
+    
+    // Fallback: try to use browser history if referrer is from companies page
     try {
       const ref = document.referrer;
       if (ref) {
@@ -46,25 +54,26 @@ export function CompanyProfileHeader({ company, ruc, totalYears, canAccessLinked
         }
       }
     } catch {}
+    
+    // Final fallback: go to companies page without filters
     router.push('/companies');
   };
 
   return (
-    <div className="bg-white border-b border-gray-200">
+    <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50">
       {/* Cover Banner */}
-      <div className="relative h-48 bg-gradient-to-r from-indigo-600 to-indigo-200">
-        <div className="absolute inset-0 bg-black/10"></div>
+      <div className="relative h-32 bg-gradient-to-r from-gray-50 via-gray-50/50 to-gray-50">
+        <div className="absolute inset-0 bg-black/5"></div>
         
         {/* Back Button */}
-        <div className="absolute top-4 left-4 z-10 px-4">
+        <div className="absolute top-4 left-4 z-10">
           <Button 
             variant="outline" 
             size="sm"
             onClick={handleBack}
-            className="bg-white/95 hover:bg-white backdrop-blur-sm border-white/20 shadow-lg"
+            className="bg-white/90 hover:bg-white backdrop-blur-sm border-gray-300/50 shadow-sm hover:shadow-md transition-all"
           >
-            <ArrowLeft className="h-4 w-4" />
-            
+            <ArrowLeft className="h-3.5 w-3.5" />
           </Button>
         </div>
 
@@ -79,9 +88,9 @@ export function CompanyProfileHeader({ company, ruc, totalYears, canAccessLinked
               >
                 <Button 
                   size="sm"
-                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+                  className="bg-gray-900 hover:bg-gray-800 text-white shadow-sm hover:shadow-md transition-all text-xs"
                 >
-                  <LinkedinIcon className="h-4 w-4 mr-2" />
+                  <LinkedinIcon className="h-3.5 w-3.5 mr-1.5" />
                   LinkedIn
                 </Button>
               </a>
@@ -89,10 +98,10 @@ export function CompanyProfileHeader({ company, ruc, totalYears, canAccessLinked
               <Button 
                 size="sm"
                 onClick={() => setShowLinkedInModal(true)}
-                className="bg-gray-400 hover:bg-gray-500 text-white shadow-lg"
+                className="bg-gray-100 hover:bg-gray-200 text-gray-600 shadow-sm hover:shadow-md transition-all text-xs border border-gray-200"
               >
-                <Lock className="h-4 w-4 mr-2" />
-                <LinkedinIcon className="h-4 w-4 mr-1" />
+                <Lock className="h-3.5 w-3.5 mr-1.5" />
+                <LinkedinIcon className="h-3.5 w-3.5 mr-1" />
                 LinkedIn
               </Button>
             )
@@ -104,80 +113,80 @@ export function CompanyProfileHeader({ company, ruc, totalYears, canAccessLinked
       <div className="max-w-6xl mx-auto px-6">
         <div className="relative">
           {/* Avatar */}
-          <div className="absolute -top-16 left-0">
-            <div className="w-32 h-32 rounded-full bg-white border-2 border-white shadow-xl flex items-center justify-center">
-              <div className="w-28 h-28 rounded-full bg-indigo-600 flex items-center justify-center">
-                <span className="text-3xl font-medium text-white">{initials}</span>
+          <div className="absolute -top-12 left-0">
+            <div className="w-20 h-20 rounded-xl bg-white border-2 border-white shadow-lg flex items-center justify-center">
+              <div className="w-16 h-16 rounded-xl bg-white border border-gray-300 flex items-center justify-center">
+                <span className="text-xl font-normal text-gray-700">{initials}</span>
               </div>
             </div>
           </div>
 
           {/* Company Name and Details */}
-          <div className="pt-20 pb-6">
+          <div className="pt-12 pb-6">
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 {/* Company Name */}
-                <h1 className="text-xl font-medium text-gray-900 mb-2">
+                <h1 className="text-lg font-normal text-gray-900 mb-1">
                   {companyName}
                 </h1>
                 
-                {/* RUC - Like Twitter handle */}
-                <p className="text-sm text-gray-600 font-medium mb-3">
+                {/* RUC */}
+                <p className="text-xs text-gray-500 font-mono mb-4">
                   @{ruc}
                 </p>
 
                 {/* Additional Info Badges */}
-                <div className="flex flex-wrap gap-3 mb-4">
+                <div className="flex flex-wrap gap-2 mb-4">
                   {company.provincia && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full text-sm text-gray-700">
-                      <MapPin className="h-4 w-4" />
-                      <span>{company.provincia}</span>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100/60 rounded-md text-xs text-gray-700 border border-gray-200/50">
+                      <MapPin className="h-3 w-3 text-gray-400" />
+                      <span className="font-normal">{company.provincia}</span>
                     </div>
                   )}
                   {company.tipo_empresa && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 rounded-full text-sm text-blue-700">
-                      <Building2 className="h-4 w-4" />
-                      <span>{company.tipo_empresa}</span>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100/60 rounded-md text-xs text-gray-700 border border-gray-200/50">
+                      <Building2 className="h-3 w-3 text-gray-400" />
+                      <span className="font-normal">{company.tipo_empresa}</span>
                     </div>
                   )}
                   {company.estado_empresa && (
-                    <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm ${
+                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs border ${
                       company.estado_empresa.toLowerCase().includes('activ') 
-                        ? 'bg-green-50 text-green-700' 
-                        : 'bg-gray-50 text-gray-700'
+                        ? 'bg-gray-100/60 text-gray-700 border-gray-200/50' 
+                        : 'bg-gray-100/60 text-gray-700 border-gray-200/50'
                     }`}>
-                      <div className={`h-2 w-2 rounded-full ${
+                      <div className={`h-1.5 w-1.5 rounded-full ${
                         company.estado_empresa.toLowerCase().includes('activ') 
-                          ? 'bg-green-500' 
-                          : 'bg-gray-500'
+                          ? 'bg-gray-600' 
+                          : 'bg-gray-400'
                       }`}></div>
-                      <span>{company.estado_empresa}</span>
+                      <span className="font-normal">{company.estado_empresa}</span>
                     </div>
                   )}
                 </div>
 
-                {/* Stats Bar - Like follower count */}
-                <div className="flex gap-6 text-sm">
+                {/* Stats Bar */}
+                <div className="flex gap-6 text-xs">
                   <div className="flex items-center gap-1.5">
-                    <Calendar className="h-4 w-4 text-gray-500" />
-                    <span className="font-medium text-gray-900">{totalYears}</span>
-                    <span className="text-gray-600">
+                    <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="font-normal text-gray-900">{totalYears}</span>
+                    <span className="text-gray-500 font-normal">
                       {totalYears === 1 ? 'año registrado' : 'años de historia'}
                     </span>
                   </div>
                   {company.n_empleados && (
                     <div className="flex items-center gap-1.5">
-                      <Users className="h-4 w-4 text-gray-500" />
-                      <span className="font-medium text-gray-900">
+                      <Users className="h-3.5 w-3.5 text-gray-400" />
+                      <span className="font-normal text-gray-900">
                         {company.n_empleados.toLocaleString()}
                       </span>
-                      <span className="text-gray-600">empleados</span>
+                      <span className="text-gray-500 font-normal">empleados</span>
                     </div>
                   )}
                   {company.fecha_constitucion && (
                     <div className="flex items-center gap-1.5">
-                      <Building2 className="h-4 w-4 text-gray-500" />
-                      <span className="text-gray-600">
+                      <Building2 className="h-3.5 w-3.5 text-gray-400" />
+                      <span className="text-gray-500 font-normal">
                         Fundada {new Date(company.fecha_constitucion).getFullYear()}
                       </span>
                     </div>
@@ -203,7 +212,7 @@ export function CompanyProfileHeader({ company, ruc, totalYears, canAccessLinked
           </p>
           <div className="space-y-4 py-4">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="text-sm font-semibold text-blue-900 mb-2">
+                  <h4 className="text-xs font-medium text-gray-700 mb-2 uppercase tracking-wider">
                 ¿Qué obtienes con Pro?
               </h4>
               <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">

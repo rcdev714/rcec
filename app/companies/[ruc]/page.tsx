@@ -6,10 +6,12 @@ import CompanyProfile from "@/components/company-profile";  // Company Profile C
 
 interface CompanyDetailProps {
   params: Promise<{ ruc: string }>;
+  searchParams: Promise<{ returnUrl?: string }>;
 }
 
-export default async function CompanyDetail({ params }: CompanyDetailProps) {
+export default async function CompanyDetail({ params, searchParams }: CompanyDetailProps) {
   const { ruc } = await params;
+  const { returnUrl } = await searchParams;
 
   // Auth check (similar to companies/page.tsx)
   const supabase = await createClient();
@@ -26,8 +28,8 @@ export default async function CompanyDetail({ params }: CompanyDetailProps) {
     );
   }
 
-  // Pass history to the Client Component
-  return <CompanyProfile history={history} ruc={ruc} />;
+  // Pass history and returnUrl to the Client Component
+  return <CompanyProfile history={history} ruc={ruc} returnUrl={returnUrl} />;
 }
 
 export const dynamic = "force-dynamic"; 

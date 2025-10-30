@@ -197,7 +197,7 @@ export default function HomeContent() {
             </div>
             <h1 className="text-[30px] sm:text-[44px] md:text-[64px] lg:text-[80px] leading-[1.05] tracking-tight text-gray-900 mb-4 sm:mb-6">
               <span className="block text-base sm:text-lg md:text-xl lg:text-2xl font-sans font-medium text-gray-600 mb-1 sm:mb-2">Conoce a tu nuevo:</span>
-              <span className="block">Agente de Ventas</span>
+              <span className="block">Agente Empresarial</span>
             </h1>
             <p className="text-base sm:text-lg md:text-xl text-gray-700 max-w-2xl mx-auto leading-relaxed font-medium px-2 text-center">
               Tu agente inteligente para encontrar y analizar oportunidades de negocios reales y aumentar tus ventas.
