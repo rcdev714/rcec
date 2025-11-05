@@ -43,7 +43,6 @@ next-env.d.ts
 .vscode
 .env.local
 .env.example
-company-data
 scripts-data
 scripts-sql
 
@@ -68,3 +67,4 @@ dev.log
 .env.local.backup
 
 /test-payments-local-config
+ecuador

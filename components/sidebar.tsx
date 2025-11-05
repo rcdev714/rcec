@@ -17,11 +17,43 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import UserAvatar from "./user-avatar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Badge } from "@/components/ui/badge";
+import { SubscriptionStatus as SubscriptionStatusType } from '@/types/subscription';
 
 const Sidebar = () => {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatusType | null>(null);
+
+  useEffect(() => {
+    async function fetchSubscription() {
+      try {
+        const response = await fetch('/api/subscriptions/status');
+        if (response.ok) {
+          const data = await response.json();
+          setSubscriptionStatus(data.status);
+        }
+      } catch (error) {
+        console.error('Error fetching subscription:', error);
+      }
+    }
+
+    fetchSubscription();
+  }, []);
+
+  const translatePlan = (plan: string) => {
+    switch (plan) {
+      case 'FREE':
+        return 'Gratis';
+      case 'PRO':
+        return 'Pro';
+      case 'ENTERPRISE':
+        return 'Empresarial';
+      default:
+        return null;
+    }
+  };
 
   const navItems = [
     { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -44,15 +76,16 @@ const Sidebar = () => {
       aria-label="Main navigation"
     >
       <div className="flex items-center justify-center h-16 relative">
-        <div className={cn("flex items-center gap-2")}>
-          <Image src="/logo.svg" alt="Camella Logo" width={28} height={28} />
-          <Image
-            src="/camella-logo.svg"
-            alt="Camella Logo text"
-            width={75}
-            height={28}
-            className={cn("hidden", !isCollapsed && "md:block")}
-          />
+        <div className="flex items-center gap-2">
+          <Image src="/logo.svg" alt="Camella Logo" width={32} height={32} />
+          {!isCollapsed && subscriptionStatus && translatePlan(subscriptionStatus.plan) && (
+            <Badge
+              variant="secondary"
+              className="text-xs px-1 py-0 h-4"
+            >
+              {translatePlan(subscriptionStatus.plan)}
+            </Badge>
+          )}
         </div>
         <button
           onClick={toggleSidebar}

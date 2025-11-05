@@ -36,14 +36,6 @@ interface PaginatedResponse {
   totalCount: number;
 }
 
-interface FinancialYearData {
-  anio: number;
-  ingresos_ventas_netas: number;
-  utilidad_integral_neta: number;
-  impuesto_renta: number;
-  utilidad_antes_impuestos: number;
-}
-
 const ITEMS_PER_PAGE = 12;
 
 /**
@@ -55,8 +47,9 @@ export async function fetchTotalCompanyCount(): Promise<number> {
   const supabase = await createClient();
 
   const { count, error } = await supabase
-    .from("latest_companies")
-    .select("*", { count: "estimated", head: true });
+    .from("companies")
+    .select("*", { count: "estimated", head: true })
+    .in("anio", [2024, 2023, 2022]); // Count only recent years
 
   if (error) {
     console.error("Error fetching total company count:", error);
@@ -81,12 +74,12 @@ export async function fetchCompanies(params: SearchParams & { exportAll?: boolea
   const pageSize = params.pageSize || ITEMS_PER_PAGE;
   const offset = (currentPage - 1) * pageSize;
 
-  // Start building the query to the "latest_companies" view.
-  // We select all columns and request the total count for
-  // pagination.
+  // Query companies table filtered by latest year (2024/2023)
+  // This is fast with indexed year column
   let query = supabase
-    .from("latest_companies_with_directors")
-    .select("*", { count: "estimated" });
+    .from("companies")
+    .select("*", { count: "estimated" })
+    .in("anio", [2024, 2023, 2022]); // Get latest 3 years, user can filter by anio if needed
 
   // Apply filters based on search parameters.
   // These map directly to the user's input in the filter
@@ -210,52 +203,82 @@ export async function fetchCompanyHistory(ruc: string): Promise<Company[]> {
 
   console.log("Searching for RUC:", ruc);
 
-  // First, get the company basic info from latest_companies
-  const { data: companyData, error: companyError } = await supabase
+  // Attempt to fetch the latest company snapshot including director info
+  const { data: companyWithDirectors, error: directorsViewError } = await supabase
     .from("latest_companies_with_directors")
     .select("*")
     .eq("ruc", ruc)
     .single();
 
-  if (companyError || !companyData) {
-    console.error("Company not found:", companyError);
-    return [];
+  let baseCompany = companyWithDirectors as Company | null;
+
+  if (directorsViewError || !companyWithDirectors) {
+    console.warn("latest_companies_with_directors view lookup failed, falling back:", directorsViewError);
+
+    const { data: fallbackCompany, error: fallbackError } = await supabase
+      .from("latest_companies_by_year")
+      .select("*")
+      .eq("ruc", ruc)
+      .single();
+
+    if (fallbackError || !fallbackCompany) {
+      console.error("Company not found in fallback view:", fallbackError);
+      return [];
+    }
+
+    baseCompany = fallbackCompany as Company;
   }
 
-  console.log("Found company:", companyData);
+  if (baseCompany && !baseCompany.director_nombre && !baseCompany.director_representante && !baseCompany.director_telefono && !baseCompany.director_cargo) {
+    const { data: directorData, error: directorError } = await supabase
+      .from("directors")
+      .select("nombre, telefono, representante, cargo")
+      .eq("ruc", ruc)
+      .order("id", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  // Now get historical financial data from estado_de_resultados table
-  const { data: financialData, error: financialError } = await supabase
-    .from("estado_de_resultados")
+    if (!directorError && directorData) {
+      baseCompany = {
+        ...baseCompany,
+        director_nombre: directorData.nombre ?? baseCompany.director_nombre ?? null,
+        director_telefono: directorData.telefono ?? baseCompany.director_telefono ?? null,
+        director_representante: directorData.representante ?? baseCompany.director_representante ?? null,
+        director_cargo: directorData.cargo ?? baseCompany.director_cargo ?? null,
+      };
+    } else if (directorError) {
+      console.warn("Director lookup failed:", directorError);
+    }
+  }
+
+  console.log("Found company snapshot:", baseCompany);
+
+  // Get all historical years for this company from companies table
+  const { data: allYears, error: historyError } = await supabase
+    .from("companies")
     .select("*")
-    .eq("company_id", companyData.id)
+    .eq("ruc", ruc)
     .order("anio", { ascending: false });
 
-  if (financialError) {
-    console.error("Error fetching financial history:", financialError);
-    // Fallback to just the company data if financial data fails
-    return [companyData as Company];
+  if (historyError) {
+    console.error("Error fetching company history:", historyError);
+    return baseCompany ? [baseCompany] : [];
   }
 
-  console.log("Found financial data:", financialData);
+  console.log("Found company history:", allYears);
 
-  // If no financial history found, return just the company data
-  if (!financialData || financialData.length === 0) {
-    console.log("No financial history found, returning company data only");
-    return [companyData as Company];
+  if (!allYears || allYears.length === 0) {
+    console.log("No historical data found, returning latest snapshot only");
+    return baseCompany ? [baseCompany] : [];
   }
 
-  // Combine company data with each year's financial data
-  const combinedHistory = financialData.map((yearData: FinancialYearData) => ({
-    ...companyData,
-    anio: yearData.anio,
-    ingresos_ventas: yearData.ingresos_ventas_netas,
-    utilidad_neta: yearData.utilidad_integral_neta,
-    impuesto_renta: yearData.impuesto_renta,
-    utilidad_an_imp: yearData.utilidad_antes_impuestos,
-    // Keep other company fields from latest_companies
+  const enrichedHistory = allYears.map((yearData) => ({
+    ...yearData,
+    director_nombre: baseCompany?.director_nombre ?? null,
+    director_telefono: baseCompany?.director_telefono ?? null,
+    director_representante: baseCompany?.director_representante ?? null,
+    director_cargo: baseCompany?.director_cargo ?? null,
   }));
 
-  console.log("Combined history:", combinedHistory);
-  return combinedHistory as Company[];
+  return enrichedHistory as Company[];
 }
