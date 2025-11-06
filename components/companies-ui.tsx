@@ -1,11 +1,12 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Company } from '@/types/company';
 import { CompanyFilter } from '@/components/company-filter';
 import { PaginationControls } from '@/components/pagination-controls';
 import Link from 'next/link';
-import { Building2, MapPin, DollarSign, TrendingUp, Users } from 'lucide-react';
+import { Building2, MapPin, DollarSign, TrendingUp, Users, Loader2 } from 'lucide-react';
 
 interface CompaniesUIProps {
   companies: Company[];
@@ -17,20 +18,41 @@ interface CompaniesUIProps {
 export function CompaniesUI({ companies, totalCount, page, totalPages }: CompaniesUIProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isFetching, setIsFetching] = useState(false);
 
   // When filters are applied, this function updates the URL search parameters.
   // This triggers a server-side re-render with the new filtered data.
   const handleFiltersChange = (newFilters: { [key: string]: string | string[] | undefined }) => {
     const params = new URLSearchParams();
     Object.entries(newFilters).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        value
+          .map((entry) => (typeof entry === 'string' ? entry.trim() : entry))
+          .filter((entry) => Boolean(entry && entry.length))
+          .forEach((entry) => {
+            params.append(key, entry as string);
+          });
+        return;
+      }
+
       if (value && typeof value === 'string') {
-        params.set(key, value);
+        const trimmed = value.trim();
+        if (trimmed.length) {
+          params.set(key, trimmed);
+        }
       }
     });
     // Reset to the first page whenever filters change.
     params.set('page', '1');
+    setIsFetching(true);
     router.push(`/companies?${params.toString()}`, { scroll: false });
   };
+
+  useEffect(() => {
+    if (isFetching) {
+      setIsFetching(false);
+    }
+  }, [companies, totalCount, page, isFetching]);
 
   // Initialize filters state from the current URL search parameters.
   const initialFilters = {
@@ -104,7 +126,7 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
       </div>
 
       {/* Main content area */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 relative">
         {companies.length > 0 ? (
           <div className="space-y-4">
             {/* Results summary */}
@@ -243,6 +265,7 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
                 <PaginationControls
                   currentPage={page}
                   totalPages={totalPages}
+                  onNavigateStart={() => setIsFetching(true)}
                 />
               </div>
             )}
@@ -260,6 +283,12 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
                 Prueba ajustando los filtros para obtener más resultados.
               </p>
             </div>
+          </div>
+        )}
+        {isFetching && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 backdrop-blur-sm rounded-xl border border-gray-200/60 pointer-events-none">
+            <Loader2 className="h-6 w-6 text-indigo-500 animate-spin" />
+            <p className="mt-2 text-xs text-gray-600">Cargando resultados...</p>
           </div>
         )}
       </div>

@@ -2,8 +2,8 @@ import pandas as pd
 from supabase import create_client
 from tqdm import tqdm
 
-SUPABASE_URL = "https://nyhheibhlbvesqjvjupz.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55aGhlaWJobGJ2ZXNxanZqdXB6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTU4MTgxMiwiZXhwIjoyMDY3MTU3ODEyfQ.txQK0zzYhIkqvUqG1WPZNd6Nn3Y9T0QOL8vBLX4dY6c"
+SUPABASE_URL = ""
+SUPABASE_KEY = ""
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 

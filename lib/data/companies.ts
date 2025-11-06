@@ -1,6 +1,24 @@
 import { createClient } from "@/lib/supabase/server";
 import { Company } from "@/types/company";
 
+const sanitizeTextParam = (value?: string | null) => {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : undefined;
+};
+
+const escapeForILike = (value: string) =>
+  value.replace(/[%_]/g, (char) => `\\${char}`);
+
+const buildContainsPattern = (value: string) =>
+  `%${escapeForILike(value)}%`;
+
+const buildPrefixPattern = (value: string) =>
+  `${escapeForILike(value)}%`;
+
+const SORTABLE_FIELDS = ['ingresos_ventas', 'n_empleados', 'utilidad_neta', 'activos', 'anio'] as const;
+type SortableField = (typeof SORTABLE_FIELDS)[number];
+
 // Define the structure of the search parameters for clarity and type safety.
 interface SearchParams {
   page?: string;
@@ -49,7 +67,7 @@ export async function fetchTotalCompanyCount(): Promise<number> {
   const { count, error } = await supabase
     .from("companies")
     .select("*", { count: "estimated", head: true })
-    .in("anio", [2024, 2023, 2022]); // Count only recent years
+    .in("anio", [2024, 2023, 2022, 2021, 2020]); // Count only the most recent 5 fiscal years
 
   if (error) {
     console.error("Error fetching total company count:", error);
@@ -79,7 +97,7 @@ export async function fetchCompanies(params: SearchParams & { exportAll?: boolea
   let query = supabase
     .from("companies")
     .select("*", { count: "estimated" })
-    .in("anio", [2024, 2023, 2022]); // Get latest 3 years, user can filter by anio if needed
+    .in("anio", [2024, 2023, 2022, 2021, 2020]); // Default to the most recent 5 fiscal years; user can filter by anio if needed
 
   // Apply filters based on search parameters.
   // These map directly to the user's input in the filter
@@ -87,22 +105,33 @@ export async function fetchCompanies(params: SearchParams & { exportAll?: boolea
 
   // Text-based filters using 'ilike' for case-insensitive
   // partial matches.
-  if (params.ruc) {
-    query = query.ilike("ruc", `%${params.ruc}%`);
+  const ruc = sanitizeTextParam(params.ruc);
+  if (ruc) {
+    query = query.ilike("ruc", buildContainsPattern(ruc));
   }
-  if (params.nombre) {
-    query = query.ilike("nombre", `%${params.nombre}%`);
+
+  const nombre = sanitizeTextParam(params.nombre);
+  if (nombre) {
+    query = query.ilike("nombre", buildContainsPattern(nombre));
   }
-  if (params.nombreComercial) {
-    query = query.ilike("nombre_comercial", `%${params.nombreComercial}%`);
+
+  const nombreComercial = sanitizeTextParam(params.nombreComercial);
+  if (nombreComercial) {
+    query = query.ilike("nombre_comercial", buildContainsPattern(nombreComercial));
   }
 
   // Exact match filters.
-  if (params.provincia) {
-    query = query.eq("provincia", params.provincia.toUpperCase());
+  const provincia = sanitizeTextParam(params.provincia)?.toUpperCase();
+  if (provincia) {
+    query = query.ilike("provincia", buildPrefixPattern(provincia));
   }
-  if (params.anio) {
-    query = query.eq("anio", parseInt(params.anio, 10));
+
+  const anio = sanitizeTextParam(params.anio);
+  if (anio) {
+    const parsedAnio = parseInt(anio, 10);
+    if (!Number.isNaN(parsedAnio)) {
+      query = query.eq("anio", parsedAnio);
+    }
   }
 
   // Range filters for numeric values (e.g., min/max number
@@ -151,20 +180,24 @@ export async function fetchCompanies(params: SearchParams & { exportAll?: boolea
   }
 
   // Gating flags: exclude rows missing key fields when requested
-  if (params.requireIngresos === 'true') {
+  const requireIngresos = sanitizeTextParam(params.requireIngresos);
+  if (requireIngresos === 'true') {
     query = query.not('ingresos_ventas', 'is', null);
   }
-  if (params.requireEmpleados === 'true') {
+  const requireEmpleados = sanitizeTextParam(params.requireEmpleados);
+  if (requireEmpleados === 'true') {
     query = query.not('n_empleados', 'is', null);
   }
 
   // Apply sorting and pagination to the final query.
   // Prefer explicit sortBy/sortDir; otherwise default to relevance/completeness downstream
   let finalQuery = query;
-  const sortBy = params.sortBy as string | undefined;
-  const sortDir = (params.sortDir as 'asc' | 'desc' | undefined) || 'desc';
+  const sortByParam = sanitizeTextParam(params.sortBy as string | undefined);
+  const sortBy = SORTABLE_FIELDS.find((field) => field === sortByParam) as SortableField | undefined;
+  const sortDirParam = sanitizeTextParam(params.sortDir);
+  const sortDir: 'asc' | 'desc' = sortDirParam === 'asc' ? 'asc' : 'desc';
 
-  if (sortBy && ['ingresos_ventas','n_empleados','utilidad_neta','activos','anio'].includes(sortBy)) {
+  if (sortBy) {
     // Primary sort
     finalQuery = finalQuery.order(sortBy, { ascending: sortDir === 'asc', nullsFirst: false });
     // Secondary: prefer recent year

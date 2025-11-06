@@ -8,11 +8,13 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-r
 interface PaginationControlsProps {
   currentPage: number
   totalPages: number
+  onNavigateStart?: () => void
 }
 
 export function PaginationControls({
   currentPage,
   totalPages,
+  onNavigateStart,
 }: PaginationControlsProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -35,12 +37,17 @@ export function PaginationControls({
     (_, i) => startPage + i,
   )
 
+  const handleNavigate = (target: string) => {
+    onNavigateStart?.()
+    router.push(target)
+  }
+
   return (
     <div className="flex items-center space-x-1">
       <Button
         variant="outline"
         size="sm"
-        onClick={() => router.push(`?${createPageURL(1)}`)}
+        onClick={() => handleNavigate(`?${createPageURL(1)}`)}
         disabled={currentPage === 1}
         className="h-8 w-8 p-0"
       >
@@ -50,7 +57,7 @@ export function PaginationControls({
       <Button
         variant="outline"
         size="sm"
-        onClick={() => router.push(`?${createPageURL(currentPage - 1)}`)}
+        onClick={() => handleNavigate(`?${createPageURL(currentPage - 1)}`)}
         disabled={currentPage === 1}
         className="h-8 w-8 p-0"
       >
@@ -66,7 +73,7 @@ export function PaginationControls({
           key={page}
           variant={currentPage === page ? "default" : "outline"}
           size="sm"
-          onClick={() => router.push(`?${createPageURL(page)}`)}
+          onClick={() => handleNavigate(`?${createPageURL(page)}`)}
           className={`h-8 min-w-8 text-xs ${
             currentPage === page
               ? 'bg-indigo-500 text-white hover:bg-indigo-600'
@@ -84,7 +91,7 @@ export function PaginationControls({
       <Button
         variant="outline"
         size="sm"
-        onClick={() => router.push(`?${createPageURL(currentPage + 1)}`)}
+        onClick={() => handleNavigate(`?${createPageURL(currentPage + 1)}`)}
         disabled={currentPage === totalPages}
         className="h-8 w-8 p-0"
       >
@@ -94,7 +101,7 @@ export function PaginationControls({
       <Button
         variant="outline"
         size="sm"
-        onClick={() => router.push(`?${createPageURL(totalPages)}`)}
+        onClick={() => handleNavigate(`?${createPageURL(totalPages)}`)}
         disabled={currentPage === totalPages}
         className="h-8 w-8 p-0"
       >

@@ -43,6 +43,22 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
     try {
       setApplyError(null);
       setIsApplying(true);
+      const sanitizedFilters = Object.fromEntries(
+        Object.entries(filters).map(([key, value]) => {
+          if (Array.isArray(value)) {
+            return [
+              key,
+              value
+                .map((entry) => (typeof entry === 'string' ? entry.trim() : entry))
+                .filter((entry) => typeof entry === 'string' && entry.length),
+            ];
+          }
+          if (typeof value === 'string') {
+            return [key, value.trim()];
+          }
+          return [key, value];
+        }),
+      );
       const resp = await fetch('/api/usage/search', { method: 'POST' });
       if (resp.status === 401) {
         window.location.href = '/auth/login';
@@ -58,7 +74,7 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
       if (!resp.ok) {
         console.warn('Usage API non-ok status on apply; continuing with filters');
       }
-      onApplyFilters(filters);
+      onApplyFilters(sanitizedFilters);
     } catch {
       setApplyError('Ocurrió un error. Intenta nuevamente.');
     } finally {
@@ -209,18 +225,6 @@ export function CompanyFilter({ initialFilters, onApplyFilters, companyCount }: 
               <option value="2022">2022</option>
               <option value="2021">2021</option>
               <option value="2020">2020</option>
-              <option value="2019">2019</option>
-              <option value="2018">2018</option>
-              <option value="2017">2017</option>
-              <option value="2016">2016</option>
-              <option value="2015">2015</option>
-              <option value="2014">2014</option>
-              <option value="2013">2013</option>
-              <option value="2012">2012</option>
-              <option value="2011">2011</option>
-              <option value="2010">2010</option>
-              <option value="2009">2009</option>
-              <option value="2008">2008</option>
             </select>
           </div>
           <div className="space-y-2">
