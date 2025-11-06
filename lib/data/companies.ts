@@ -8,7 +8,7 @@ const sanitizeTextParam = (value?: string | null) => {
 };
 
 const escapeForILike = (value: string) =>
-  value.replace(/[%_]/g, (char) => `\\${char}`);
+  value.replace(/\\/g, '\\\\').replace(/[%_]/g, (char) => `\\${char}`);
 
 const buildContainsPattern = (value: string) =>
   `%${escapeForILike(value)}%`;
@@ -16,7 +16,7 @@ const buildContainsPattern = (value: string) =>
 const buildPrefixPattern = (value: string) =>
   `${escapeForILike(value)}%`;
 
-const SORTABLE_FIELDS = ['ingresos_ventas', 'n_empleados', 'utilidad_neta', 'activos', 'anio'] as const;
+const SORTABLE_FIELDS = ['completitud', 'ingresos_ventas', 'n_empleados', 'utilidad_neta', 'activos', 'anio'] as const;
 type SortableField = (typeof SORTABLE_FIELDS)[number];
 
 // Define the structure of the search parameters for clarity and type safety.
@@ -197,8 +197,8 @@ export async function fetchCompanies(params: SearchParams & { exportAll?: boolea
   const sortDirParam = sanitizeTextParam(params.sortDir);
   const sortDir: 'asc' | 'desc' = sortDirParam === 'asc' ? 'asc' : 'desc';
 
-  if (sortBy) {
-    // Primary sort
+  if (sortBy && sortBy !== 'completitud') {
+    // Primary sort (skip for 'completitud' as it's handled client-side)
     finalQuery = finalQuery.order(sortBy, { ascending: sortDir === 'asc', nullsFirst: false });
     // Secondary: prefer recent year
     if (sortBy !== 'anio') {

@@ -27,10 +27,11 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
     Object.entries(newFilters).forEach(([key, value]) => {
       if (Array.isArray(value)) {
         value
-          .map((entry) => (typeof entry === 'string' ? entry.trim() : entry))
+          .filter((entry) => typeof entry === 'string')
+          .map((entry) => entry.trim())
           .filter((entry) => Boolean(entry && entry.length))
           .forEach((entry) => {
-            params.append(key, entry as string);
+            params.append(key, entry);
           });
         return;
       }
@@ -52,7 +53,7 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
     if (isFetching) {
       setIsFetching(false);
     }
-  }, [companies, totalCount, page, isFetching]);
+  }, [companies, totalCount, page]);
 
   // Initialize filters state from the current URL search parameters.
   const initialFilters = {

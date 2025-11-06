@@ -37,10 +37,13 @@ export function PaginationControls({
     (_, i) => startPage + i,
   )
 
-  const handleNavigate = (target: string) => {
-    onNavigateStart?.()
-    router.push(target)
-  }
+  const handleNavigate = useCallback(
+    (target: string) => {
+      onNavigateStart?.()
+      router.push(target)
+    },
+    [onNavigateStart, router],
+  )
 
   return (
     <div className="flex items-center space-x-1">
