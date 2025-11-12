@@ -22,15 +22,29 @@ export default function AgentLogsCard() {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [periodTotals, setPeriodTotals] = useState({ tokens: 0, cost: 0 });
 
   useEffect(() => {
     async function fetchLogs() {
       try {
-        const response = await fetch('/api/agent/logs?limit=20');
-        if (response.ok) {
-          const data = await response.json();
+        const [logsResponse, costResponse] = await Promise.all([
+          fetch('/api/agent/logs?limit=20'),
+          fetch('/api/agent/cost-summary')
+        ]);
+        
+        if (logsResponse.ok) {
+          const data = await logsResponse.json();
           setLogs(data.logs || []);
           setTotal(data.total || 0);
+        }
+        
+        // Get accurate period totals from cost summary
+        if (costResponse.ok) {
+          const costData = await costResponse.json();
+          setPeriodTotals({
+            tokens: costData.totalTokens || 0,
+            cost: costData.totalCost || 0
+          });
         }
       } catch (error) {
         console.error('Error fetching agent logs:', error);
@@ -142,13 +156,13 @@ export default function AgentLogsCard() {
             <tfoot>
               <tr className="border-t">
                 <td colSpan={2} className="px-6 py-4">
-                  Total
+                  <span className="font-medium">Total del Periodo</span>
                 </td>
-                <td className="px-6 py-4 text-right">
-                  {formatTokenCount(logs.reduce((sum, log) => sum + log.totalTokens, 0))}
+                <td className="px-6 py-4 text-right font-medium">
+                  {formatTokenCount(periodTotals.tokens)}
                 </td>
-                <td className="px-6 py-4 text-right">
-                  ${logs.reduce((sum, log) => sum + log.cost, 0).toFixed(2)}
+                <td className="px-6 py-4 text-right font-medium">
+                  ${periodTotals.cost.toFixed(2)}
                 </td>
               </tr>
             </tfoot>

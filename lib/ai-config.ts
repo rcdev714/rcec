@@ -16,9 +16,9 @@
  * Revenue multiplier applied to base API costs
  * This represents the markup for the service
  * 
- * Example: 20x means $0.30/M input becomes $6.00/M charged to user
+ * Example: 15x means $0.30/M input becomes $4.50/M charged to user
  */
-export const PROFIT_MARGIN_MULTIPLIER = 20;
+export const PROFIT_MARGIN_MULTIPLIER = 15;
 
 /**
  * Official Gemini API pricing per 1M tokens (USD)
