@@ -68,3 +68,7 @@ dev.log
 
 /test-payments-local-config
 ecuador
+
+.git-corrupted
+
+/company-data
