@@ -7,9 +7,7 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { BaseMessage } from "@langchain/core/messages";
-
-// Define a multiplier for profit margin to easily adjust revenue
-const PROFIT_MARGIN_MULTIPLIER = 12;
+import { PROFIT_MARGIN_MULTIPLIER, GEMINI_PRICING_PER_MILLION, type GeminiModel } from "./ai-config";
 
 // Initialize Google AI SDK
 let genAI: GoogleGenerativeAI | null = null;
@@ -157,42 +155,23 @@ export function formatTokenCount(tokens: number): string {
 
 /**
  * Calculate cost for Gemini API usage
- * Official pricing per 1M tokens as of October 2025
+ * Uses centralized pricing from ai-config.ts
  *
  * @param modelName - Gemini model name
  * @param inputTokens - Number of input tokens
  * @param outputTokens - Number of output tokens
- * @returns Cost in USD
+ * @returns Cost in USD (includes profit margin)
  */
 export function calculateGeminiCost(
   modelName: string,
   inputTokens: number,
   outputTokens: number
 ): number {
-  // Official Gemini pricing per 1M tokens (October 2025)
-  // Note: For gemini-2.5-pro, pricing depends on total prompt size (>200k tokens = higher rate)
-  const pricing: Record<string, { input: number; output: number; inputHighTier?: number; outputHighTier?: number; tierThreshold?: number }> = {
-    "gemini-2.5-pro": {
-      input: 1.25,        // $1.25 for prompts <= 200k tokens
-      output: 10.00,      // $10.00 for prompts <= 200k tokens
-      inputHighTier: 2.50,  // $2.50 for prompts > 200k tokens
-      outputHighTier: 15.00, // $15.00 for prompts > 200k tokens
-      tierThreshold: 200000 // 200k tokens threshold
-    },
-    "gemini-2.5-flash": {
-      input: 0.30,  // $0.30 for text/image/video
-      output: 2.50  // $2.50 output
-    },
-    "gemini-2.5-flash-lite": {
-      input: 0.10,  // $0.10 for text/image/video
-      output: 0.40  // $0.40 output
-    }
-  };
-
-  const modelPricing = pricing[modelName] || pricing["gemini-2.5-flash"];
+  // Get pricing from centralized config (fallback to flash if model unknown)
+  const modelPricing = GEMINI_PRICING_PER_MILLION[modelName as GeminiModel] || GEMINI_PRICING_PER_MILLION["gemini-2.5-flash"];
 
   // Handle tiered pricing for Pro model
-  if (modelPricing.tierThreshold && inputTokens > modelPricing.tierThreshold) {
+  if ('tierThreshold' in modelPricing && modelPricing.tierThreshold && inputTokens > modelPricing.tierThreshold) {
     // Use high-tier pricing for large prompts
     const inputCost = (inputTokens / 1_000_000) * (modelPricing.inputHighTier || modelPricing.input);
     const outputCost = (outputTokens / 1_000_000) * (modelPricing.outputHighTier || modelPricing.output);

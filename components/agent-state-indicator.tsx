@@ -16,8 +16,8 @@ import { cn } from "@/lib/utils";
 // Agent state event types (matching backend)
 export type AgentStateEvent =
   | { type: 'thinking'; node: string; message?: string }
-  | { type: 'tool_call'; toolName: string; input: Record<string, unknown> }
-  | { type: 'tool_result'; toolName: string; success: boolean; output?: unknown; error?: string }
+  | { type: 'tool_call'; toolName: string; toolCallId: string; input: Record<string, unknown> }
+  | { type: 'tool_result'; toolName: string; toolCallId: string; success: boolean; output?: unknown; error?: string }
   | { type: 'error'; node: string; error: string }
   | { type: 'todo_update'; todos: TodoItem[] }
   | { type: 'reflection'; message: string; retryCount: number }
@@ -38,17 +38,98 @@ interface AgentStateIndicatorProps {
   isActive: boolean;
 }
 
-export function AgentStateIndicator({ events, isActive }: AgentStateIndicatorProps) {
-  // Get the most recent event
-  const currentEvent = events.length > 0 ? events[events.length - 1] : null;
+/**
+ * Analyze agent events to determine overall state for multiple concurrent tools
+ */
+function analyzeAgentState(events: AgentStateEvent[]) {
+  if (events.length === 0) {
+    return { currentEvent: null, activeTools: [], completedTools: [], hasErrors: false };
+  }
 
-  if (!isActive && !currentEvent) {
+  // Track each individual tool call by toolCallId
+  const toolCallStates = new Map<string, { status: 'active' | 'completed' | 'error', toolName: string, lastEvent: AgentStateEvent }>();
+  let currentEvent: AgentStateEvent | null = null;
+  let hasErrors = false;
+
+  // Process events in chronological order (oldest first) to build complete history
+  for (let i = 0; i < events.length; i++) {
+    const event = events[i];
+
+    if (event.type === 'tool_call') {
+      const toolCallEvent = event as { type: 'tool_call'; toolName: string; toolCallId: string; input: Record<string, unknown> };
+      toolCallStates.set(toolCallEvent.toolCallId, { status: 'active', toolName: toolCallEvent.toolName, lastEvent: event });
+    } else if (event.type === 'tool_result') {
+      const toolResultEvent = event as { type: 'tool_result'; toolName: string; toolCallId: string; success: boolean; output?: unknown; error?: string };
+      const status = toolResultEvent.success ? 'completed' : 'error';
+
+      // Mark the specific tool call as completed
+      if (toolCallStates.has(toolResultEvent.toolCallId)) {
+        toolCallStates.set(toolResultEvent.toolCallId, {
+          status,
+          toolName: toolResultEvent.toolName,
+          lastEvent: event
+        });
+      }
+
+      if (!toolResultEvent.success) {
+        hasErrors = true;
+      }
+    } else if (event.type === 'error') {
+      hasErrors = true;
+      currentEvent = event;
+    } else {
+      // For other event types (thinking, finalize, etc.), use as current event
+      currentEvent = event;
+    }
+  }
+
+  // Extract active and completed tools, counting by tool name
+  const activeToolsMap = new Map<string, number>();
+  const completedToolsMap = new Map<string, number>();
+
+  for (const state of toolCallStates.values()) {
+    if (state.status === 'active') {
+      activeToolsMap.set(state.toolName, (activeToolsMap.get(state.toolName) || 0) + 1);
+    } else {
+      completedToolsMap.set(state.toolName, (completedToolsMap.get(state.toolName) || 0) + 1);
+    }
+  }
+
+  // Create readable tool names (e.g., "web_search (2)", "web_search (1)")
+  const activeTools: string[] = [];
+  const completedTools: string[] = [];
+
+  for (const [toolName, count] of activeToolsMap) {
+    if (count === 1) {
+      activeTools.push(formatToolName(toolName));
+    } else {
+      activeTools.push(`${formatToolName(toolName)} (${count})`);
+    }
+  }
+
+  for (const [toolName, count] of completedToolsMap) {
+    if (count === 1) {
+      completedTools.push(formatToolName(toolName));
+    } else {
+      completedTools.push(`${formatToolName(toolName)} (${count})`);
+    }
+  }
+
+  return { currentEvent, activeTools, completedTools, hasErrors };
+}
+
+export function AgentStateIndicator({ events, isActive }: AgentStateIndicatorProps) {
+  // Analyze all events to determine overall state
+  const { currentEvent, activeTools, completedTools, hasErrors } = analyzeAgentState(events);
+
+  // Don't show if no activity and not actively processing
+  if (!isActive && !currentEvent && activeTools.length === 0) {
     return null;
   }
 
   return (
     <AnimatePresence mode="wait">
-      {(isActive || currentEvent) && (
+      {(isActive || currentEvent || activeTools.length > 0) && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -56,16 +137,33 @@ export function AgentStateIndicator({ events, isActive }: AgentStateIndicatorPro
           className="mb-3"
         >
           <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50/50 border border-gray-200/60 rounded-lg px-3 py-2">
-            {renderEventIcon(currentEvent)}
-            <span className="flex-1 font-normal">{renderEventMessage(currentEvent)}</span>
+            {renderEventIcon(currentEvent, activeTools.length > 0, hasErrors)}
+            <span className="flex-1 font-normal">
+              {renderEventMessage(currentEvent, activeTools, completedTools)}
+            </span>
           </div>
+
+          {/* Show detailed status for multiple tools */}
+          {activeTools.length > 0 && (
+            <div className="mt-2 text-[11px] text-gray-400 space-y-1">
+              <div>🔄 {activeTools.slice(0, 2).join(', ')}{activeTools.length > 2 ? ` +${activeTools.length - 2} más` : ''}</div>
+              {completedTools.length > 0 && (
+                <div>✅ Completados: {completedTools.length}</div>
+              )}
+            </div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>
   );
 }
 
-function renderEventIcon(event: AgentStateEvent | null) {
+function renderEventIcon(event: AgentStateEvent | null, hasActiveTools: boolean = false, _hasErrors: boolean = false) {
+  // If there are active tools, show loading regardless of current event
+  if (hasActiveTools) {
+    return <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />;
+  }
+
   if (!event) {
     return <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />;
   }
@@ -82,7 +180,7 @@ function renderEventIcon(event: AgentStateEvent | null) {
         <XCircle className="w-3.5 h-3.5 text-gray-500" />
       );
     case 'error':
-      return <AlertCircle className="w-3.5 h-3.5 text-gray-500" />;
+      return <AlertCircle className="w-3.5 h-3.5 text-red-500" />;
     case 'reflection':
       return <RefreshCw className="w-3.5 h-3.5 text-gray-400 animate-spin" />;
     case 'todo_update':
@@ -90,13 +188,22 @@ function renderEventIcon(event: AgentStateEvent | null) {
     case 'iteration':
       return <Loader2 className="w-3.5 h-3.5 text-gray-400 animate-spin" />;
     case 'finalize':
-      return <CheckCircle2 className="w-3.5 h-3.5 text-gray-500" />;
+      return <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />;
     default:
       return <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />;
   }
 }
 
-function renderEventMessage(event: AgentStateEvent | null): string {
+function renderEventMessage(event: AgentStateEvent | null, activeTools: string[] = [], _completedTools: string[] = []): string {
+  // If there are multiple active tools, show overall status
+  if (activeTools.length > 0) {
+    if (activeTools.length === 1) {
+      return `Ejecutando: ${activeTools[0]}`;
+    } else {
+      return `Ejecutando ${activeTools.length} herramientas simultáneamente`;
+    }
+  }
+
   if (!event) {
     return 'Procesando...';
   }

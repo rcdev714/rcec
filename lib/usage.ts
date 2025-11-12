@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getUserSubscription } from '@/lib/subscription';
 import { getPlansWithLimits } from '@/lib/plans';
 import { isAdmin } from '@/lib/admin';
+import { PROFIT_MARGIN_MULTIPLIER, GEMINI_PRICING_PER_MILLION, type GeminiModel } from './ai-config';
 
 type Plan = 'FREE' | 'PRO' | 'ENTERPRISE';
 
@@ -21,37 +22,18 @@ interface UsageRecord {
   updated_at?: string;
 }
 
-// Revenue multiplier for profit margin (must match token-counter.ts)
-const PROFIT_MARGIN_MULTIPLIER = 12;
-
-// Official Gemini pricing per 1M tokens in USD (October 2025)
-// Source: https://ai.google.dev/pricing
-// NOTE: These are BASE API costs, we apply PROFIT_MARGIN_MULTIPLIER on top
-export const GEMINI_PRICING_PER_MILLION = {
-  'gemini-2.5-pro': {
-    input: 1.25,        // $1.25 for prompts <= 200k tokens
-    output: 10.00,      // $10.00 for prompts <= 200k tokens
-    inputHighTier: 2.50,  // $2.50 for prompts > 200k tokens
-    outputHighTier: 15.00, // $15.00 for prompts > 200k tokens
-    tierThreshold: 200000 // 200k tokens threshold
-  },
-  'gemini-2.5-flash': {
-    input: 0.30,  // $0.30 for text/image/video
-    output: 2.50  // $2.50 output
-  },
-  'gemini-2.5-flash-lite': {
-    input: 0.10,  // $0.10 for text/image/video
-    output: 0.40  // $0.40 output
-  }
-} as const;
+// Re-export for backward compatibility
+export { GEMINI_PRICING_PER_MILLION };
 
 export function estimateTokensFromTextLength(characters: number): number {
   // Rough heuristic: 1 token ≈ 4 characters
   return Math.ceil(characters / 4);
 }
 
-export function dollarsFromTokens(model: keyof typeof GEMINI_PRICING_PER_MILLION, inputTokens: number, outputTokens: number): number {
-  const pricing = GEMINI_PRICING_PER_MILLION[model];
+export function dollarsFromTokens(model: GeminiModel | string, inputTokens: number, outputTokens: number): number {
+  // Fallback to flash if model is unknown
+  const modelKey = (model in GEMINI_PRICING_PER_MILLION) ? model as GeminiModel : 'gemini-2.5-flash';
+  const pricing = GEMINI_PRICING_PER_MILLION[modelKey];
 
   // Handle tiered pricing for Pro model
   if ('tierThreshold' in pricing && pricing.tierThreshold && inputTokens > pricing.tierThreshold) {
@@ -130,19 +112,28 @@ async function getLimits(plan: Plan) {
     const planData = plansWithLimits.find(p => p.id === plan);
 
     if (planData) {
+      console.log('[getLimits] Using database plan limits:', { 
+        plan, 
+        limits: planData.limits 
+      });
+      
       return {
         searches: planData.limits.searches_per_month,
         exports: planData.limits.exports_per_month,
-        prompt_dollars: 0, // Keeping for backward compatibility
+        prompt_dollars: planData.limits.prompt_dollars_per_month || 0,
         prompt_count: planData.limits.prompts_per_month,
       } as const;
     }
+    
+    console.warn('[getLimits] Plan not found in database, using fallback:', plan);
   } catch (error) {
-    console.error('Error fetching plan limits from database:', error);
+    console.error('[getLimits] Error fetching plan limits from database:', error);
   }
 
   // Fallback to hardcoded limits if database fails
-  return getFallbackLimits(plan);
+  const fallback = getFallbackLimits(plan);
+  console.log('[getLimits] Using fallback limits:', { plan, limits: fallback });
+  return fallback;
 }
 
 function getFallbackLimits(plan: Plan) {
@@ -299,10 +290,14 @@ export async function ensureExportAllowedAndIncrement(userId: string): Promise<{
   }
 }
 
+/**
+ * Simple pre-check: Verify user hasn't exceeded their dollar limit
+ * Does NOT increment - just checks current usage vs limit
+ */
 export async function ensurePromptAllowedAndTrack(
   userId: string,
   _options: {
-    model: keyof typeof GEMINI_PRICING_PER_MILLION;
+    model: GeminiModel | string;
     inputTokensEstimate: number;
   }
 ): Promise<{ allowed: boolean; remainingDollars?: number; estimatedCost?: number }>
@@ -313,7 +308,7 @@ export async function ensurePromptAllowedAndTrack(
 
   // Security: Ensure the userId parameter matches the authenticated user
   if (userId !== user.id) {
-    console.error('UserId mismatch in ensurePromptAllowedAndTrack:', { provided: userId, authenticated: user.id });
+    console.error('[ensurePromptAllowedAndTrack] UserId mismatch:', { provided: userId, authenticated: user.id });
     return { allowed: false };
   }
 
@@ -325,68 +320,127 @@ export async function ensurePromptAllowedAndTrack(
   const subscription = await getUserSubscription(user.id);
   const plan: Plan = (subscription?.plan as Plan) || 'FREE';
 
-  const { start, end } = getMonthlyPeriodForAnchor(user.created_at || new Date().toISOString());
-  const usage = await getOrCreateUsageRow(userId, start, end);
+  const { start } = getMonthlyPeriodForAnchor(user.created_at || new Date().toISOString());
+  const usage = await getOrCreateUsageRow(userId, start, start);
   const limits = await getLimits(plan);
 
-  // Estimate the cost of this prompt
-  const estimatedOutputTokens = _options.inputTokensEstimate * 2;
-  const estimatedCost = dollarsFromTokens(_options.model, _options.inputTokensEstimate, estimatedOutputTokens);
+  const dollarLimit = limits.prompt_dollars;
+  const currentDollars = usage.prompt_dollars || 0;
 
-  // Check dollar-based limiting using atomicIncrementDollarsWithLimit
+  // If unlimited, allow
+  if (dollarLimit === -1) {
+    return { allowed: true };
+  }
+
+  // Check if user has exceeded limit
+  if (currentDollars >= dollarLimit) {
+    const remaining = Math.max(0, dollarLimit - currentDollars);
+    console.log('[ensurePromptAllowedAndTrack] Limit exceeded:', { 
+      currentDollars, 
+      dollarLimit, 
+      remaining,
+      plan
+    });
+    return { 
+      allowed: false, 
+      remainingDollars: remaining
+    };
+  }
+
+  const remainingDollars = Math.max(0, dollarLimit - currentDollars);
+  return { 
+    allowed: true, 
+    remainingDollars
+  };
+}
+
+/**
+ * Track LLM usage after completion (simple post-tracking)
+ * Increments tokens and dollars atomically
+ * 
+ * @param userId - User ID
+ * @param model - Model name
+ * @param inputTokens - Actual input tokens from metadata
+ * @param outputTokens - Actual output tokens from metadata
+ */
+export async function trackLLMUsage(
+  userId: string,
+  model: GeminiModel | string,
+  inputTokens: number,
+  outputTokens: number
+): Promise<void> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  // Security: Ensure the userId parameter matches the authenticated user
+  if (userId !== user.id) {
+    console.error('[trackLLMUsage] UserId mismatch:', { provided: userId, authenticated: user.id });
+    return;
+  }
+
+  // Admin bypass: No tracking needed for admin users
+  if (await isAdmin()) {
+    return;
+  }
+
+  const { start } = getMonthlyPeriodForAnchor(user.created_at || new Date().toISOString());
+  await getOrCreateUsageRow(userId, start, start);
+
+  // Calculate cost
+  const cost = dollarsFromTokens(model, inputTokens, outputTokens);
+
+  console.log('[trackLLMUsage] Tracking:', {
+    model,
+    inputTokens,
+    outputTokens,
+    cost: cost.toFixed(4)
+  });
+
   try {
-    const { atomicIncrementDollarsWithLimit } = await import('./usage-atomic');
-    const dollarLimit = limits.prompt_dollars;
+    const { atomicIncrementUsageBy } = await import('./usage-atomic');
     
-    // Atomically check and increment dollar usage
-    const result = await atomicIncrementDollarsWithLimit(
-      userId,
-      usage.period_start,
-      estimatedCost,
-      dollarLimit
-    );
-
-    if (!result.success) {
-      const remaining = dollarLimit === -1 ? undefined : Math.max(0, dollarLimit - result.newValue);
-      return { 
-        allowed: false, 
-        remainingDollars: remaining,
-        estimatedCost 
-      };
+    // Atomically increment input tokens
+    if (inputTokens > 0) {
+      await atomicIncrementUsageBy(userId, start.toISOString(), 'prompt_input_tokens', inputTokens);
     }
-
-    // Track actual input tokens for analytics (non-blocking, best effort)
-    if (_options.inputTokensEstimate > 0) {
-      try {
-        const { atomicIncrementUsageBy } = await import('./usage-atomic');
-        atomicIncrementUsageBy(userId, usage.period_start, 'prompt_input_tokens', _options.inputTokensEstimate)
-          .catch(error => {
-            console.warn('[ANALYTICS] Failed to track input tokens:', error);
-          });
-      } catch (error) {
-        console.warn('[ANALYTICS] Failed to import atomicIncrementUsageBy:', error);
+    
+    // Atomically increment output tokens
+    if (outputTokens > 0) {
+      await atomicIncrementUsageBy(userId, start.toISOString(), 'prompt_output_tokens', outputTokens);
+    }
+    
+    // Atomically increment dollars
+    if (cost > 0) {
+      const { error } = await supabase.rpc('atomic_increment_prompt_dollars', {
+        p_user_id: userId,
+        p_period_start: start.toISOString(),
+        p_amount: cost
+      });
+      
+      if (error) {
+        console.error('[trackLLMUsage] Failed to increment dollars:', error);
       }
     }
-
-    const remainingDollars = dollarLimit === -1 ? undefined : Math.max(0, dollarLimit - result.newValue);
-    return { 
-      allowed: true, 
-      remainingDollars,
-      estimatedCost
-    };
   } catch (error) {
-    console.error('[CRITICAL] Prompt dollar limit check failed:', error);
-    throw error;
+    console.error('[trackLLMUsage] Error tracking usage:', error);
+    // Non-critical: Don't throw, just log
   }
 }
 
+/**
+ * @deprecated Use trackActualLLMUsage instead
+ * Legacy function kept for backward compatibility
+ */
 export async function trackOutputTokensAndDollars(
   userId: string,
   options: {
-    model: keyof typeof GEMINI_PRICING_PER_MILLION;
+    model: GeminiModel | string;
     outputTokensEstimate: number;
   }
 ) {
+  console.warn('[trackOutputTokensAndDollars] DEPRECATED: Use trackActualLLMUsage instead');
+  
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;

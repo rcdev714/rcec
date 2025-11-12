@@ -390,12 +390,6 @@ describe('Usage Limits', () => {
         })),
       })
 
-      // Mock atomic dollar increment - PRO has $20 limit, $5 spent, adding ~$0.10 = $5.10 total
-      vi.mocked(atomicIncrementDollarsWithLimit).mockResolvedValue({
-        success: true,
-        newValue: 5.10 // $5 + estimated cost
-      })
-
       const result = await ensurePromptAllowedAndTrack('user-123', {
         model: 'gemini-2.5-flash',
         inputTokensEstimate: 1000 // Small request, won't exceed budget
@@ -403,7 +397,7 @@ describe('Usage Limits', () => {
 
       expect(result.allowed).toBe(true)
       expect(result.remainingDollars).toBeDefined()
-      expect(result.estimatedCost).toBeDefined()
+      expect(result.remainingDollars).toBe(15) // $20 limit - $5 spent = $15 remaining
     })
 
     it('should deny prompt when dollar budget exceeded', async () => {
@@ -421,7 +415,7 @@ describe('Usage Limits', () => {
         updated_at: '2024-01-01T00:00:00.000Z'
       })
 
-      // Mock usage row with $4.99 spent (FREE limit is $5.00)
+      // Mock usage row with $5.00 spent (FREE limit is $5.00) - AT LIMIT
       // @ts-ignore - Test mock override
       mockSupabase.from.mockReturnValue({
         upsert: vi.fn(() => ({ error: null as any })),
@@ -441,7 +435,7 @@ describe('Usage Limits', () => {
                   prompts_count: 0,
                   prompt_input_tokens: 0,
                   prompt_output_tokens: 0,
-                  prompt_dollars: 4.99, // Almost at limit
+                  prompt_dollars: 5.00, // AT LIMIT ($5.00 >= $5.00)
                   user_id: 'user-123'
                 },
                 error: null as any
@@ -451,20 +445,14 @@ describe('Usage Limits', () => {
         })),
       })
 
-      // Mock atomic dollar increment - would exceed $5 limit
-      vi.mocked(atomicIncrementDollarsWithLimit).mockResolvedValue({
-        success: false,
-        newValue: 4.99, // Current value before increment
-        error: 'Dollar limit exceeded'
-      })
-
       const result = await ensurePromptAllowedAndTrack('user-123', {
         model: 'gemini-2.5-flash',
-        inputTokensEstimate: 100000 // Large request that would exceed $5 budget
+        inputTokensEstimate: 100000 // Large request (doesn't matter, already at limit)
       })
 
       expect(result.allowed).toBe(false)
       expect(result.remainingDollars).toBeDefined()
+      expect(result.remainingDollars).toBe(0) // $5 limit - $5 spent = $0 remaining
     })
   })
 })

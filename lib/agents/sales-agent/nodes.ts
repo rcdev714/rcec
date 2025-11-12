@@ -5,6 +5,7 @@ import { SALES_AGENT_SYSTEM_PROMPT } from "./prompt";
 import { createClient } from "@/lib/supabase/server";
 import { UserOffering } from "@/types/user-offering";
 import { extractTokenUsageFromMetadata } from "@/lib/token-counter";
+import { trackLLMUsage } from "@/lib/usage";
 
 // Initialize Gemini models (lazy, cached per model name)
 const geminiModels: Record<string, ChatGoogleGenerativeAI> = {};
@@ -426,6 +427,18 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
     const tokenUsage = extractTokenUsageFromMetadata(response.response_metadata);
     if (tokenUsage) {
       console.log('[think] ✓ Token usage captured:', tokenUsage);
+      
+      // Track usage (non-blocking)
+      if (state.userContext?.userId) {
+        trackLLMUsage(
+          state.userContext.userId,
+          modelName,
+          tokenUsage.inputTokens,
+          tokenUsage.outputTokens
+        ).catch(error => {
+          console.error('[think] Error tracking usage:', error);
+        });
+      }
     } else {
       console.log('[think] ⚠️ No token usage found in metadata');
     }
@@ -511,6 +524,7 @@ export function processToolResults(state: SalesAgentStateType): Partial<SalesAge
       // Create a new ToolOutput entry
       const newToolOutput: ToolOutput = {
         toolName,
+        toolCallId: lastMessage.tool_call_id as string,
         input: toolInput,
         output: toolOutput,
         success,
@@ -534,6 +548,7 @@ export function processToolResults(state: SalesAgentStateType): Partial<SalesAge
       return {
         toolOutputs: [{
           toolName: 'unknown_tool',
+          toolCallId: (lastMessage as any)?.tool_call_id as string,
           input: {},
           output: null,
           success: false,
@@ -822,6 +837,18 @@ Genera tu respuesta final ahora. DEBE ser completa, profesional y útil.`);
     const tokenUsage = extractTokenUsageFromMetadata(response.response_metadata);
     if (tokenUsage) {
       console.log('[finalize] ✓ Token usage captured:', tokenUsage);
+      
+      // Track usage (non-blocking)
+      if (state.userContext?.userId) {
+        trackLLMUsage(
+          state.userContext.userId,
+          modelName,
+          tokenUsage.inputTokens,
+          tokenUsage.outputTokens
+        ).catch(error => {
+          console.error('[finalize] Error tracking usage:', error);
+        });
+      }
     } else {
       console.log('[finalize] ⚠️ No token usage found in metadata');
     }
@@ -863,6 +890,31 @@ Genera tu respuesta final ahora. DEBE ser completa, profesional y útil.`);
 }
 
 /**
+ * Execute a tool with timeout protection
+ */
+async function executeToolWithTimeout(
+  tool: any,
+  toolCall: any,
+  timeoutMs: number = 30000 // 30 second default timeout
+): Promise<any> {
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error(`Tool execution timed out after ${timeoutMs}ms`)), timeoutMs);
+  });
+
+  const toolPromise = tool.func(toolCall.args);
+
+  try {
+    return await Promise.race([toolPromise, timeoutPromise]);
+  } catch (error) {
+    // If timeout occurred, throw a specific timeout error
+    if (error instanceof Error && error.message.includes('timed out')) {
+      throw new Error(`Tool "${toolCall.name}" execution timed out after ${timeoutMs}ms`);
+    }
+    throw error;
+  }
+}
+
+/**
  * Manually execute tools (bypass ToolNode to avoid invocation issues)
  * This directly executes tool functions and creates ToolMessages manually
  */
@@ -885,7 +937,7 @@ export async function callTools(state: SalesAgentStateType): Promise<Partial<Sal
       return {};
     }
     
-    console.log('[callTools] Executing', toolCalls.length, 'tool(s)');
+    console.log('[callTools] Executing', toolCalls.length, 'tool(s) with timeout protection');
     
     // Import all tools
     const { companyTools } = await import("@/lib/tools/company-tools");
@@ -904,60 +956,65 @@ export async function callTools(state: SalesAgentStateType): Promise<Partial<Sal
     // Create a map of tool names to tool functions
     const toolMap = new Map(allTools.map(tool => [tool.name, tool]));
     
-    // Execute each tool call and create ToolMessages
+    // Execute all tool calls in parallel to prevent blocking
     const { ToolMessage } = await import("@langchain/core/messages");
-    const newMessages = [];
-    
-    for (const toolCall of toolCalls) {
+
+    // Prepare tool execution promises
+    const toolExecutionPromises = toolCalls.map(async (toolCall) => {
       const tool = toolMap.get(toolCall.name);
-      
+
       if (!tool) {
         console.error('[callTools] Tool not found:', toolCall.name);
         // Create error ToolMessage
-        newMessages.push(new ToolMessage({
+        return new ToolMessage({
           content: JSON.stringify({
             success: false,
             error: `Tool "${toolCall.name}" not found`,
           }),
           tool_call_id: toolCall.id,
-        }));
-        continue;
+        });
       }
-      
+
       try {
         console.log('[callTools] Executing tool:', toolCall.name);
         console.log('[callTools] Tool args:', JSON.stringify(toolCall.args, null, 2));
         console.log('[callTools] Tool object:', { name: tool.name, hasFunc: !!tool.func });
-        
-        // Execute the tool function
-        const toolResult = await tool.func(toolCall.args);
-        
+
+        // Execute the tool function with timeout protection
+        const toolResult = await executeToolWithTimeout(tool, toolCall, 30000); // 30 second timeout
+
         console.log('[callTools] Tool', toolCall.name, 'executed successfully');
         console.log('[callTools] Tool result type:', typeof toolResult);
         console.log('[callTools] Tool result success:', toolResult?.success);
-        
+
         // Create ToolMessage with the result
-        newMessages.push(new ToolMessage({
+        return new ToolMessage({
           content: JSON.stringify(toolResult),
           tool_call_id: toolCall.id,
-        }));
-        
+        });
+
       } catch (error) {
         console.error('[callTools] Error executing tool:', toolCall.name);
         console.error('[callTools] Error details:', error);
         console.error('[callTools] Error stack:', error instanceof Error ? error.stack : 'No stack');
-        
-        // Create error ToolMessage
-        newMessages.push(new ToolMessage({
+
+        // Create error ToolMessage for timeout or other errors
+        return new ToolMessage({
           content: JSON.stringify({
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',
             stack: error instanceof Error ? error.stack : undefined,
+            timeout: error instanceof Error && error.message.includes('timed out'),
           }),
           tool_call_id: toolCall.id,
-        }));
+        });
       }
-    }
+    });
+
+    // Execute all tools in parallel and wait for all to complete (or timeout)
+    console.log('[callTools] Executing', toolExecutionPromises.length, 'tools in parallel');
+    const newMessages = await Promise.all(toolExecutionPromises);
+    console.log('[callTools] All tools completed (success or failure)');
     
     console.log('[callTools] Created', newMessages.length, 'ToolMessages');
     

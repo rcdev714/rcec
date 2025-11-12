@@ -132,6 +132,7 @@ export async function chatWithSalesAgent(
                   emitStateEvent(controller, {
                     type: 'tool_call',
                     toolName: tc.name,
+                    toolCallId: tc.id,
                     input: tc.args || {},
                   });
                 });
@@ -146,6 +147,7 @@ export async function chatWithSalesAgent(
               emitStateEvent(controller, {
                 type: 'tool_result',
                 toolName: lastToolOutput.toolName,
+                toolCallId: lastToolOutput.toolCallId || 'unknown',
                 success: lastToolOutput.success,
                 output: lastToolOutput.success ? lastToolOutput.output : undefined,
                 error: lastToolOutput.success ? undefined : lastToolOutput.errorMessage,

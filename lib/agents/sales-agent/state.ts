@@ -43,6 +43,7 @@ export interface UserContext {
 // Tool output types
 export interface ToolOutput {
   toolName: string;
+  toolCallId?: string;
   input: Record<string, unknown>;
   output: unknown;
   success: boolean;
@@ -84,8 +85,8 @@ export interface EmailDraft {
 // Agent state event types for real-time UI updates
 export type AgentStateEvent =
   | { type: 'thinking'; node: string; message?: string }
-  | { type: 'tool_call'; toolName: string; input: Record<string, unknown> }
-  | { type: 'tool_result'; toolName: string; success: boolean; output?: unknown; error?: string }
+  | { type: 'tool_call'; toolName: string; toolCallId: string; input: Record<string, unknown> }
+  | { type: 'tool_result'; toolName: string; toolCallId: string; success: boolean; output?: unknown; error?: string }
   | { type: 'error'; node: string; error: string }
   | { type: 'todo_update'; todos: TodoItem[] }
   | { type: 'reflection'; message: string; retryCount: number }

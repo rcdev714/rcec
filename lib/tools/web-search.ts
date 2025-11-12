@@ -444,7 +444,12 @@ export const webSearchTool = tool(
       // Build search query with site restriction if provided
       const searchQuery = site ? `site:${site} ${query}` : query;
 
-      // Call Tavily Search API
+      // Call Tavily Search API with timeout and retry logic
+      const makeSearchRequest = async (retryCount: number = 0): Promise<Response> => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout (leaving buffer for tool timeout)
+
+        try {
       const response = await fetch('https://api.tavily.com/search', {
         method: 'POST',
         headers: {
@@ -459,7 +464,33 @@ export const webSearchTool = tool(
           include_raw_content: false,
           include_images: false,
         }),
+            signal: controller.signal,
       });
+
+          clearTimeout(timeoutId);
+          return response;
+        } catch (error) {
+          clearTimeout(timeoutId);
+
+          // Retry logic for network errors (up to 2 retries)
+          if (retryCount < 2 && (error instanceof Error)) {
+            if (error.name === 'AbortError') {
+              throw new Error('Tavily API request timed out after 25 seconds');
+            }
+
+            // Wait before retry (exponential backoff)
+            const delay = Math.pow(2, retryCount) * 1000;
+            console.log(`[webSearch] Network error, retrying in ${delay}ms (attempt ${retryCount + 1}/3)`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+
+            return makeSearchRequest(retryCount + 1);
+          }
+
+          throw error;
+        }
+      };
+
+      const response = await makeSearchRequest();
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -582,7 +613,12 @@ export const webExtractTool = tool(
         };
       }
 
-      // Call Tavily Extract API
+      // Call Tavily Extract API with timeout and retry logic
+      const makeExtractRequest = async (retryCount: number = 0): Promise<Response> => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout (leaving buffer for tool timeout)
+
+        try {
       const response = await fetch('https://api.tavily.com/extract', {
         method: 'POST',
         headers: {
@@ -595,7 +631,33 @@ export const webExtractTool = tool(
           include_images: false,
           include_favicon: true,
         }),
+            signal: controller.signal,
       });
+
+          clearTimeout(timeoutId);
+          return response;
+        } catch (error) {
+          clearTimeout(timeoutId);
+
+          // Retry logic for network errors (up to 2 retries)
+          if (retryCount < 2 && (error instanceof Error)) {
+            if (error.name === 'AbortError') {
+              throw new Error('Tavily Extract API request timed out after 25 seconds');
+            }
+
+            // Wait before retry (exponential backoff)
+            const delay = Math.pow(2, retryCount) * 1000;
+            console.log(`[webExtract] Network error, retrying in ${delay}ms (attempt ${retryCount + 1}/3)`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+
+            return makeExtractRequest(retryCount + 1);
+          }
+
+          throw error;
+        }
+      };
+
+      const response = await makeExtractRequest();
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

@@ -18,6 +18,7 @@ export interface PlanWithLimits extends DatabasePlan {
     exports_per_month: number;
     companies_per_export: number;
     prompts_per_month: number;
+    prompt_dollars_per_month: number; // Dollar-based limiting for AI usage
   };
 }
 
