@@ -91,6 +91,9 @@ export async function chatWithSalesAgent(
           }
         );
 
+        // Track which tool results we've already emitted to avoid duplicates
+        const emittedToolResultIds = new Set<string>();
+
         // Process stream
         for await (const update of streamResult) {
           // update is a dict with node name as key
@@ -140,28 +143,32 @@ export async function chatWithSalesAgent(
             }
           }
 
-          // Track tool results from processToolResults node
+          // Track tool results from processToolResults node (emit all new ones)
           if (nodeName === 'process_tool_results' && nodeOutput.toolOutputs) {
-            const lastToolOutput = nodeOutput.toolOutputs[nodeOutput.toolOutputs.length - 1];
-            if (lastToolOutput) {
+            for (const out of nodeOutput.toolOutputs) {
+              const id = (out as any).toolCallId || 'unknown';
+              if (emittedToolResultIds.has(id)) continue;
+              emittedToolResultIds.add(id);
+
               emitStateEvent(controller, {
                 type: 'tool_result',
-                toolName: lastToolOutput.toolName,
-                toolCallId: lastToolOutput.toolCallId || 'unknown',
-                success: lastToolOutput.success,
-                output: lastToolOutput.success ? lastToolOutput.output : undefined,
-                error: lastToolOutput.success ? undefined : lastToolOutput.errorMessage,
+                toolName: (out as any).toolName,
+                toolCallId: id,
+                success: !!(out as any).success,
+                output: (out as any).success ? (out as any).output : undefined,
+                error: (out as any).success ? undefined : (out as any).errorMessage,
               });
-              
-              // Emit reflection event if tool failed and we're retrying
-              const currentRetryCount = nodeOutput.retryCount || 0;
-              if (!lastToolOutput.success && currentRetryCount > 0 && currentRetryCount < MAX_RETRIES) {
-                emitStateEvent(controller, {
-                  type: 'reflection',
-                  message: `La herramienta "${lastToolOutput.toolName}" falló. Ajustando estrategia... (Intento ${currentRetryCount} de ${MAX_RETRIES})`,
-                  retryCount: currentRetryCount,
-                });
-              }
+            }
+
+            // Emit reflection event once if the last output failed and we're retrying
+            const lastToolOutput = nodeOutput.toolOutputs[nodeOutput.toolOutputs.length - 1] as any;
+            const currentRetryCount = nodeOutput.retryCount || 0;
+            if (lastToolOutput && !lastToolOutput.success && currentRetryCount > 0 && currentRetryCount < MAX_RETRIES) {
+              emitStateEvent(controller, {
+                type: 'reflection',
+                message: `La herramienta "${lastToolOutput.toolName}" falló. Ajustando estrategia... (Intento ${currentRetryCount} de ${MAX_RETRIES})`,
+                retryCount: currentRetryCount,
+              });
             }
           }
 
@@ -208,8 +215,45 @@ export async function chatWithSalesAgent(
           if (nodeOutput.messages && nodeOutput.messages.length > 0) {
             const lastMessage = nodeOutput.messages[nodeOutput.messages.length - 1];
             
-            if (lastMessage instanceof AIMessage) {
-              let content = lastMessage.content.toString();
+            // Robust type guard for AI messages (handles both instances and serialized objects)
+            const isAIMessage = (() => {
+              if (lastMessage && typeof lastMessage === 'object') {
+                // Check for LangChain message methods/properties
+                if (typeof lastMessage._getType === 'function' && lastMessage._getType() === 'ai') {
+                  return true;
+                }
+                // Check for serialized properties (cast to any to access role/type)
+                const msgAsAny = lastMessage as any;
+                if (msgAsAny.type === 'ai' || msgAsAny.role === 'assistant') {
+                  if (!(lastMessage instanceof AIMessage)) {
+                    console.log('[stream] Detected serialized AI message (non-instance)');
+                  }
+                  return true;
+                }
+              }
+              return false;
+            })();
+            
+            if (isAIMessage) {
+              let content = '';
+              
+              // Robust content extraction (cast if needed for content array)
+              const msgAsAny = lastMessage as any;
+              if (typeof msgAsAny.content === 'string') {
+                content = msgAsAny.content;
+              } else if (Array.isArray(msgAsAny.content)) {
+                // Handle content parts (e.g., [{type: 'text', text: '...'}])
+                content = msgAsAny.content
+                  .map((part: Record<string, unknown>) => {
+                    if (part && typeof part === 'object' && 'text' in part) {
+                      return (part as { text?: string }).text || '';
+                    }
+                    return String(part);
+                  })
+                  .join('');
+              } else if (msgAsAny.content !== null && msgAsAny.content !== undefined) {
+                content = String(msgAsAny.content);
+              }
               
               // Filter out artifacts: [object Object], tool transcripts, and AGENT_PLAN snippets
               if (content) {
@@ -227,18 +271,19 @@ export async function chatWithSalesAgent(
                   .replace(/\[STATE_EVENT\][\s\S]*?\[\/STATE_EVENT\]/g, '')
                   .replace(/\[AGENT_PLAN\][\s\S]*?\[\/AGENT_PLAN\]/g, '')
                   .trim();
-                // If content is only commas/whitespace, skip
-                if (!content || content.match(/^[,\s]*$/)) {
+                // If content is only commas/whitespace or too short, skip
+                if (!content || content.match(/^[,\s]*$/) || content.length < 5) {
                   content = '';
                 }
               }
               
-              // Only send new content (avoid duplicates)
-              if (content && content !== finalResponse && !content.startsWith('[CONTEXTO INTERNO]')) {
+              // Only send new content (avoid duplicates), but emit if nothing has been sent yet
+              const hasEmittedBefore = finalResponse.length > 0;
+              if (content && (!hasEmittedBefore || content !== finalResponse) && !content.startsWith('[CONTEXTO INTERNO]')) {
                 finalResponse = content;
                 
                 // Stream the content
-                controller.enqueue(new TextEncoder().encode(content));
+                controller.enqueue(new TextEncoder().encode(content + '\n'));  // Add newline for better chunking
               }
             }
           }
@@ -272,6 +317,82 @@ export async function chatWithSalesAgent(
           }
 
           previousState = { ...previousState, ...nodeOutput } as SalesAgentStateType;
+        }
+
+        // End-of-stream fallback: Ensure some assistant text was emitted
+        if (finalResponse.trim() === '') {
+          console.log('[stream] No text emitted during loop, applying fallback');
+          
+          // Try to extract from final state messages
+          let fallbackContent = '';
+          if (previousState && previousState.messages && previousState.messages.length > 0) {
+            // Find last AI-like message
+            for (let i = previousState.messages.length - 1; i >= 0; i--) {
+              const msg = previousState.messages[i];
+              const isFallbackAIMessage = (() => {
+                if (msg && typeof msg === 'object') {
+                  if (typeof msg._getType === 'function' && msg._getType() === 'ai') {
+                    return true;
+                  }
+                  const msgAsAny = msg as any;
+                  if (msgAsAny.type === 'ai' || msgAsAny.role === 'assistant') {
+                    return true;
+                  }
+                }
+                return false;
+              })();
+              
+              if (isFallbackAIMessage) {
+                const msgAsAny = msg as any;
+                let content = '';
+                if (typeof msgAsAny.content === 'string') {
+                  content = msgAsAny.content;
+                } else if (Array.isArray(msgAsAny.content)) {
+                  content = msgAsAny.content
+                    .map((part: Record<string, unknown>) => {
+                      if (part && typeof part === 'object' && 'text' in part) {
+                        return (part as { text?: string }).text || '';
+                      }
+                      return String(part);
+                    })
+                    .join('');
+                } else if (msgAsAny.content !== null && msgAsAny.content !== undefined) {
+                  content = String(msgAsAny.content);
+                }
+                
+                // Apply same filtering
+                if (content) {
+                  content = content
+                    .replace(/\[object Object\],?/g, '').trim()
+                    .replace(/^Herramienta utilizada:[\s\S]*?(?=\n\n|$)/gmi, '')
+                    .replace(/^Parámetros:[\s\S]*?(?=\n\n|$)/gmi, '')
+                    .replace(/\[CALL:[^\]]*\][^\n]*\n?/g, '')
+                    .replace(/\[STATE_EVENT\][\s\S]*?\[\/STATE_EVENT\]/g, '')
+                    .replace(/\[AGENT_PLAN\][\s\S]*?\[\/AGENT_PLAN\]/g, '')
+                    .trim();
+                  
+                  if (content && !content.match(/^[,\s]*$/) && content.length >= 5 && !content.startsWith('[CONTEXTO INTERNO]')) {
+                    fallbackContent = content;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+          
+          if (fallbackContent) {
+            finalResponse = fallbackContent;
+            controller.enqueue(new TextEncoder().encode(fallbackContent + '\n'));
+            console.log('[stream] Fallback: Emitted extracted content from state');
+          } else {
+            // Ultimate fallback
+            const ultimateFallback = 'Completé la acción solicitada. Revisa los resultados adjuntos si los hay.';
+            finalResponse = ultimateFallback;
+            controller.enqueue(new TextEncoder().encode(ultimateFallback + '\n'));
+            console.log('[stream] Fallback: Emitted ultimate fallback message');
+          }
+        } else {
+          console.log('[stream] Text emitted successfully during loop');
         }
 
         // Emit finalize event

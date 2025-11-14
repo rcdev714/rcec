@@ -466,113 +466,91 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
  * This bridges the gap between ToolNode (which creates ToolMessages) and our custom state tracking
  */
 export function processToolResults(state: SalesAgentStateType): Partial<SalesAgentStateType> {
-  // Find the last ToolMessage in the messages array
+  // Process ALL ToolMessages that haven't been converted into ToolOutputs yet.
+  // This fixes the case where multiple tools run in parallel and only the last
+  // ToolMessage was previously processed, leaving others without a result event.
   const messages = state.messages;
-  const lastMessage = messages[messages.length - 1];
-  
-  console.log('[processToolResults] Processing, last message type:', lastMessage?._getType());
-  
-  // Check if the last message is a ToolMessage
-  if (lastMessage && 'tool_call_id' in lastMessage) {
-    try {
-      // Extract tool call info from the AIMessage before the ToolMessage
-      let toolName = 'unknown_tool';
-      let toolInput: Record<string, unknown> = {};
-      
-      // Look for the AIMessage with tool_calls that triggered this ToolMessage
-      for (let i = messages.length - 2; i >= 0; i--) {
-        const msg = messages[i];
-        if (msg._getType() === 'ai' && 'tool_calls' in msg && Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0) {
-          const toolCall = msg.tool_calls.find((tc: { id?: string }) => tc.id === lastMessage.tool_call_id);
-          if (toolCall && 'name' in toolCall && 'args' in toolCall) {
-            toolName = toolCall.name as string;
-            toolInput = toolCall.args as Record<string, unknown>;
-          }
-          break;
+  const processedIds = new Set((state.toolOutputs || []).map(o => o.toolCallId).filter(Boolean) as string[]);
+
+  // Build a lookup of tool_call_id -> { name, args } from AI tool_calls
+  const toolCallInfo = new Map<string, { name: string; args: Record<string, unknown> }>();
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i] as any;
+    if (msg._getType && msg._getType() === 'ai' && Array.isArray(msg.tool_calls)) {
+      for (const tc of msg.tool_calls) {
+        if (tc?.id) {
+          toolCallInfo.set(tc.id, { name: tc.name || 'unknown_tool', args: tc.args || {} });
         }
       }
-      
-      console.log('[processToolResults] Tool executed:', toolName);
-      
-      // Parse the tool result
-      const toolContent = lastMessage.content;
-      let toolOutput: unknown;
+    }
+  }
+
+  const newOutputs: ToolOutput[] = [];
+
+  for (const msg of messages as any[]) {
+    if (msg && 'tool_call_id' in msg) {
+      const toolCallId = msg.tool_call_id as string;
+      if (!toolCallId || processedIds.has(toolCallId)) {
+        continue; // skip already processed results
+      }
+
+      const info = toolCallInfo.get(toolCallId) || { name: 'unknown_tool', args: {} };
+
+      // Parse tool content safely
+      let toolOutput: unknown = msg.content;
       let success = true;
       let errorMessage: string | undefined;
-      
       try {
-        // Try to parse as JSON if it's a string
-        if (typeof toolContent === 'string') {
-          toolOutput = JSON.parse(toolContent);
-          // Check if the tool returned a success flag
-          if (typeof toolOutput === 'object' && toolOutput !== null && 'success' in toolOutput) {
-            success = (toolOutput as { success: boolean }).success;
-            if (!success && 'error' in toolOutput) {
-              errorMessage = String((toolOutput as { error: unknown }).error);
+        if (typeof msg.content === 'string') {
+          const parsed = JSON.parse(msg.content);
+          toolOutput = parsed;
+          if (parsed && typeof parsed === 'object' && 'success' in parsed) {
+            success = !!parsed.success;
+            if (!success && 'error' in parsed) {
+              errorMessage = String((parsed as { error: unknown }).error);
             }
           }
-        } else {
-          toolOutput = toolContent;
         }
       } catch {
-        // If parsing fails, use the content as-is
-        toolOutput = toolContent;
+        // leave toolOutput as-is
       }
-      
-      console.log('[processToolResults] Tool success:', success);
-      
-      // Create a new ToolOutput entry
-      const newToolOutput: ToolOutput = {
-        toolName,
-        toolCallId: lastMessage.tool_call_id as string,
-        input: toolInput,
+
+      newOutputs.push({
+        toolName: info.name,
+        toolCallId,
+        input: info.args,
         output: toolOutput,
         success,
         timestamp: new Date(),
         errorMessage,
-      };
-      
-      // If tool failed and we haven't hit retry limit, increment retry counter
-      const shouldRetry = !success && state.retryCount < MAX_RETRIES;
-      
-      return {
-        toolOutputs: [newToolOutput],
-        lastTool: toolName,
-        lastToolSuccess: success,
-        iterationCount: state.iterationCount + 1,
-        retryCount: shouldRetry ? state.retryCount + 1 : 0, // Increment retry or reset on success
-        errorInfo: success ? null : errorMessage,
-      };
-    } catch (error) {
-      console.error('[processToolResults] Error processing tool results:', error);
-      return {
-        toolOutputs: [{
-          toolName: 'unknown_tool',
-          toolCallId: (lastMessage as any)?.tool_call_id as string,
-          input: {},
-          output: null,
-          success: false,
-          timestamp: new Date(),
-          errorMessage: `Failed to process tool result: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        }],
-        lastToolSuccess: false,
-        errorInfo: `Failed to process tool result: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      };
+      });
+      processedIds.add(toolCallId);
     }
   }
-  
-  // If no ToolMessage found (e.g., tool execution failed before creating ToolMessage)
-  console.log('[processToolResults] No ToolMessage found - tool may have failed');
-  
-  // Check if there's an error from callTools
-  if (state.errorInfo) {
-    return {
-      lastToolSuccess: false,
-      retryCount: state.retryCount + 1,
-    };
+
+  if (newOutputs.length === 0) {
+    // If no new ToolMessages found, but we have a system error, increment retry
+    if (state.errorInfo) {
+      return {
+        lastToolSuccess: false,
+        retryCount: state.retryCount + 1,
+      };
+    }
+    return {};
   }
-  
-  return {};
+
+  const allSucceeded = newOutputs.every(o => o.success);
+  const lastOutput = newOutputs[newOutputs.length - 1];
+  const shouldRetry = !allSucceeded && state.retryCount < MAX_RETRIES;
+
+  return {
+    toolOutputs: newOutputs,
+    lastTool: lastOutput.toolName,
+    lastToolSuccess: allSucceeded,
+    iterationCount: state.iterationCount + 1,
+    retryCount: shouldRetry ? state.retryCount + 1 : 0,
+    errorInfo: allSucceeded ? null : lastOutput.errorMessage,
+  };
 }
 
 /**

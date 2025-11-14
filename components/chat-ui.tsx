@@ -869,13 +869,44 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
         .replace(/\[TOKEN_USAGE\][\s\S]*?\[\/TOKEN_USAGE\]/g, '')
         .trim();
 
+      // Synthesize missing tool_result events so UI doesn't show infinite loaders
+      try {
+        const openToolCalls = new Map<string, { toolName: string }>();
+        for (const ev of agentEvents) {
+          if (ev.type === 'tool_call') {
+            openToolCalls.set(ev.toolCallId, { toolName: ev.toolName });
+          } else if (ev.type === 'tool_result') {
+            openToolCalls.delete(ev.toolCallId);
+          }
+        }
+        if (openToolCalls.size > 0) {
+          for (const [toolCallId, info] of openToolCalls.entries()) {
+            agentEvents.push({
+              type: 'tool_result',
+              toolName: info.toolName,
+              toolCallId,
+              success: false,
+              error: 'No se recibió resultado de la herramienta',
+            } as AgentStateEvent);
+          }
+        }
+      } catch {}
+
       // Final update for UI consistency with fully cleaned content
       setMessages((prev) => {
           const newMessages = [...prev];
           const lastMessage = newMessages[newMessages.length - 1];
           if (lastMessage?.role === 'assistant') {
               lastMessage.content = assistantResponseText;
-              lastMessage.agentStateEvents = agentEvents; // Store for display
+              lastMessage.agentStateEvents = agentEvents; // Store for display (includes synthesized results if needed)
+              
+              // UI guard: If no text but structured data present, add minimal message
+              if (assistantResponseText.trim() === '' && (finalSearchResult || finalEmailDraft || agentEvents.length > 0)) {
+                  lastMessage.content = 'Acción completada. Revisa los resultados adjuntos.';
+                  if (process.env.NODE_ENV === 'development') {
+                      console.log('[UI] Applied guard: Set minimal content for structured response');
+                  }
+              }
           }
           return newMessages;
       });
@@ -1310,7 +1341,11 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                                                   <XCircle className="w-4 h-4 text-red-500" />
                                                 )
                                               ) : (
-                                                <LoaderCircle className="w-4 h-4 text-indigo-500 animate-spin" />
+                                                isSending ? (
+                                                  <LoaderCircle className="w-4 h-4 text-indigo-500 animate-spin" />
+                                                ) : (
+                                                  <XCircle className="w-4 h-4 text-gray-400" />
+                                                )
                                               )}
                                             </div>
                                             <div className="flex-1 font-normal text-gray-700">
