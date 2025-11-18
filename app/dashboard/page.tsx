@@ -10,7 +10,7 @@ import { FileText, Infinity, Building, Package, CreditCard, Settings, CheckCircl
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<'analytics' | 'logs'>('analytics');
-  
+
   // Show success message if redirected from successful checkout
   const showSuccessMessage = false; // Handled client-side now
 
@@ -33,13 +33,11 @@ export default function DashboardPage() {
         )}
 
         {/* Header */}
-        <div className="flex items-end justify-between mb-6">
-          <div className="text-left">
-            <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
-            <p className="mt-1 text-xs text-gray-600">
-              Monitorea tu uso mensual de búsquedas y conversaciones con el Agente. Gestiona tu suscripción y analiza tu actividad.
-            </p>
-          </div>
+        <div className="mb-6">
+          <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
+          <p className="mt-1 text-xs text-gray-600">
+            Monitorea tu uso mensual de búsquedas y conversaciones con el Agente. Gestiona tu suscripción y analiza tu actividad.
+          </p>
         </div>
         
         {/* Toggle Tabs */}

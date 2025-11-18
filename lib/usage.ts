@@ -3,6 +3,7 @@ import { getUserSubscription } from '@/lib/subscription';
 import { getPlansWithLimits } from '@/lib/plans';
 import { isAdmin } from '@/lib/admin';
 import { PROFIT_MARGIN_MULTIPLIER, GEMINI_PRICING_PER_MILLION, type GeminiModel } from './ai-config';
+import type { UserSubscription } from '@/types/subscription';
 
 type Plan = 'FREE' | 'PRO' | 'ENTERPRISE';
 
@@ -24,6 +25,48 @@ interface UsageRecord {
 
 // Re-export for backward compatibility
 export { GEMINI_PRICING_PER_MILLION };
+
+/**
+ * Resolve the usage period anchor date for a user based on their plan and subscription.
+ * 
+ * For FREE users: anchored to user.created_at (account creation date)
+ * For paid users (PRO/ENTERPRISE): anchored to Stripe billing cycle start (current_period_start)
+ * 
+ * Fallback chain for paid users:
+ * 1. subscription.current_period_start (Stripe billing anchor)
+ * 2. subscription.updated_at (when subscription was last modified)
+ * 3. user.created_at (account creation date)
+ * 
+ * @param plan - User's current plan
+ * @param subscription - User's subscription record (may be null)
+ * @param userCreatedAtIso - User's account creation date (ISO string)
+ * @returns ISO date string to use as the usage period anchor
+ */
+export function resolveUsageAnchorIso(
+  plan: Plan,
+  subscription: UserSubscription | null | undefined,
+  userCreatedAtIso: string
+): string {
+  // For paid plans, try to use Stripe billing cycle
+  if ((plan === 'PRO' || plan === 'ENTERPRISE') && subscription) {
+    // Primary: Use Stripe's billing cycle start
+    if (subscription.current_period_start) {
+      return subscription.current_period_start;
+    }
+    
+    // Fallback 1: Use subscription updated_at (approximate billing start)
+    if (subscription.updated_at) {
+      console.warn(
+        `[resolveUsageAnchorIso] Paid user ${subscription.user_id} (plan: ${plan}) has no current_period_start, ` +
+        `using subscription.updated_at as fallback. subscription_id: ${subscription.subscription_id || 'null'}`
+      );
+      return subscription.updated_at;
+    }
+  }
+  
+  // Fallback 2 (or FREE plan default): Use account creation date
+  return userCreatedAtIso;
+}
 
 export function estimateTokensFromTextLength(characters: number): number {
   // Rough heuristic: 1 token ≈ 4 characters
@@ -183,7 +226,9 @@ export async function ensureSearchAllowedAndIncrement(userId: string): Promise<{
   const subscription = await getUserSubscription(user.id);
   const plan: Plan = (subscription?.plan as Plan) || 'FREE';
 
-  const { start, end } = getMonthlyPeriodForAnchor(user.created_at || new Date().toISOString());
+  // Resolve usage anchor based on plan and subscription
+  const anchorIso = resolveUsageAnchorIso(plan, subscription, user.created_at || new Date().toISOString());
+  const { start, end } = getMonthlyPeriodForAnchor(anchorIso);
   const usage = await getOrCreateUsageRow(userId, start, end);
   const limits = await getLimits(plan);
 
@@ -262,7 +307,9 @@ export async function ensureExportAllowedAndIncrement(userId: string): Promise<{
   const subscription = await getUserSubscription(user.id);
   const plan: Plan = (subscription?.plan as Plan) || 'FREE';
 
-  const { start, end } = getMonthlyPeriodForAnchor(user.created_at || new Date().toISOString());
+  // Resolve usage anchor based on plan and subscription
+  const anchorIso = resolveUsageAnchorIso(plan, subscription, user.created_at || new Date().toISOString());
+  const { start, end } = getMonthlyPeriodForAnchor(anchorIso);
   const usage = await getOrCreateUsageRow(userId, start, end);
   const limits = await getLimits(plan);
 
@@ -320,8 +367,10 @@ export async function ensurePromptAllowedAndTrack(
   const subscription = await getUserSubscription(user.id);
   const plan: Plan = (subscription?.plan as Plan) || 'FREE';
 
-  const { start } = getMonthlyPeriodForAnchor(user.created_at || new Date().toISOString());
-  const usage = await getOrCreateUsageRow(userId, start, start);
+  // Resolve usage anchor based on plan and subscription
+  const anchorIso = resolveUsageAnchorIso(plan, subscription, user.created_at || new Date().toISOString());
+  const { start, end } = getMonthlyPeriodForAnchor(anchorIso);
+  const usage = await getOrCreateUsageRow(userId, start, end);
   const limits = await getLimits(plan);
 
   const dollarLimit = limits.prompt_dollars;
@@ -384,8 +433,13 @@ export async function trackLLMUsage(
     return;
   }
 
-  const { start } = getMonthlyPeriodForAnchor(user.created_at || new Date().toISOString());
-  await getOrCreateUsageRow(userId, start, start);
+  const subscription = await getUserSubscription(user.id);
+  const plan: Plan = (subscription?.plan as Plan) || 'FREE';
+
+  // Resolve usage anchor based on plan and subscription
+  const anchorIso = resolveUsageAnchorIso(plan, subscription, user.created_at || new Date().toISOString());
+  const { start, end } = getMonthlyPeriodForAnchor(anchorIso);
+  await getOrCreateUsageRow(userId, start, end);
 
   // Calculate cost
   const cost = dollarsFromTokens(model, inputTokens, outputTokens);
@@ -451,7 +505,12 @@ export async function trackOutputTokensAndDollars(
     return;
   }
 
-  const { start, end } = getMonthlyPeriodForAnchor(user.created_at || new Date().toISOString());
+  const subscription = await getUserSubscription(user.id);
+  const plan: Plan = (subscription?.plan as Plan) || 'FREE';
+
+  // Resolve usage anchor based on plan and subscription
+  const anchorIso = resolveUsageAnchorIso(plan, subscription, user.created_at || new Date().toISOString());
+  const { start, end } = getMonthlyPeriodForAnchor(anchorIso);
   const usage = await getOrCreateUsageRow(userId, start, end);
 
   const addedDollars = dollarsFromTokens(options.model, 0, options.outputTokensEstimate);

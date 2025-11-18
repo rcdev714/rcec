@@ -38,13 +38,27 @@ export default function AnalyticsChartsCard() {
         const timeseriesRes = await fetch('/api/usage/timeseries?days=7');
         const summaryRes = await fetch('/api/usage/summary');
 
+        if (!timeseriesRes.ok) {
+          console.error('[AnalyticsCharts] Failed to fetch timeseries:', timeseriesRes.status, timeseriesRes.statusText);
+          const errorText = await timeseriesRes.text();
+          console.error('[AnalyticsCharts] Timeseries error:', errorText);
+        }
+        
+        if (!summaryRes.ok) {
+          console.error('[AnalyticsCharts] Failed to fetch summary:', summaryRes.status, summaryRes.statusText);
+          const errorText = await summaryRes.text();
+          console.error('[AnalyticsCharts] Summary error:', errorText);
+        }
+        
         if (!timeseriesRes.ok || !summaryRes.ok) {
-          console.error('Failed to fetch usage data');
           return;
         }
 
         const timeseriesData = await timeseriesRes.json();
         const summary = await summaryRes.json();
+        
+        console.log('[AnalyticsCharts] Timeseries data:', timeseriesData);
+        console.log('[AnalyticsCharts] Summary data:', summary);
 
         // Set plan for access control
         setPlan(summary.plan || 'FREE');

@@ -10,7 +10,8 @@ export function validateEnvironment() {
     'STRIPE_SECRET_KEY',
     'STRIPE_WEBHOOK_SECRET',
     'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',
-    'NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID'
+    'NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID',
+    'GOOGLE_API_KEY' // Required for Gemini AI chat functionality
   ];
 
   const missing: string[] = [];

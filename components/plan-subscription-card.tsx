@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Check, X, Calendar, RefreshCw } from 'lucide-react';
 // Removed server-side imports to fix Next.js error
 import { UserSubscription, SubscriptionStatus as SubscriptionStatusType } from '@/types/subscription';
 
@@ -35,6 +36,8 @@ export default function PlanAndSubscriptionCard() {
   const [_subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [status, setStatus] = useState<SubscriptionStatusType | null>(null);
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<{ start: string; end: string } | null>(null);
+  const [periodError, setPeriodError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchSubscription() {
@@ -53,6 +56,25 @@ export default function PlanAndSubscriptionCard() {
     }
 
     fetchSubscription();
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/usage/summary', { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        if (isMounted) {
+          setPeriod(json?.period ?? null);
+        }
+      } catch {
+        if (isMounted) {
+          setPeriodError('No se pudo cargar el periodo de uso.');
+        }
+      }
+    })();
+    return () => { isMounted = false; };
   }, []);
 
   const handleManageSubscription = async () => {
@@ -109,23 +131,23 @@ export default function PlanAndSubscriptionCard() {
       FREE: {
         prompts: '$5.00 en tokens/mes',
         search: 'Búsqueda limitada (10/mes)',
-        linkedin: '🔒 LinkedIn bloqueado',
-        reasoning: '🔒 Modelo de razonamiento avanzado bloqueado',
-        analytics: '🔒 Analíticas avanzadas de uso bloqueadas'
+        linkedin: <span className="flex items-center gap-1"><X className="w-3 h-3 text-red-500" />LinkedIn bloqueado</span>,
+        reasoning: <span className="flex items-center gap-1"><X className="w-3 h-3 text-red-500" />Modelo de razonamiento avanzado bloqueado</span>,
+        analytics: <span className="flex items-center gap-1"><X className="w-3 h-3 text-red-500" />Analíticas avanzadas de uso bloqueadas</span>
       },
       PRO: {
         prompts: '$20.00 en tokens/mes',
-        search: '✅ Búsqueda ilimitada',
-        linkedin: '✅ LinkedIn disponible',
-        reasoning: '✅ Modelo de razonamiento avanzado disponible',
-        analytics: '✅ Analíticas avanzadas de uso disponibles'
+        search: <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" />Búsqueda ilimitada</span>,
+        linkedin: <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" />LinkedIn disponible</span>,
+        reasoning: <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" />Modelo de razonamiento avanzado disponible</span>,
+        analytics: <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" />Analíticas avanzadas de uso disponibles</span>
       },
       ENTERPRISE: {
         prompts: '$200.00 en tokens/mes',
-        search: '✅ Búsqueda ilimitada',
-        linkedin: '✅ LinkedIn disponible',
-        reasoning: '✅ Modelo de razonamiento avanzado disponible',
-        analytics: '✅ Analíticas avanzadas de uso disponibles'
+        search: <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" />Búsqueda ilimitada</span>,
+        linkedin: <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" />LinkedIn disponible</span>,
+        reasoning: <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" />Modelo de razonamiento avanzado disponible</span>,
+        analytics: <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" />Analíticas avanzadas de uso disponibles</span>
       }
     };
     return features[plan as keyof typeof features] || features.FREE;
@@ -197,6 +219,57 @@ export default function PlanAndSubscriptionCard() {
             <div className="flex justify-between">
               <span>Analíticas avanzadas:</span>
               <span>{currentFeatures.analytics}</span>
+            </div>
+          </div>
+
+          {/* Billing Period Section */}
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex items-start gap-2">
+              <Calendar className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h4 className="text-xs font-semibold text-gray-900 mb-2">
+                  Periodo de Facturación y Uso
+                </h4>
+                {period ? (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="font-medium text-gray-900">Inicio:</span>
+                      <span className="text-indigo-600">
+                        {new Date(period.start).toLocaleDateString('es-ES', {
+                          weekday: 'short',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <RefreshCw className="h-3 w-3 text-gray-500" />
+                      <span className="font-medium text-gray-900">Reinicio:</span>
+                      <span className="text-indigo-600">
+                        {new Date(period.end).toLocaleDateString('es-ES', {
+                          weekday: 'short',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                    <div className="mt-2 pt-2 border-t border-gray-200">
+                      <p className="text-xs text-gray-600">
+                        Tu uso se reinicia automáticamente en la fecha de reinicio mostrada arriba.
+                      </p>
+                    </div>
+                  </div>
+                ) : periodError ? (
+                  <p className="text-xs text-red-600">{periodError}</p>
+                ) : (
+                  <div className="flex items-center gap-2 text-xs text-gray-600">
+                    <div className="animate-spin h-3 w-3 border-2 border-gray-400 border-t-transparent rounded-full"></div>
+                    <span>Cargando periodo de facturación...</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

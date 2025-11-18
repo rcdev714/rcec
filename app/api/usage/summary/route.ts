@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getUserSubscription } from '@/lib/subscription';
-import { getMonthlyPeriodForAnchor } from '@/lib/usage';
+import { getMonthlyPeriodForAnchor, resolveUsageAnchorIso } from '@/lib/usage';
 
 export async function GET() {
   try {
@@ -22,7 +22,9 @@ export async function GET() {
       prompts: -1, // Deprecated - keeping for backward compatibility
     } as const;
 
-    const { start, end } = getMonthlyPeriodForAnchor(user.created_at || new Date().toISOString());
+    // Resolve usage anchor based on plan and subscription
+    const anchorIso = resolveUsageAnchorIso(plan, subscription, user.created_at || new Date().toISOString());
+    const { start, end } = getMonthlyPeriodForAnchor(anchorIso);
 
     const { data: usageRows, error } = await supabase
       .from('user_usage')

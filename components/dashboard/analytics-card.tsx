@@ -16,14 +16,22 @@ export default function AnalyticsCard() {
 
   useEffect(() => {
     async function load() {
-      // Fetch summary and cost summary for accurate data
-      const [sumRes, costSummaryRes] = await Promise.all([
-        fetch('/api/usage/summary'),
-        fetch('/api/agent/cost-summary') // New dedicated endpoint for accurate cost aggregation
-      ]);
-      
-      if (sumRes.ok) {
+      try {
+        // Fetch summary and cost summary for accurate data
+        const [sumRes, costSummaryRes] = await Promise.all([
+          fetch('/api/usage/summary'),
+          fetch('/api/agent/cost-summary') // New dedicated endpoint for accurate cost aggregation
+        ]);
+        
+        if (!sumRes.ok) {
+          console.error('[Analytics] Failed to fetch usage summary:', sumRes.status, sumRes.statusText);
+          const errorText = await sumRes.text();
+          console.error('[Analytics] Error response:', errorText);
+          return;
+        }
+        
         const summary = await sumRes.json();
+        console.log('[Analytics] Summary response:', summary);
         
         // Get accurate cost from dedicated aggregation endpoint
         let totalDollars = summary.usage?.cost_dollars || 0; // Fallback to DB value
@@ -40,8 +48,8 @@ export default function AnalyticsCard() {
             messageCount: costData.messageCount 
           });
         } else {
-          console.error('[Analytics] Failed to fetch cost summary, falling back to summary data');
-          console.log('[Analytics] Using fallback data:', { 
+          console.error('[Analytics] Failed to fetch cost summary:', costSummaryRes.status, costSummaryRes.statusText);
+          console.log('[Analytics] Using fallback data from summary:', { 
             totalTokens, 
             totalDollars 
           });
@@ -56,8 +64,18 @@ export default function AnalyticsCard() {
           searches: summary.limits?.searches ?? -1,
           dollars: summary.limits?.prompt_dollars ?? -1
         });
-      } else {
-        console.error('[Analytics] Failed to fetch usage summary');
+        
+        console.log('[Analytics] Final values set:', {
+          searches: summary.usage?.searches || 0,
+          tokens: totalTokens,
+          dollars: totalDollars,
+          limits: {
+            searches: summary.limits?.searches ?? -1,
+            dollars: summary.limits?.prompt_dollars ?? -1
+          }
+        });
+      } catch (error) {
+        console.error('[Analytics] Error loading data:', error);
       }
     }
     load();

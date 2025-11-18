@@ -209,6 +209,11 @@ export async function chatWithSalesAgent(
               node: nodeName,
               error: nodeOutput.errorInfo,
             });
+            
+            // Also emit error as visible text content so user can see it
+            const errorText = `⚠️ Error: ${nodeOutput.errorInfo}\n\n`;
+            controller.enqueue(new TextEncoder().encode(errorText));
+            finalResponse += errorText;
           }
 
           // Get the last message if it's from the AI
@@ -461,14 +466,21 @@ export async function chatWithSalesAgent(
         let errorMessage = 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta de nuevo.';
 
         if (error instanceof Error) {
-          if (error.message.includes('API key')) {
-            errorMessage = 'Error de configuración: La clave API no está configurada correctamente.';
+          if (error.message.includes('GOOGLE_API_KEY') || error.message.includes('API key')) {
+            errorMessage = 'Error de configuración: La clave API de Google no está configurada correctamente o es inválida.';
           } else if (error.message.includes('timeout')) {
             errorMessage = 'La solicitud tardó demasiado tiempo. Por favor, intenta con una consulta más simple.';
           } else if (error.message.includes('rate limit') || error.message.includes('Too Many Requests') || error.message.includes('quota')) {
-            errorMessage = 'Has excedido el límite de consultas. Por favor, espera o actualiza tu plan.';
+            errorMessage = 'Has excedido el límite de consultas de la API de Google. Por favor, espera o verifica tu configuración.';
           } else if (error.message.includes('429')) {
             errorMessage = 'Límite de consultas alcanzado. Intenta de nuevo más tarde.';
+          } else if (error.message.includes('403') || error.message.includes('Forbidden')) {
+            errorMessage = 'La clave API de Google no tiene los permisos necesarios. Verifica tu configuración en Google Cloud Console.';
+          } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+            errorMessage = 'La clave API de Google es inválida o ha expirado. Por favor, verifica tu configuración.';
+          } else {
+            // Include the actual error message for debugging
+            errorMessage = `Error: ${error.message}`;
           }
         }
 

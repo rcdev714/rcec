@@ -17,10 +17,19 @@ export async function POST(req: Request) {
   const envValidation = validateEnvironment();
   if (!envValidation.isValid) {
     console.error("Environment validation failed:", envValidation.missing);
+    
+    // Provide user-friendly error message
+    let userMessage = "Error de configuración del servidor. ";
+    if (envValidation.missing.includes('GOOGLE_API_KEY')) {
+      userMessage += "La clave API de Google no está configurada. El chat AI requiere esta configuración para funcionar.";
+    } else {
+      userMessage += "Faltan variables de entorno necesarias. Por favor contacta al administrador.";
+    }
+    
     return new Response(
       JSON.stringify({ 
         error: "Configuration error", 
-        message: "Required environment variables are missing. Please check your configuration.", 
+        message: userMessage,
         missing: envValidation.missing
       }), 
       { 

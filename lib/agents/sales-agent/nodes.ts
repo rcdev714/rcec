@@ -19,8 +19,14 @@ function getGeminiModel(modelName: string = "gemini-2.5-flash"): ChatGoogleGener
   if (!geminiModels[modelName]) {
     console.log('[getGeminiModel] Initializing model:', modelName);
     
+    // Validate API key before initialization
+    const apiKey = process.env.GOOGLE_API_KEY;
+    if (!apiKey) {
+      throw new Error('GOOGLE_API_KEY environment variable is required but not set. Please configure your environment.');
+    }
+    
     geminiModels[modelName] = new ChatGoogleGenerativeAI({
-      apiKey: process.env.GOOGLE_API_KEY || '',
+      apiKey,
       model: modelName,
       temperature: 0.3, // Lower temperature for more consistent tool usage
       maxOutputTokens: 8192, // Increased for longer, complete responses
@@ -63,20 +69,24 @@ export async function loadUserContext(_state: SalesAgentStateType): Promise<Part
       .eq('user_id', user.id)
       .single();
 
-    // Fetch usage
-    const currentPeriodStart = new Date();
-    currentPeriodStart.setDate(1);
-    currentPeriodStart.setHours(0, 0, 0, 0);
+    // Define limits based on plan
+    const plan = subscription?.plan || 'FREE';
+
+    // Fetch usage using billing-aligned period
+    const { resolveUsageAnchorIso, getMonthlyPeriodForAnchor } = await import('@/lib/usage');
+    const anchorIso = resolveUsageAnchorIso(
+      plan as 'FREE' | 'PRO' | 'ENTERPRISE',
+      subscription,
+      user.created_at || new Date().toISOString()
+    );
+    const { start: periodStart } = getMonthlyPeriodForAnchor(anchorIso);
 
     const { data: usage } = await supabase
       .from('user_usage')
       .select('*')
       .eq('user_id', user.id)
-      .gte('period_start', currentPeriodStart.toISOString())
+      .eq('period_start', periodStart.toISOString())
       .single();
-
-    // Define limits based on plan
-    const plan = subscription?.plan || 'FREE';
     const limitsMap: Record<string, { searches: number; exports: number; prompts: number }> = {
       FREE: { searches: 10, exports: 2, prompts: 10 },
       PRO: { searches: 100, exports: 20, prompts: 100 },

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { calculateGeminiCost } from "@/lib/token-counter";
-import { getMonthlyPeriodForAnchor } from "@/lib/usage";
+import { getMonthlyPeriodForAnchor, resolveUsageAnchorIso } from "@/lib/usage";
 
 export const runtime = "edge";
 
@@ -20,8 +20,17 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get current billing period
-    const { start, end } = getMonthlyPeriodForAnchor(user.created_at || new Date().toISOString());
+    // Get subscription to determine correct billing anchor
+    const { data: subscription } = await supabase
+      .from('user_subscriptions')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+    const plan = (subscription?.plan ?? 'FREE') as 'FREE' | 'PRO' | 'ENTERPRISE';
+
+    // Get current billing period using billing-aligned anchor
+    const anchorIso = resolveUsageAnchorIso(plan, subscription, user.created_at || new Date().toISOString());
+    const { start, end } = getMonthlyPeriodForAnchor(anchorIso);
 
     // Use database-level aggregation for optimal performance
     // This avoids transferring all message records to the client
