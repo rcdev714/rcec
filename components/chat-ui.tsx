@@ -4,7 +4,7 @@ import { useState, FormEvent, ChangeEvent, useRef, useEffect, useMemo } from "re
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowDown, LoaderCircle, Copy, CopyCheck, ArrowUp, Sparkles, Infinity, CheckCircle2, XCircle } from "lucide-react";
-import ModelSelector from "./model-selector";
+import { ModelSelector } from "./model-selector";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import UserAvatar from "./user-avatar";

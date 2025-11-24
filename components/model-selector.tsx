@@ -15,7 +15,7 @@ interface ModelSelectorProps {
   onThinkingChange?: (level: 'high' | 'low') => void;
 }
 
-export function ModelSelector({ value, onChange, disabled, className, userPlan = 'FREE', thinkingLevel = 'high', onThinkingChange }: ModelSelectorProps) {
+export function ModelSelector({ value, onChange, disabled, className, userPlan: _userPlan = 'FREE', thinkingLevel = 'high', onThinkingChange }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const [hoveredModel, setHoveredModel] = useState<string | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -238,7 +238,7 @@ export function ModelSelector({ value, onChange, disabled, className, userPlan =
                                     ? "bg-indigo-100 text-indigo-700 border border-indigo-200"
                                     : "bg-emerald-100 text-emerald-700 border border-emerald-200"
                                 )}>
-                                  {opt.thinkingMode === 'high'
+                                  {                                  opt.thinkingMode === 'high'
                                     ? '⚡ Razonamiento profundo (más lento, más preciso)'
                                     : '🚀 Modo rápido (menor latencia y costo)'}
                                 </div>
@@ -261,6 +261,5 @@ export function ModelSelector({ value, onChange, disabled, className, userPlan =
   );
 }
 
-export default ModelSelector;
 
 
