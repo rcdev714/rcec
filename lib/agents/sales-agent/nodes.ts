@@ -1,4 +1,4 @@
-import { AIMessage, SystemMessage } from "@langchain/core/messages";
+import { AIMessage, SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { SalesAgentStateType, TodoItem, MAX_ITERATIONS, MAX_RETRIES, ToolOutput } from "./state";
 import { SALES_AGENT_SYSTEM_PROMPT } from "./prompt";
@@ -25,11 +25,24 @@ function getGeminiModel(modelName: string = "gemini-2.5-flash"): ChatGoogleGener
       throw new Error('GOOGLE_API_KEY environment variable is required but not set. Please configure your environment.');
     }
     
+    const isGemini3 = modelName.startsWith('gemini-3');
+    // Use v1beta for Gemini 3 models as they are in preview and may not be fully available in v1
+    // Some capabilities like 'thinking' mode are definitely preview/beta
+    const apiVersion = isGemini3 ? 'v1beta' : undefined; 
+    // Lower temperatures for stricter instruction-following
+    // Increase slightly to avoid repetition loops
+    const temperature = isGemini3 ? 0.85 : 0.2;
+
+    // Workaround: Remove 'tools' from Gemini 3 initialization if they are causing issues
+    // or bind them later. For now, we initialize the base model without binding tools here.
+    // The bindTools call in the think function handles the binding.
+    
     geminiModels[modelName] = new ChatGoogleGenerativeAI({
       apiKey,
       model: modelName,
-      temperature: 0.3, // Lower temperature for more consistent tool usage
-      maxOutputTokens: 8192, // Increased for longer, complete responses
+      temperature,
+      maxOutputTokens: 8192,
+      ...(apiVersion && { apiVersion }),
     });
   }
   return geminiModels[modelName];
@@ -127,70 +140,158 @@ export async function loadUserContext(_state: SalesAgentStateType): Promise<Part
 }
 
 /**
- * Plan todos based on user query
+ * Plan todos based on user query using Gemini AI
  */
 export async function planTodos(state: SalesAgentStateType): Promise<Partial<SalesAgentStateType>> {
-  const lastMessage = state.messages[state.messages.length - 1];
-  const userQuery = lastMessage?.content?.toString() || '';
+  try {
+    const lastMessage = state.messages[state.messages.length - 1];
+    const userQuery = lastMessage?.content?.toString() || '';
+    const modelName = "gemini-2.5-flash"; // Use fast model for planning
+    const model = getGeminiModel(modelName);
 
-  // Simple heuristic-based todo generation
-  const todos: TodoItem[] = [];
-  const lowerQuery = userQuery.toLowerCase();
+    const contextParts: string[] = [];
+    if (state.userContext?.offerings?.length) {
+      contextParts.push(`Servicios del usuario: ${state.userContext.offerings.map(o => o.offering_name).join(', ')}`);
+    }
 
-  // Detect intent and create todos
-  if (lowerQuery.includes('busca') || lowerQuery.includes('encuentra') || lowerQuery.includes('muestra')) {
-    todos.push({
-      id: 'search_companies',
-      description: 'Buscar empresas según criterios del usuario',
+    const prompt = `
+Eres un Planificador Estratégico de Inteligencia Empresarial. Tu tarea es desglosar la consulta del usuario en una lista de tareas (todos) lógica y secuencial.
+
+CONSULTA DEL USUARIO: "${userQuery}"
+CONTEXTO: ${contextParts.join('\n')}
+
+Analiza la intención del usuario y genera un plan JSON con la siguiente estructura:
+{
+  "goal": "lead_generation" | "company_research" | "contact_enrichment" | "email_drafting" | "general_query",
+  "todos": [
+    {
+      "id": "string_id",
+      "description": "Descripción clara de la acción (ej: 'Buscar empresas de logística en Guayas')",
+      "status": "pending"
+    }
+  ]
+}
+
+REGLAS:
+1. Si la consulta es compleja (ej: "comparar X e Y"), crea tareas separadas para cada parte.
+2. Si pide contactos, incluye primero la búsqueda de la empresa y luego la búsqueda de contactos.
+3. Si pide redactar un email, incluye primero la investigación de la empresa/contacto y al final la redacción.
+4. Mantén el plan conciso (máximo 5 pasos).
+5. Responde SOLAMENTE con el JSON válido.
+`;
+
+    const response = await model.invoke([new HumanMessage(prompt)]);
+    const content = response.content.toString();
+    
+    // Extract JSON from response (supports ```json fenced blocks or raw JSON)
+    const fenceMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    let jsonText: string | null = null;
+    if (fenceMatch && fenceMatch[1]) {
+      jsonText = fenceMatch[1];
+    } else {
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonText = jsonMatch[0];
+      }
+    }
+    if (!jsonText) {
+      throw new Error('No valid JSON found in planner response');
+    }
+    
+    const plan = JSON.parse(jsonText);
+    
+    // Map to TodoItem type
+    const todos: TodoItem[] = (plan.todos || []).map((t: any) => ({
+      id: t.id || Math.random().toString(36).substring(7),
+      description: t.description,
       status: 'pending',
       createdAt: new Date(),
-    });
-  }
+    }));
 
-  if (lowerQuery.includes('contacto') || lowerQuery.includes('email') || lowerQuery.includes('teléfono')) {
-    todos.push({
-      id: 'find_contacts',
-      description: 'Encontrar información de contacto',
-      status: 'pending',
-      createdAt: new Date(),
-    });
-  }
+    // Fallback if empty
+    if (todos.length === 0) {
+      todos.push({
+        id: 'respond_to_query',
+        description: 'Responder a la consulta del usuario',
+        status: 'pending',
+        createdAt: new Date(),
+      });
+    }
 
-  if (lowerQuery.includes('redacta') || lowerQuery.includes('escribe') || lowerQuery.includes('email') || lowerQuery.includes('correo')) {
-    todos.push({
-      id: 'draft_email',
-      description: 'Redactar borrador de email',
-      status: 'pending',
-      createdAt: new Date(),
-    });
-  }
+    return {
+      todo: todos,
+      goal: plan.goal || 'general_query',
+      // Track token usage if available in metadata
+      ...(extractTokenUsageFromMetadata(response.response_metadata) ? {
+        totalInputTokens: extractTokenUsageFromMetadata(response.response_metadata)!.inputTokens,
+        totalOutputTokens: extractTokenUsageFromMetadata(response.response_metadata)!.outputTokens,
+        totalTokens: extractTokenUsageFromMetadata(response.response_metadata)!.totalTokens
+      } : {})
+    };
 
-  // Default: at least one todo for general query
-  if (todos.length === 0) {
-    todos.push({
-      id: 'respond_to_query',
-      description: 'Responder a la consulta del usuario',
-      status: 'pending',
-      createdAt: new Date(),
-    });
-  }
+  } catch (error) {
+    console.error('[planTodos] Error in AI planning, falling back to heuristic:', error);
+    
+    // Fallback to original heuristic logic
+    const lastMessage = state.messages[state.messages.length - 1];
+    const userQuery = lastMessage?.content?.toString() || '';
+    const lowerQuery = userQuery.toLowerCase();
+    const todos: TodoItem[] = [];
 
-  // Determine goal
-  let goal: SalesAgentStateType['goal'] = 'general_query';
-  if (lowerQuery.includes('lead') || lowerQuery.includes('prospecto') || lowerQuery.includes('busca empresas')) {
-    goal = 'lead_generation';
-  } else if (lowerQuery.includes('contacto') || lowerQuery.includes('enriquec')) {
-    goal = 'contact_enrichment';
-  } else if (lowerQuery.includes('email') || lowerQuery.includes('redacta')) {
-    goal = 'email_drafting';
-  } else if (lowerQuery.includes('investig') || lowerQuery.includes('analiza')) {
-    goal = 'company_research';
+    if (lowerQuery.includes('busca') || lowerQuery.includes('encuentra') || lowerQuery.includes('muestra')) {
+      todos.push({
+        id: 'search_companies',
+        description: 'Buscar empresas según criterios del usuario',
+        status: 'pending',
+        createdAt: new Date(),
+      });
+    }
+    
+    if (lowerQuery.includes('contacto') || lowerQuery.includes('email') || lowerQuery.includes('teléfono')) {
+      todos.push({
+        id: 'find_contacts',
+        description: 'Encontrar información de contacto',
+        status: 'pending',
+        createdAt: new Date(),
+      });
+    }
+  
+    if (lowerQuery.includes('redacta') || lowerQuery.includes('escribe') || lowerQuery.includes('email') || lowerQuery.includes('correo')) {
+      todos.push({
+        id: 'draft_email',
+        description: 'Redactar borrador de email',
+        status: 'pending',
+        createdAt: new Date(),
+      });
+    }
+  
+    // Default: at least one todo for general query
+    if (todos.length === 0) {
+      todos.push({
+        id: 'respond_to_query',
+        description: 'Responder a la consulta del usuario',
+        status: 'pending',
+        createdAt: new Date(),
+      });
+    }
+  
+    // Determine goal
+    let goal: SalesAgentStateType['goal'] = 'general_query';
+    if (lowerQuery.includes('lead') || lowerQuery.includes('prospecto') || lowerQuery.includes('busca empresas')) {
+      goal = 'lead_generation';
+    } else if (lowerQuery.includes('contacto') || lowerQuery.includes('enriquec')) {
+      goal = 'contact_enrichment';
+    } else if (lowerQuery.includes('email') || lowerQuery.includes('redacta')) {
+      goal = 'email_drafting';
+    } else if (lowerQuery.includes('investig') || lowerQuery.includes('analiza')) {
+      goal = 'company_research';
+    }
+  
+    return {
+      todo: todos,
+      goal,
+    };
   }
-
-  return {
-    todo: todos,
-    goal,
-  };
 }
 
 /**
@@ -213,8 +314,55 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
     ];
     
     // Bind tools to the model (use state.modelName for dynamic selection)
-    const modelName = state.modelName || "gemini-2.5-flash";
-    const model = getGeminiModel(modelName).bindTools(allTools);
+    let modelName = state.modelName || "gemini-2.5-flash";
+    
+    // Override: If the user selected gemini-3-pro-preview, use gemini-2.5-pro instead for better reasoning
+    // Gemini 3 thinking mode has API compatibility issues with tools, and quality isn't better yet
+    if (modelName === 'gemini-3-pro-preview') {
+      console.log('[think] Upgrading gemini-3-pro-preview to gemini-2.5-pro for better tool selection quality');
+      modelName = 'gemini-2.5-pro';
+    }
+    
+    // Gemini 3 models currently have issues with tool binding in some library versions or regions.
+    // If we encounter issues with Gemini 3, we might need to fallback to a version without tools bound
+    // or strictly control the schema. For now, we bind tools as usual.
+    
+    // NOTE: If using Gemini 3 thinking mode, we might need to be careful with tool binding
+    // as some preview versions don't support both simultaneously well.
+    const baseModel = getGeminiModel(modelName);
+    
+    // Add thinking level hint for Gemini 3 models (fallback if native param unsupported by current lib)
+    let aiThinkingHint = '';
+    const modelIsGemini3 = modelName.startsWith('gemini-3');
+    if (modelIsGemini3 && state.thinkingLevel === 'low') {
+      aiThinkingHint = '\n\n[THINKING_LEVEL: LOW] Optimize for latency and cost. Use minimal reasoning steps.\n';
+    }
+
+    // Check if this is Gemini 3 AND we are in thinking mode
+    // In some cases, Gemini 3 + thinking mode + tools causes issues
+    const isGemini3Thinking = modelIsGemini3 && !!aiThinkingHint;
+    
+    // If Gemini 3 is in thinking mode, it seems it DOES NOT support tools yet in the v1beta API.
+    // The error "Invalid JSON payload received. Unknown name 'tools': Cannot find field" is specific to this.
+    // Workaround: When thinking is enabled for Gemini 3, we DO NOT bind tools to the model call.
+    // But the 'think' node is supposed to select tools!
+    // This implies we cannot use 'thinking' mode for tool selection. We can only use it for pure reasoning.
+    
+    // Correct strategy:
+    // 1. If we need to select tools (which 'think' usually does), we MUST disable thinking mode for this specific call if tools are bound.
+    // 2. Alternatively, if we want deep reasoning, we don't bind tools and ask the model to output JSON, but that breaks the graph contract.
+    
+    // Decision: Prioritize tool usage for the 'think' node. Disable thinking hint if it conflicts.
+    // We will override the thinkingHint variable if we are binding tools.
+    
+    if (isGemini3Thinking) {
+        console.log('[think] Disabling thinking mode to allow tool usage for Gemini 3');
+        // Clear the thinking hint from the prompt context so we don't trigger the mode
+        // We can't easily clear the variable 'thinkingHint' passed to prompt construction below, 
+        // so we'll handle it by NOT passing it in the prompt construction if tools are bound.
+    }
+    
+    const model = baseModel.bindTools(allTools);
     
     console.log('[think] Using model:', modelName);
     console.log('[think] Tools bound to model:', allTools.map(t => t.name));
@@ -402,19 +550,79 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
       ? `\n\n[CONTEXTO INTERNO]\n${contextParts.join('\n')}\n[/CONTEXTO INTERNO]\n`
       : '';
 
-    // Trim messages if too many (keep system, first user, last 10)
-    // IMPORTANT: Include ALL message types (Human, AI, Tool) for context
-    let messagesToSend = [new SystemMessage(SALES_AGENT_SYSTEM_PROMPT + contextMessage)];
-    
-    if (state.messages.length > 12) {
-      messagesToSend.push(state.messages[0]); // First user message
-      messagesToSend = messagesToSend.concat(state.messages.slice(-10)); // Last 10 (includes ToolMessages)
-    } else {
-      messagesToSend = messagesToSend.concat(state.messages);
+    // Prepare conversation messages
+    // For Gemini 3, avoid sending functionCall/response parts directly because the current LangChain
+    // wrapper may not preserve thoughtSignature. Rely on summarized tool results in context.
+    const shouldFilterFunctionTurn = modelIsGemini3;
+    let baseMessages = shouldFilterFunctionTurn
+      ? state.messages.filter((m) => {
+          const type = m._getType();
+          const isFunctionCall = type === 'ai' && 'tool_calls' in (m as any);
+          const isFunctionResponse = type === 'tool';
+          return !isFunctionCall && !isFunctionResponse;
+        })
+      : state.messages;
+    // Safeguard: if filtering removed everything, fall back to original messages
+    if (shouldFilterFunctionTurn && baseMessages.length === 0) {
+      console.warn('[think] All messages filtered out, using original messages');
+      baseMessages = state.messages;
     }
+
+    // Trim messages if too many (keep system, first message, last 10)
+    // IMPORTANT: Include ALL surviving message types after filtering
+    
+    // Logic to disable thinking hint if we are binding tools for Gemini 3 to avoid API conflict
+    const effectiveThinkingHint = (isGemini3Thinking) ? '' : aiThinkingHint;
+    
+    let messagesToSend = [new SystemMessage(SALES_AGENT_SYSTEM_PROMPT + contextMessage + effectiveThinkingHint)];
+    
+    if (baseMessages.length > 12) {
+      messagesToSend.push(baseMessages[0]); // First message (to preserve context)
+      messagesToSend = messagesToSend.concat(baseMessages.slice(-10));
+    } else {
+      messagesToSend = messagesToSend.concat(baseMessages);
+    }
+    
+    // Fix for Google Generative AI error: "Google requires a tool name for each tool call response"
+    // Ensure all ToolMessages have a name property. If missing, try to infer it or set a default.
+    messagesToSend = messagesToSend.map(msg => {
+      if (msg._getType() === 'tool') {
+        const toolMsg = msg as any;
+        if (!toolMsg.name) {
+          // Try to find the corresponding tool call in previous AI messages
+          // This is a best-effort heuristic
+          const toolCallId = toolMsg.tool_call_id;
+          let foundName = 'unknown_tool';
+          
+          if (toolCallId) {
+             // Look backwards for the AI message that called this tool
+             for (let i = messagesToSend.indexOf(msg) - 1; i >= 0; i--) {
+               const prevMsg = messagesToSend[i] as any;
+               if (prevMsg._getType() === 'ai' && Array.isArray(prevMsg.tool_calls)) {
+                 const matchingCall = prevMsg.tool_calls.find((tc: any) => tc.id === toolCallId);
+                 if (matchingCall && matchingCall.name) {
+                   foundName = matchingCall.name;
+                   break;
+                 }
+               }
+             }
+          }
+          
+          console.log(`[think] Patching missing name for ToolMessage ${toolCallId}: ${foundName}`);
+          // Create a new ToolMessage with the name
+          // We can't easily modify the existing instance if it's readonly, so we create a new one if possible
+          // or just mutate if it allows (LangChain messages are usually mutable classes)
+          toolMsg.name = foundName;
+        }
+      }
+      return msg;
+    });
     
     console.log('[think] Sending', messagesToSend.length, 'messages to model');
     console.log('[think] Message types:', messagesToSend.map(m => m._getType()).join(', '));
+    if (aiThinkingHint) {
+      console.log('[think] Thinking level: low (optimizing for speed)');
+    }
 
     const response = await model.invoke(messagesToSend);
     
@@ -557,7 +765,6 @@ export function processToolResults(state: SalesAgentStateType): Partial<SalesAge
     toolOutputs: newOutputs,
     lastTool: lastOutput.toolName,
     lastToolSuccess: allSucceeded,
-    iterationCount: state.iterationCount + 1,
     retryCount: shouldRetry ? state.retryCount + 1 : 0,
     errorInfo: allSucceeded ? null : lastOutput.errorMessage,
   };
@@ -571,15 +778,9 @@ export function evaluateResult(state: SalesAgentStateType): Partial<SalesAgentSt
     return { lastToolSuccess: true };
   }
 
-  const lastOutput = state.toolOutputs[state.toolOutputs.length - 1];
-  
-  // Check if tool execution was successful
-  const success = lastOutput.success && lastOutput.output !== null;
-
-  return {
-    lastToolSuccess: success,
-    errorInfo: success ? null : lastOutput.errorMessage || 'Tool execution failed',
-  };
+  // Preserve batch evaluation decided in processToolResults.
+  // Do not overwrite lastToolSuccess or errorInfo here, as mixed batches may be misrepresented by a single last output.
+  return {};
 }
 
 /**
@@ -794,23 +995,38 @@ export async function finalize(state: SalesAgentStateType): Promise<Partial<Sale
     
     const finalizationContext = contextParts.join('\n');
     
-    // Get the original user query
-    const firstUserMessage = messages.find(m => m._getType() === 'human');
-    const userQuery = firstUserMessage?.content?.toString() || 'consulta del usuario';
+    // Get the most recent user query
+    const lastUserMessage = [...messages].reverse().find(m => m._getType() === 'human');
+    const userQuery = lastUserMessage?.content?.toString() || 'consulta del usuario';
     
-    // Create finalization prompt
-    const finalizationPrompt = new SystemMessage(`${finalizationContext}
+    // Add thinking level hint for Gemini 3 models (fallback until LangChain exposes native param)
+    const modelName = state.modelName || "gemini-2.5-flash";
+    let thinkingHint = '';
+    const isGemini3Final = modelName.startsWith('gemini-3');
+    if (isGemini3Final && state.thinkingLevel === 'low') {
+      thinkingHint = '\n[THINKING_LEVEL: LOW] Optimize for latency and cost. Use minimal reasoning steps.\n';
+    }
+    
+    // Determine if we should use thinking mode for finalization.
+    // Finalize node does NOT use tools, so thinking mode SHOULD be safe here.
+    const effectiveThinkingHint = thinkingHint;
+    
+    // Create finalization prompt as a human message to satisfy alternation rules
+    const finalizationPrompt = new HumanMessage(`${finalizationContext}
 
 CONSULTA ORIGINAL DEL USUARIO:
 "${userQuery}"
-
+${effectiveThinkingHint}
 Genera tu respuesta final ahora. DEBE ser completa, profesional y útil.`);
     
     // Invoke model for final response
-    const modelName = state.modelName || "gemini-2.5-flash";
+    // Note: finalize does not bind tools, so this call is safe for Gemini 3 + Thinking
     const model = getGeminiModel(modelName);
     
     console.log('[finalize] Generating final response with model:', modelName);
+    if (effectiveThinkingHint) {
+      console.log('[finalize] Thinking level: low (optimizing for speed)');
+    }
     
     const response = await model.invoke([finalizationPrompt]);
     
@@ -885,15 +1101,19 @@ async function executeToolWithTimeout(
   toolCall: any,
   timeoutMs: number = 30000 // 30 second default timeout
 ): Promise<any> {
+  let timeoutId: ReturnType<typeof setTimeout>;
   const timeoutPromise = new Promise((_, reject) => {
-    setTimeout(() => reject(new Error(`Tool execution timed out after ${timeoutMs}ms`)), timeoutMs);
+    timeoutId = setTimeout(() => reject(new Error(`Tool execution timed out after ${timeoutMs}ms`)), timeoutMs);
   });
 
   const toolPromise = tool.func(toolCall.args);
 
   try {
-    return await Promise.race([toolPromise, timeoutPromise]);
+    const result = await Promise.race([toolPromise, timeoutPromise]);
+    clearTimeout(timeoutId!);
+    return result;
   } catch (error) {
+    clearTimeout(timeoutId!);
     // If timeout occurred, throw a specific timeout error
     if (error instanceof Error && error.message.includes('timed out')) {
       throw new Error(`Tool "${toolCall.name}" execution timed out after ${timeoutMs}ms`);
@@ -960,6 +1180,7 @@ export async function callTools(state: SalesAgentStateType): Promise<Partial<Sal
             error: `Tool "${toolCall.name}" not found`,
           }),
           tool_call_id: toolCall.id,
+          name: toolCall.name || 'unknown_tool',
         });
       }
 
@@ -979,6 +1200,7 @@ export async function callTools(state: SalesAgentStateType): Promise<Partial<Sal
         return new ToolMessage({
           content: JSON.stringify(toolResult),
           tool_call_id: toolCall.id,
+          name: tool.name,
         });
 
       } catch (error) {
@@ -995,6 +1217,7 @@ export async function callTools(state: SalesAgentStateType): Promise<Partial<Sal
             timeout: error instanceof Error && error.message.includes('timed out'),
           }),
           tool_call_id: toolCall.id,
+          name: tool.name,
         });
       }
     });

@@ -27,11 +27,18 @@ const models: Record<string, ChatGoogleGenerativeAI> = {};
 
 function getModel(modelName: string = "gemini-2.0-flash-exp"): ChatGoogleGenerativeAI {
   if (!models[modelName]) {
+    // Gemini 3 models: use stable v1 API and temperature=1.0
+    const isGemini3 = modelName.startsWith('gemini-3');
+    const apiVersion = isGemini3 ? 'v1' : undefined;
+    // Lower temperatures for stricter instruction-following
+    const temperature = isGemini3 ? 0.7 : 0.3;
+    
     models[modelName] = new ChatGoogleGenerativeAI({
       apiKey: process.env.GOOGLE_API_KEY || '',
       model: modelName,
-      temperature: 0.7,
-      maxOutputTokens: 8192, // Reasonable output limit
+      temperature,
+      maxOutputTokens: 8192,
+      ...(apiVersion && { apiVersion }),
     });
   }
   return models[modelName];

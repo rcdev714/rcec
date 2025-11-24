@@ -7,7 +7,7 @@ import { validateSubscriptionData, logValidationError, logValidationSuccess } fr
 // Server-side subscription utilities
 export async function getUserSubscription(userId: string): Promise<UserSubscription | null> {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
     .from('user_subscriptions')
     .select('*')
@@ -124,7 +124,7 @@ export async function createUserSubscription(
 // Client-side subscription utilities
 export async function getUserSubscriptionClient(): Promise<UserSubscription | null> {
   const supabase = createBrowserClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
@@ -242,7 +242,8 @@ function checkFeatureAccess(planId: string, feature: string): boolean {
   // Free features - available to all plans
   const freeFeatures = [
     'basic_search',
-    'basic_support'
+    'basic_support',
+    'advanced_reasoning_models' // Access to all models for everyone
   ];
 
   // Pro features - available to Pro and Enterprise
@@ -252,7 +253,7 @@ function checkFeatureAccess(planId: string, feature: string): boolean {
     'export_data',
     'priority_support',
     'linkedin_search',
-    'advanced_reasoning_models' // gemini-2.5-pro access
+    // 'advanced_reasoning_models' // Moved to free features
   ];
 
   // Enterprise features - available only to Enterprise

@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   const envValidation = validateEnvironment();
   if (!envValidation.isValid) {
     console.error("Environment validation failed:", envValidation.missing);
-    
+
     // Provide user-friendly error message
     let userMessage = "Error de configuración del servidor. ";
     if (envValidation.missing.includes('GOOGLE_API_KEY')) {
@@ -25,14 +25,14 @@ export async function POST(req: Request) {
     } else {
       userMessage += "Faltan variables de entorno necesarias. Por favor contacta al administrador.";
     }
-    
+
     return new Response(
-      JSON.stringify({ 
-        error: "Configuration error", 
+      JSON.stringify({
+        error: "Configuration error",
         message: userMessage,
         missing: envValidation.missing
-      }), 
-      { 
+      }),
+      {
         status: 500,
         headers: { "Content-Type": "application/json" }
       }
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const { message, conversationId, useLangGraph = true, useSalesAgent = true, model } = await req.json();
+    const { message, conversationId, useLangGraph = true, useSalesAgent = true, model, thinkingLevel = 'high' } = await req.json();
 
     // Use user ID as conversation ID if not provided for user-specific memory
     const effectiveConversationId = conversationId || user.id;
@@ -57,18 +57,20 @@ export async function POST(req: Request) {
     // Check and track prompt usage before processing
     const inputTokensEstimate = estimateTokensFromTextLength(message);
     const selectedModel = model || "gemini-2.5-flash"; // Default model
-    
-    // Validate model access based on subscription
-    if (selectedModel === 'gemini-2.5-pro') {
+
+    // Model access validation removed - all models available to all users
+    /*
+    if (selectedModel === 'gemini-2.5-pro' || selectedModel === 'gemini-3-pro-preview') {
       const subscription = await getUserSubscription(user.id);
       const plan = (subscription?.plan as 'FREE' | 'PRO' | 'ENTERPRISE') || 'FREE';
       const canAccessProModels = canAccessFeatureSync(plan, 'advanced_reasoning_models');
       
       if (!canAccessProModels) {
+        const modelName = selectedModel === 'gemini-3-pro-preview' ? 'Gemini 3 Pro Preview' : 'gemini-2.5-pro';
         return new Response(
           JSON.stringify({
             error: "Model access denied",
-            message: "El modelo de razonamiento avanzado (gemini-2.5-pro) requiere un plan Pro o Enterprise. Por favor actualiza tu plan.",
+            message: `El modelo de razonamiento avanzado (${modelName}) requiere un plan Pro o Enterprise. Por favor actualiza tu plan.`,
             upgradeUrl: "/pricing",
           }),
           {
@@ -78,15 +80,16 @@ export async function POST(req: Request) {
         );
       }
     }
-    
+    */
+
     const promptCheck = await ensurePromptAllowedAndTrack(user.id, {
       model: selectedModel,
       inputTokensEstimate,
     });
 
     if (!promptCheck.allowed) {
-      const remainingAmount = promptCheck.remainingDollars !== undefined 
-        ? `$${promptCheck.remainingDollars.toFixed(2)}` 
+      const remainingAmount = promptCheck.remainingDollars !== undefined
+        ? `$${promptCheck.remainingDollars.toFixed(2)}`
         : 'unlimited';
       return new Response(
         JSON.stringify({
@@ -124,17 +127,17 @@ export async function POST(req: Request) {
           } else {
             // For assistant messages, include search results in content if available (for sales agent)
             let content = msg.content;
-            
+
             // If this message had search results, append a summary
             if (useSalesAgent && msg.metadata?.searchResult) {
               const sr = msg.metadata.searchResult;
-              const companiesSummary = sr.companies?.slice(0, 3).map((c: any) => 
+              const companiesSummary = sr.companies?.slice(0, 3).map((c: any) =>
                 `- ${c.nombre_comercial || c.nombre} (RUC: ${c.ruc}, Empleados: ${c.n_empleados || 'N/A'}, Ingresos: $${c.ingresos_ventas?.toLocaleString() || 'N/A'})`
               ).join('\n') || '';
-              
+
               content += `\n\n[PREVIOUS_SEARCH_RESULTS]\nEncontré ${sr.totalCount} empresas para "${sr.query}". Las principales fueron:\n${companiesSummary}\n[/PREVIOUS_SEARCH_RESULTS]`;
             }
-            
+
             return new AIMessage(content);
           }
         });
@@ -151,6 +154,7 @@ export async function POST(req: Request) {
         ...langsmithConfig,
         runName: "Sales Agent Chat",
         modelName: selectedModel,
+        thinkingLevel: thinkingLevel as 'high' | 'low',
       });
     } else if (useLangGraph) {
       // Fallback to simple LangGraph React agent
@@ -201,7 +205,7 @@ export async function POST(req: Request) {
     }
   } catch (error) {
     console.error("Error in chat route:", error);
-    
+
     // Detailed error response for better debugging
     const errorDetails = {
       error: "Chat processing failed",
@@ -210,10 +214,10 @@ export async function POST(req: Request) {
       // Include stack trace in non-production environments for debugging
       ...(process.env.NODE_ENV !== 'production' && error instanceof Error ? { stack: error.stack } : {})
     };
-    
+
     return new Response(
-      JSON.stringify(errorDetails), 
-      { 
+      JSON.stringify(errorDetails),
+      {
         status: 500,
         headers: { "Content-Type": "application/json" }
       }

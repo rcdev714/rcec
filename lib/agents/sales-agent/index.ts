@@ -33,6 +33,7 @@ export async function chatWithSalesAgent(
     projectName?: string;
     runName?: string;
     modelName?: string;
+    thinkingLevel?: 'high' | 'low';
   }
 ): Promise<ReadableStream> {
   const userMessage = new HumanMessage(message);
@@ -83,6 +84,7 @@ export async function chatWithSalesAgent(
             todo: [],
             toolOutputs: [],
             modelName: options?.modelName || "gemini-2.5-flash",
+            thinkingLevel: options?.thinkingLevel || 'high',
           },
           {
             ...config,

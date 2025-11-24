@@ -76,13 +76,22 @@ export function estimateTokensFromTextLength(characters: number): number {
 export function dollarsFromTokens(model: GeminiModel | string, inputTokens: number, outputTokens: number): number {
   // Fallback to flash if model is unknown
   const modelKey = (model in GEMINI_PRICING_PER_MILLION) ? model as GeminiModel : 'gemini-2.5-flash';
-  const pricing = GEMINI_PRICING_PER_MILLION[modelKey];
+  // Normalize pricing entry to a unified shape to satisfy TypeScript
+  const pricing = GEMINI_PRICING_PER_MILLION[modelKey] as {
+    input: number;
+    output: number;
+    inputHighTier?: number;
+    outputHighTier?: number;
+    tierThreshold?: number;
+  };
 
   // Handle tiered pricing for Pro model
-  if ('tierThreshold' in pricing && pricing.tierThreshold && inputTokens > pricing.tierThreshold) {
-    // Use high-tier pricing for large prompts
-    const inputCost = (inputTokens / 1_000_000) * (pricing.inputHighTier || pricing.input);
-    const outputCost = (outputTokens / 1_000_000) * (pricing.outputHighTier || pricing.output);
+  if (pricing.tierThreshold && inputTokens > pricing.tierThreshold) {
+    // Use high-tier pricing for large prompts when available
+    const inputRate = pricing.inputHighTier ?? pricing.input;
+    const outputRate = pricing.outputHighTier ?? pricing.output;
+    const inputCost = (inputTokens / 1_000_000) * inputRate;
+    const outputCost = (outputTokens / 1_000_000) * outputRate;
     return (inputCost + outputCost) * PROFIT_MARGIN_MULTIPLIER;
   } else {
     // Standard pricing with revenue multiplier

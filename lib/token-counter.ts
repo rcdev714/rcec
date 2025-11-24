@@ -45,7 +45,7 @@ export async function countTokensForText(
   try {
     const ai = getGenAI();
     const model = ai.getGenerativeModel({ model: modelName });
-    
+
     const result = await model.countTokens(text);
     return result.totalTokens;
   } catch (error) {
@@ -69,7 +69,7 @@ export async function countTokensForMessages(
   try {
     const ai = getGenAI();
     const model = ai.getGenerativeModel({ model: modelName });
-    
+
     // Convert LangChain messages to Google AI format
     const contents = messages.map(msg => {
       const role = msg._getType() === "human" ? "user" : "model";
@@ -78,13 +78,13 @@ export async function countTokensForMessages(
         parts: [{ text: msg.content.toString() }]
       };
     });
-    
+
     const result = await model.countTokens({ contents });
     return result.totalTokens;
   } catch (error) {
     console.error("[countTokensForMessages] Error counting tokens:", error);
     // Fallback: sum individual message lengths with rough estimation
-    const totalChars = messages.reduce((sum, msg) => 
+    const totalChars = messages.reduce((sum, msg) =>
       sum + msg.content.toString().length, 0
     );
     return Math.ceil(totalChars / 4);
@@ -108,7 +108,7 @@ export function extractTokenUsageFromMetadata(responseMetadata: any): {
   try {
     // LangChain returns tokenUsage in response metadata
     const usage = responseMetadata?.tokenUsage;
-    
+
     if (usage && typeof usage === 'object') {
       return {
         inputTokens: usage.promptTokens || 0,
@@ -116,7 +116,7 @@ export function extractTokenUsageFromMetadata(responseMetadata: any): {
         totalTokens: usage.totalTokens || 0,
       };
     }
-    
+
     return null;
   } catch (error) {
     console.error("[extractTokenUsageFromMetadata] Error extracting usage:", error);
@@ -168,10 +168,16 @@ export function calculateGeminiCost(
   outputTokens: number
 ): number {
   // Get pricing from centralized config (fallback to flash if model unknown)
-  const modelPricing = GEMINI_PRICING_PER_MILLION[modelName as GeminiModel] || GEMINI_PRICING_PER_MILLION["gemini-2.5-flash"];
+  const modelPricing = (GEMINI_PRICING_PER_MILLION[modelName as GeminiModel] || GEMINI_PRICING_PER_MILLION["gemini-2.5-flash"]) as {
+    readonly input: number;
+    readonly output: number;
+    readonly inputHighTier?: number;
+    readonly outputHighTier?: number;
+    readonly tierThreshold?: number;
+  };
 
   // Handle tiered pricing for Pro model
-  if ('tierThreshold' in modelPricing && modelPricing.tierThreshold && inputTokens > modelPricing.tierThreshold) {
+  if (modelPricing.tierThreshold && inputTokens > modelPricing.tierThreshold) {
     // Use high-tier pricing for large prompts
     const inputCost = (inputTokens / 1_000_000) * (modelPricing.inputHighTier || modelPricing.input);
     const outputCost = (outputTokens / 1_000_000) * (modelPricing.outputHighTier || modelPricing.output);

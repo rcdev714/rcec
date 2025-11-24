@@ -203,6 +203,12 @@ export const SalesAgentState = Annotation.Root({
     default: () => "gemini-2.5-flash",
   }),
   
+  // Thinking level for Gemini 3 models (high = deep reasoning, low = faster/cheaper)
+  thinkingLevel: Annotation<'high' | 'low'>({
+    reducer: (_, update) => update,
+    default: () => 'high',
+  }),
+  
   // Token tracking
   totalInputTokens: Annotation<number>({
     reducer: (current, update) => current + update,

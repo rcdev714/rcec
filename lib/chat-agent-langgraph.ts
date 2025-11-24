@@ -82,12 +82,20 @@ const langGraphAgentInstances: Record<string, ReturnType<typeof createReactAgent
 function getGeminiModel(modelName: string = "gemini-2.5-flash"): ChatGoogleGenerativeAI {
   if (!geminiModels[modelName]) {
     const apiKey = process.env.GOOGLE_API_KEY || '';
+    
+    // Gemini 3 models: use stable v1 API and temperature=1.0
+    const isGemini3 = modelName.startsWith('gemini-3');
+    const apiVersion = isGemini3 ? 'v1' : undefined;
+    // Lower temperatures for stricter instruction-following
+    const temperature = isGemini3 ? 0.7 : 0.3;
+    
     geminiModels[modelName] = new ChatGoogleGenerativeAI({
       apiKey,
       model: modelName,
-      temperature: 0.7,
+      temperature,
       maxOutputTokens: 2048,
       maxRetries: 2,
+      ...(apiVersion && { apiVersion }),
     });
   }
   return geminiModels[modelName];
