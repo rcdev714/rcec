@@ -5,6 +5,19 @@ import { getMonthlyPeriodForAnchor, resolveUsageAnchorIso } from "@/lib/usage";
 
 export const runtime = "edge";
 
+type AggregatedSummary = {
+  totalCost: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  messageCount: number;
+};
+
+type UsageSnapshot = {
+  cost: number;
+  inputTokens: number;
+  outputTokens: number;
+};
+
 /**
  * Get aggregated cost summary for the current billing period
  * This is more efficient than fetching all logs when you only need totals
@@ -32,6 +45,13 @@ export async function GET() {
     const anchorIso = resolveUsageAnchorIso(plan, subscription, user.created_at || new Date().toISOString());
     const { start, end } = getMonthlyPeriodForAnchor(anchorIso);
 
+    const usageSnapshotPromise = supabase
+      .from('user_usage')
+      .select('prompt_dollars, prompt_input_tokens, prompt_output_tokens')
+      .eq('user_id', user.id)
+      .eq('period_start', start.toISOString())
+      .maybeSingle();
+
     // Use database-level aggregation for optimal performance
     // This avoids transferring all message records to the client
     const { data: summary, error: summaryError } = await supabase
@@ -41,31 +61,33 @@ export async function GET() {
         p_period_end: end.toISOString()
       });
 
+    const { data: usageRow, error: usageError } = await usageSnapshotPromise;
+    if (usageError) {
+      console.warn("Unable to read usage snapshot for cost summary merge:", usageError);
+    }
+    const usageSnapshot = normalizeUsageSnapshot(usageRow);
+
+    let aggregatedSummary: AggregatedSummary;
+
     if (summaryError) {
       console.error("Error fetching cost summary:", summaryError);
       // Fallback to the original implementation if the RPC function doesn't exist yet
       console.warn("Falling back to client-side aggregation");
-      return await fallbackCostSummary(supabase, user.id, start, end);
+      aggregatedSummary = await fallbackCostSummary(supabase, user.id, start, end);
+    } else {
+      const result = summary?.[0] || {
+        total_cost: 0,
+        total_tokens: 0,
+        total_input_tokens: 0,
+        total_output_tokens: 0,
+        message_count: 0
+      };
+      aggregatedSummary = mapRpcResultToSummary(result);
     }
 
-    // The RPC returns an array with one row, extract the values
-    const result = summary?.[0] || {
-      total_cost: 0,
-      total_tokens: 0,
-      total_input_tokens: 0,
-      total_output_tokens: 0,
-      message_count: 0
-    };
+    const payload = mergeUsageAndAggregate(aggregatedSummary, usageSnapshot, start, end);
 
-    return NextResponse.json({
-      totalCost: Number(result.total_cost || 0),
-      totalTokens: Number(result.total_tokens || 0),
-      totalInputTokens: Number(result.total_input_tokens || 0),
-      totalOutputTokens: Number(result.total_output_tokens || 0),
-      messageCount: Number(result.message_count || 0),
-      periodStart: start.toISOString(),
-      periodEnd: end.toISOString(),
-    });
+    return NextResponse.json(payload);
   } catch (error) {
     console.error("Error in cost summary API:", error);
     return NextResponse.json(
@@ -84,7 +106,7 @@ async function fallbackCostSummary(
   userId: string,
   start: Date,
   end: Date
-): Promise<NextResponse> {
+): Promise<AggregatedSummary> {
   // Fetch all conversations for this user
   const { data: conversations, error: conversationsError } = await supabase
     .from("conversations")
@@ -93,22 +115,16 @@ async function fallbackCostSummary(
 
   if (conversationsError) {
     console.error("Error fetching conversations:", conversationsError);
-    return NextResponse.json(
-      { error: "Failed to fetch conversations" },
-      { status: 500 }
-    );
+    throw conversationsError;
   }
 
   if (!conversations || conversations.length === 0) {
-    return NextResponse.json({
+    return {
       totalCost: 0,
-      totalTokens: 0,
       totalInputTokens: 0,
       totalOutputTokens: 0,
       messageCount: 0,
-      periodStart: start.toISOString(),
-      periodEnd: end.toISOString(),
-    });
+    };
   }
 
   const conversationIds = conversations.map((c: { id: string }) => c.id);
@@ -125,10 +141,7 @@ async function fallbackCostSummary(
 
   if (messagesError) {
     console.error("Error fetching messages for cost summary:", messagesError);
-    return NextResponse.json(
-      { error: "Failed to fetch messages" },
-      { status: 500 }
-    );
+    throw messagesError;
   }
 
   // Aggregate totals
@@ -154,14 +167,75 @@ async function fallbackCostSummary(
     totalOutputTokens += outputTokens;
   });
 
-  return NextResponse.json({
+  return {
     totalCost,
-    totalTokens: totalInputTokens + totalOutputTokens,
     totalInputTokens,
     totalOutputTokens,
     messageCount: messages?.length || 0,
-    periodStart: start.toISOString(),
-    periodEnd: end.toISOString(),
-  });
+  };
+}
+
+function normalizeUsageSnapshot(
+  row?: { prompt_dollars?: number | null; prompt_input_tokens?: number | null; prompt_output_tokens?: number | null } | null
+): UsageSnapshot {
+  return {
+    cost: Number(row?.prompt_dollars ?? 0),
+    inputTokens: Number(row?.prompt_input_tokens ?? 0),
+    outputTokens: Number(row?.prompt_output_tokens ?? 0),
+  };
+}
+
+function mapRpcResultToSummary(result: any): AggregatedSummary {
+  return {
+    totalCost: Number(result.total_cost || 0),
+    totalInputTokens: Number(result.total_input_tokens || 0),
+    totalOutputTokens: Number(result.total_output_tokens || 0),
+    messageCount: Number(result.message_count || 0),
+  };
+}
+
+function mergeUsageAndAggregate(
+  aggregated: AggregatedSummary,
+  usage: UsageSnapshot,
+  periodStart: Date,
+  periodEnd: Date
+) {
+  const totalInputTokens = Math.max(aggregated.totalInputTokens, usage.inputTokens);
+  const totalOutputTokens = Math.max(aggregated.totalOutputTokens, usage.outputTokens);
+  const totalTokens = totalInputTokens + totalOutputTokens;
+  const totalCost = Math.max(aggregated.totalCost, usage.cost);
+
+  const aggregatedTokenTotal = aggregated.totalInputTokens + aggregated.totalOutputTokens;
+  const usageTokenTotal = usage.inputTokens + usage.outputTokens;
+
+  const dollarsSource =
+    totalCost === usage.cost && usage.cost > 0
+      ? 'usage_table'
+      : aggregated.totalCost > 0
+        ? 'aggregated_messages'
+        : 'usage_table';
+
+  const tokensSource =
+    totalInputTokens === usage.inputTokens &&
+    totalOutputTokens === usage.outputTokens &&
+    usageTokenTotal > 0
+      ? 'usage_table'
+      : aggregatedTokenTotal > 0
+        ? 'aggregated_messages'
+        : 'usage_table';
+
+  return {
+    totalCost,
+    totalTokens,
+    totalInputTokens,
+    totalOutputTokens,
+    messageCount: aggregated.messageCount,
+    periodStart: periodStart.toISOString(),
+    periodEnd: periodEnd.toISOString(),
+    sources: {
+      dollars: dollarsSource,
+      tokens: tokensSource,
+    },
+  };
 }
 

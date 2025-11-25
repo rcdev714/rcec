@@ -15,6 +15,7 @@ interface DialogContentProps {
 
 interface DialogHeaderProps {
   children: React.ReactNode;
+  className?: string;
 }
 
 interface DialogTitleProps {
@@ -51,9 +52,9 @@ export const DialogContent: React.FC<DialogContentProps> = ({ children, classNam
   );
 };
 
-export const DialogHeader: React.FC<DialogHeaderProps> = ({ children }) => {
+export const DialogHeader: React.FC<DialogHeaderProps> = ({ children, className = '' }) => {
   return (
-    <div className="mb-4">
+    <div className={`mb-4 ${className}`}>
       {children}
     </div>
   );

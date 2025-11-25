@@ -1,5 +1,39 @@
+import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import StripePricingTable from '@/components/stripe-pricing-table';
+import { getDefaultUrl } from '@/lib/base-url';
+
+const defaultUrl = getDefaultUrl();
+const pageUrl = `${defaultUrl}/pricing`;
+
+export const metadata: Metadata = {
+  title: 'Planes y precios de Camella',
+  description: 'Compara planes de Camella y obtén acceso a datos B2B y agentes de ventas con IA.',
+  openGraph: {
+    title: 'Planes Camella para ventas B2B',
+    description: 'Elige el plan que potencia a tu equipo comercial en Ecuador.',
+    url: pageUrl,
+    type: 'website',
+    images: [
+      {
+        url: '/HeroImage.jpeg',
+        width: 1200,
+        height: 630,
+        alt: 'Planes Camella',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Planes y precios Camella',
+    description: 'Acceso ilimitado a prospectos y analítica comercial con IA.',
+    images: [`${defaultUrl}/HeroImage.jpeg`],
+  },
+  alternates: {
+    canonical: pageUrl,
+  },
+};
 
 export default async function PricingPage({
   searchParams,
@@ -12,6 +46,10 @@ export default async function PricingPage({
   // Get authenticated user to pre-fill email
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/auth/sign-up');
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">

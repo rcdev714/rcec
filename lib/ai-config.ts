@@ -21,6 +21,13 @@
 export const PROFIT_MARGIN_MULTIPLIER = 15;
 
 /**
+ * Reduced multiplier for oversized prompts (> tier threshold)
+ * Helps keep ultra-long Gemini 3 requests affordable while
+ * still covering infrastructure overhead.
+ */
+export const HIGH_USAGE_PROFIT_MARGIN_MULTIPLIER = 8;
+
+/**
  * Official Gemini API pricing per 1M tokens (USD)
  * Source: https://ai.google.dev/pricing (January 2025)
  * 

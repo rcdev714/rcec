@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
+import { isPublicRoute } from '@/lib/routes'
 
 // Minimal types to satisfy linting without changing Supabase logic
 type MinimalUser = { id: string }
@@ -61,10 +62,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Define public paths that don't require authentication
-  const publicPaths = ['/', '/auth/confirm', '/auth/sign-up-success', '/pricing', '/contacto', '/carreras', '/inversores']
-  const publicPrefixes = ['/s/']
-  const isPublicPath = publicPaths.includes(request.nextUrl.pathname) ||
-    publicPrefixes.some(prefix => request.nextUrl.pathname.startsWith(prefix))
+  const isPublicPath = isPublicRoute(request.nextUrl.pathname)
 
   // Authentication check
   if (

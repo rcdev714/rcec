@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getUserSubscription } from '@/lib/subscription';
 import { getPlansWithLimits } from '@/lib/plans';
 import { isAdmin } from '@/lib/admin';
-import { PROFIT_MARGIN_MULTIPLIER, GEMINI_PRICING_PER_MILLION, type GeminiModel } from './ai-config';
+import { PROFIT_MARGIN_MULTIPLIER, GEMINI_PRICING_PER_MILLION, type GeminiModel, HIGH_USAGE_PROFIT_MARGIN_MULTIPLIER } from './ai-config';
 import type { UserSubscription } from '@/types/subscription';
 
 type Plan = 'FREE' | 'PRO' | 'ENTERPRISE';
@@ -85,20 +85,14 @@ export function dollarsFromTokens(model: GeminiModel | string, inputTokens: numb
     tierThreshold?: number;
   };
 
-  // Handle tiered pricing for Pro model
-  if (pricing.tierThreshold && inputTokens > pricing.tierThreshold) {
-    // Use high-tier pricing for large prompts when available
-    const inputRate = pricing.inputHighTier ?? pricing.input;
-    const outputRate = pricing.outputHighTier ?? pricing.output;
-    const inputCost = (inputTokens / 1_000_000) * inputRate;
-    const outputCost = (outputTokens / 1_000_000) * outputRate;
-    return (inputCost + outputCost) * PROFIT_MARGIN_MULTIPLIER;
-  } else {
-    // Standard pricing with revenue multiplier
-    const inputCost = (inputTokens / 1_000_000) * pricing.input;
-    const outputCost = (outputTokens / 1_000_000) * pricing.output;
-    return (inputCost + outputCost) * PROFIT_MARGIN_MULTIPLIER;
-  }
+  const isHighTier = Boolean(pricing.tierThreshold && inputTokens > pricing.tierThreshold);
+  const inputRate = isHighTier ? (pricing.inputHighTier ?? pricing.input) : pricing.input;
+  const outputRate = isHighTier ? (pricing.outputHighTier ?? pricing.output) : pricing.output;
+  const multiplier = isHighTier ? HIGH_USAGE_PROFIT_MARGIN_MULTIPLIER : PROFIT_MARGIN_MULTIPLIER;
+
+  const inputCost = (inputTokens / 1_000_000) * inputRate;
+  const outputCost = (outputTokens / 1_000_000) * outputRate;
+  return (inputCost + outputCost) * multiplier;
 }
 
 export function getMonthlyPeriodForAnchor(anchorIso: string, now: Date = new Date()): { start: Date; end: Date } {

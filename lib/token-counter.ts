@@ -7,7 +7,7 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { BaseMessage } from "@langchain/core/messages";
-import { PROFIT_MARGIN_MULTIPLIER, GEMINI_PRICING_PER_MILLION, type GeminiModel } from "./ai-config";
+import { PROFIT_MARGIN_MULTIPLIER, GEMINI_PRICING_PER_MILLION, type GeminiModel, HIGH_USAGE_PROFIT_MARGIN_MULTIPLIER } from "./ai-config";
 
 // Initialize Google AI SDK
 let genAI: GoogleGenerativeAI | null = null;
@@ -176,17 +176,14 @@ export function calculateGeminiCost(
     readonly tierThreshold?: number;
   };
 
-  // Handle tiered pricing for Pro model
-  if (modelPricing.tierThreshold && inputTokens > modelPricing.tierThreshold) {
-    // Use high-tier pricing for large prompts
-    const inputCost = (inputTokens / 1_000_000) * (modelPricing.inputHighTier || modelPricing.input);
-    const outputCost = (outputTokens / 1_000_000) * (modelPricing.outputHighTier || modelPricing.output);
-    return (inputCost + outputCost) * PROFIT_MARGIN_MULTIPLIER;
-  } else {
-    // Standard pricing
-    const inputCost = (inputTokens / 1_000_000) * modelPricing.input;
-    const outputCost = (outputTokens / 1_000_000) * modelPricing.output;
-    return (inputCost + outputCost) * PROFIT_MARGIN_MULTIPLIER;
-  }
+  const isHighTier = Boolean(modelPricing.tierThreshold && inputTokens > modelPricing.tierThreshold);
+  const inputRate = isHighTier ? (modelPricing.inputHighTier || modelPricing.input) : modelPricing.input;
+  const outputRate = isHighTier ? (modelPricing.outputHighTier || modelPricing.output) : modelPricing.output;
+  const multiplier = isHighTier ? HIGH_USAGE_PROFIT_MARGIN_MULTIPLIER : PROFIT_MARGIN_MULTIPLIER;
+
+  const inputCost = (inputTokens / 1_000_000) * inputRate;
+  const outputCost = (outputTokens / 1_000_000) * outputRate;
+
+  return (inputCost + outputCost) * multiplier;
 }
 

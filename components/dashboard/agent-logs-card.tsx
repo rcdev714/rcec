@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatTokenCount } from '@/lib/token-counter';
-import { Activity, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Clock } from 'lucide-react';
 
 interface AgentLog {
   id: string;
@@ -22,29 +22,15 @@ export default function AgentLogsCard() {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [periodTotals, setPeriodTotals] = useState({ tokens: 0, cost: 0 });
 
   useEffect(() => {
     async function fetchLogs() {
       try {
-        const [logsResponse, costResponse] = await Promise.all([
-          fetch('/api/agent/logs?limit=20'),
-          fetch('/api/agent/cost-summary')
-        ]);
-        
+        const logsResponse = await fetch('/api/agent/logs?limit=20');
         if (logsResponse.ok) {
           const data = await logsResponse.json();
           setLogs(data.logs || []);
           setTotal(data.total || 0);
-        }
-        
-        // Get accurate period totals from cost summary
-        if (costResponse.ok) {
-          const costData = await costResponse.json();
-          setPeriodTotals({
-            tokens: costData.totalTokens || 0,
-            cost: costData.totalCost || 0
-          });
         }
       } catch (error) {
         console.error('Error fetching agent logs:', error);
@@ -68,18 +54,15 @@ export default function AgentLogsCard() {
 
   if (loading) {
     return (
-      <Card className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-xs font-medium text-gray-600 text-center uppercase tracking-wide">
-            <Activity className="w-3.5 h-3.5 mx-auto mb-1" />
-            Registros del Agente
-          </CardTitle>
+      <Card className="shadow-sm border-gray-200 bg-white">
+        <CardHeader className="pb-3 border-b border-gray-100/50">
+          <CardTitle className="text-sm font-medium text-gray-900">Historial de Actividad</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-12 text-gray-400 text-sm">
-            <div className="text-center">
-              <Activity className="w-6 h-6 mx-auto mb-2 animate-pulse opacity-50" />
-              Cargando registros...
+            <div className="text-center flex flex-col items-center gap-2">
+              <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              <span className="text-xs">Cargando registros...</span>
             </div>
           </div>
         </CardContent>
@@ -89,20 +72,17 @@ export default function AgentLogsCard() {
 
   if (logs.length === 0) {
     return (
-      <Card className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-xs font-medium text-gray-600 text-center uppercase tracking-wide">
-            <Activity className="w-3.5 h-3.5 mx-auto mb-1" />
-            Registros del Agente
-          </CardTitle>
+      <Card className="shadow-sm border-gray-200 bg-white">
+        <CardHeader className="pb-3 border-b border-gray-100/50">
+          <CardTitle className="text-sm font-medium text-gray-900">Historial de Actividad</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-12 text-gray-400 text-sm">
-            <div className="text-center">
-              <Activity className="w-8 h-8 mb-3 opacity-30" />
-              <p className="font-medium mb-1">No hay registros de agente aún</p>
-              <p className="text-xs">Los registros aparecerán después de usar el chat</p>
+          <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+            <div className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center mb-3">
+              <Clock className="w-5 h-5 text-gray-300" />
             </div>
+            <p className="text-sm font-medium text-gray-900 mb-1">Sin actividad reciente</p>
+            <p className="text-xs text-gray-500">Tus interacciones con el agente aparecerán aquí</p>
           </div>
         </CardContent>
       </Card>
@@ -110,81 +90,64 @@ export default function AgentLogsCard() {
   }
 
   return (
-    <Card className="font-mono bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
-      <CardHeader className="pb-3">
-        <div className="text-center">
-          <CardTitle className="text-xs text-gray-600 uppercase tracking-wide mb-1">
-            <Activity className="w-3.5 h-3.5 mx-auto mb-1" />
-            Registros del Agente
-          </CardTitle>
-          <span className="text-xs text-gray-400 font-normal">
-            {isExpanded ? total : Math.min(5, logs.length)} de {total} eventos
-          </span>
-        </div>
+    <Card className="shadow-sm border-gray-200 bg-white font-inter">
+      <CardHeader className="pb-3 border-b border-gray-100/50 flex flex-row items-center justify-between">
+        <CardTitle className="text-sm font-medium text-gray-900">Historial de Actividad</CardTitle>
+        <span className="text-xs text-gray-400 font-normal bg-gray-50 px-2 py-1 rounded-full">
+          {total} eventos
+        </span>
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent className="p-0">
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left">
-            <thead className="text-xs text-gray-500 uppercase">
+            <thead className="text-[10px] text-gray-400 uppercase tracking-wider font-medium bg-gray-50/50">
               <tr>
-                <th scope="col" className="px-6 py-3">Fecha</th>
-                <th scope="col" className="px-6 py-3">Modelo</th>
-                <th scope="col" className="px-6 py-3 text-right">Tokens Usados</th>
-                <th scope="col" className="px-6 py-3 text-right">Costo</th>
+                <th scope="col" className="px-6 py-3 font-medium">Fecha</th>
+                <th scope="col" className="px-6 py-3 font-medium">Modelo</th>
+                <th scope="col" className="px-6 py-3 text-right font-medium">Tokens</th>
+                <th scope="col" className="px-6 py-3 text-right font-medium">Costo</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-50">
               {logs.slice(0, isExpanded ? logs.length : 5).map((log) => (
-                <tr key={log.id} className="border-b border-gray-200">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Link href={`/chat/${log.conversationId}`} className="text-blue-600 hover:underline">
+                <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                    <Link href={`/chat/${log.conversationId}`} className="hover:text-indigo-600 transition-colors flex items-center gap-2">
                       {formatDate(log.timestamp)}
                     </Link>
                   </td>
                   <td className="px-6 py-4">
-                    {log.modelName}
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
+                      {log.modelName}
+                    </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-4 text-right text-gray-600 font-mono">
                     {formatTokenCount(log.totalTokens)}
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    ${log.cost.toFixed(2)}
+                  <td className="px-6 py-4 text-right text-gray-600 font-mono">
+                    ${log.cost.toFixed(4)}
                   </td>
                 </tr>
               ))}
             </tbody>
-            <tfoot>
-              <tr className="border-t">
-                <td colSpan={2} className="px-6 py-4">
-                  <span className="font-medium">Total del Periodo</span>
-                </td>
-                <td className="px-6 py-4 text-right font-medium">
-                  {formatTokenCount(periodTotals.tokens)}
-                </td>
-                <td className="px-6 py-4 text-right font-medium">
-                  ${periodTotals.cost.toFixed(2)}
-                </td>
-              </tr>
-            </tfoot>
           </table>
         </div>
 
-        {/* Expand/Collapse Button */}
         {logs.length > 5 && (
-          <div className="flex justify-center mt-3">
+          <div className="flex justify-center py-3 border-t border-gray-50">
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="inline-flex items-center gap-0.5 px-2 py-1 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded transition-all duration-200 border border-transparent hover:border-gray-200"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-all"
             >
               {isExpanded ? (
                 <>
                   <ChevronUp className="w-3 h-3" />
-                  <span>Menos</span>
+                  Menos
                 </>
               ) : (
                 <>
                   <ChevronDown className="w-3 h-3" />
-                  <span>Más ({logs.length - 5})</span>
+                  Ver más
                 </>
               )}
             </button>
@@ -194,4 +157,3 @@ export default function AgentLogsCard() {
     </Card>
   );
 }
-

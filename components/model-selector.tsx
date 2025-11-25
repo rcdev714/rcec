@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
-import { Brain, ChevronUp, Lock, Info, Sparkles } from "lucide-react";
+import { Brain, ChevronUp, Lock, Sparkles, DollarSign, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MODEL_SPECS } from "@/lib/ai-config";
 
@@ -23,11 +23,11 @@ export function ModelSelector({ value, onChange, disabled, className, userPlan: 
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const options = useMemo(() => ([
-    { value: 'gemini-3-pro-preview-high', label: 'gemini-3-pro (high)', thinking: true, requiresPro: false, modelId: 'gemini-3-pro-preview', thinkingMode: 'high' as const },
-    { value: 'gemini-3-pro-preview-low', label: 'gemini-3-pro (low)', thinking: true, requiresPro: false, modelId: 'gemini-3-pro-preview', thinkingMode: 'low' as const },
-    { value: 'gemini-2.5-pro', label: 'gemini-2.5-pro', thinking: true, requiresPro: false, modelId: 'gemini-2.5-pro' },
-    { value: 'gemini-2.5-flash', label: 'gemini-2.5-flash', thinking: true, requiresPro: false, modelId: 'gemini-2.5-flash' },
-    { value: 'gemini-2.5-flash-lite', label: 'gemini-2.5-flash-lite', thinking: false, requiresPro: false, modelId: 'gemini-2.5-flash-lite' },
+    { value: 'gemini-3-pro-preview-high', label: 'Gemini 3 Pro Preview (high)', thinking: true, requiresPro: false, modelId: 'gemini-3-pro-preview', thinkingMode: 'high' as const },
+    { value: 'gemini-3-pro-preview-low', label: 'Gemini 3 Pro Preview (low)', thinking: true, requiresPro: false, modelId: 'gemini-3-pro-preview', thinkingMode: 'low' as const },
+    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', thinking: true, requiresPro: false, modelId: 'gemini-2.5-pro' },
+    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', thinking: true, requiresPro: false, modelId: 'gemini-2.5-flash' },
+    { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', thinking: false, requiresPro: false, modelId: 'gemini-2.5-flash-lite' },
   ]), []);
 
   // Determine the current value including thinking level for G3
@@ -70,29 +70,29 @@ export function ModelSelector({ value, onChange, disabled, className, userPlan: 
         onClick={() => setOpen(o => !o)}
         disabled={disabled}
         className={cn(
-          "group flex items-center gap-2 flex-shrink-0 px-2.5 py-1.5 rounded-lg",
-          "bg-white/95 backdrop-blur-md border border-indigo-200/50",
-          "text-xs font-medium text-slate-700",
+          "group flex items-center gap-2 flex-shrink-0 px-3 py-2 rounded-xl",
+          "bg-white border border-gray-200",
+          "text-xs font-medium text-gray-700",
           "shadow-sm hover:shadow-md",
-          "focus:outline-none focus:ring-2 focus:ring-indigo-400/30 focus:border-indigo-400",
-          "hover:border-indigo-300 hover:bg-white",
+          "focus:outline-none focus:ring-2 focus:ring-gray-400/30 focus:border-gray-400",
+          "hover:border-gray-300 hover:bg-gray-50",
           "transition-all duration-300 ease-out",
           "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm",
-          selected?.thinking && "ring-1 ring-indigo-100"
+          selected?.thinking && "ring-1 ring-gray-200"
         )}
         title="Seleccionar modelo"
       >
         {selected?.thinking ? (
-          <Brain className="w-4 h-4 text-indigo-500 group-hover:text-indigo-600 transition-colors duration-200" />
+          <Brain className="w-4 h-4 text-gray-600 group-hover:text-gray-700 transition-colors duration-200" />
         ) : (
-          <Sparkles className="w-4 h-4 text-slate-400 group-hover:text-slate-500 transition-colors duration-200" />
+          <Sparkles className="w-4 h-4 text-gray-400 group-hover:text-gray-500 transition-colors duration-200" />
         )}
         <span className="truncate max-w-[10rem] font-medium">
           {selected?.label || value}
         </span>
         <ChevronUp className={cn(
-          "w-3.5 h-3.5 text-slate-500 transition-all duration-300 ease-out",
-          "group-hover:text-indigo-500",
+          "w-3.5 h-3.5 text-gray-400 transition-all duration-300 ease-out",
+          "group-hover:text-gray-600",
           open && "rotate-180 scale-110"
         )} />
       </button>
@@ -100,9 +100,8 @@ export function ModelSelector({ value, onChange, disabled, className, userPlan: 
         <div
           className={cn(
             "absolute z-20 bottom-full mb-2 w-80",
-            "bg-white/95 backdrop-blur-xl",
-            "border border-slate-200/60 rounded-2xl",
-            "shadow-2xl shadow-slate-900/10",
+            "bg-white border border-gray-200 rounded-xl",
+            "shadow-xl",
             "p-2",
             "transition-all duration-300 ease-out",
             open ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-1 pointer-events-none"
@@ -129,12 +128,12 @@ export function ModelSelector({ value, onChange, disabled, className, userPlan: 
                 >
                   {isLocked ? (
                     <div className={cn(
-                      "group w-full flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-lg",
-                      "bg-slate-50/80 border border-slate-200/50",
+                      "group w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg",
+                      "bg-gray-50 border border-gray-200",
                       "transition-all duration-200"
                     )}>
-                      <Lock className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                      <span className="truncate flex-1 text-left text-slate-500 font-medium">{opt.label}</span>
+                      <Lock className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <span className="truncate flex-1 text-left text-gray-500 font-medium">{opt.label}</span>
                       <button
                         type="button"
                         onClick={(e) => {
@@ -144,12 +143,10 @@ export function ModelSelector({ value, onChange, disabled, className, userPlan: 
                         aria-label="Actualizar plan para desbloquear este modelo"
                         className={cn(
                           "px-2.5 py-1 text-xs font-semibold rounded-lg",
-                          "bg-gradient-to-r from-indigo-500 to-indigo-600",
-                          "text-white shadow-sm",
-                          "hover:from-indigo-600 hover:to-indigo-700",
-                          "hover:shadow-md hover:scale-105",
+                          "bg-gray-900 text-white",
+                          "hover:bg-gray-800",
                           "transition-all duration-200",
-                          "focus:outline-none focus:ring-2 focus:ring-indigo-400/30"
+                          "focus:outline-none focus:ring-2 focus:ring-gray-400/30"
                         )}
                       >
                         Actualizar
@@ -171,80 +168,90 @@ export function ModelSelector({ value, onChange, disabled, className, userPlan: 
                       onMouseEnter={() => setHoveredModel(opt.value)}
                       onMouseLeave={() => setHoveredModel(null)}
                       className={cn(
-                        "group w-full flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-lg",
-                        "hover:bg-gradient-to-r hover:from-indigo-50 hover:to-slate-50",
-                        "hover:border-indigo-200/60 hover:shadow-sm",
-                        "text-slate-700 font-medium",
+                        "group w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg",
+                        "hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm",
+                        "text-gray-700 font-medium",
                         "transition-all duration-200 ease-out",
-                        "focus:outline-none focus:ring-2 focus:ring-indigo-400/30",
-                        "cursor-pointer relative overflow-hidden",
-                        isSelected && "bg-gradient-to-r from-indigo-100 to-indigo-50 border-indigo-300/60 shadow-sm ring-1 ring-indigo-200/50"
+                        "focus:outline-none focus:ring-2 focus:ring-gray-400/30",
+                        "cursor-pointer relative", // Removed overflow-hidden here
+                        isSelected && "bg-gray-100 border-gray-300 shadow-sm"
                       )}
                     >
                       {opt.thinking ? (
-                        <Brain className="w-4 h-4 text-indigo-500 flex-shrink-0 group-hover:scale-110 transition-transform duration-200" />
+                        <Brain className="w-4 h-4 text-gray-600 flex-shrink-0 group-hover:scale-110 transition-transform duration-200" />
                       ) : (
-                        <Sparkles className="w-4 h-4 text-slate-400 flex-shrink-0 group-hover:text-indigo-400 group-hover:scale-110 transition-all duration-200" />
+                        <Sparkles className="w-4 h-4 text-gray-400 flex-shrink-0 group-hover:text-gray-600 group-hover:scale-110 transition-all duration-200" />
                       )}
                       <span className="truncate flex-1 text-left">{opt.label}</span>
-                      <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-400 transition-colors duration-200 flex-shrink-0" />
 
                       {/* Hover card */}
                       {isHovered && specs && (
                         <div className={cn(
-                          "absolute left-full ml-3 top-1/2 -translate-y-1/2 w-72",
-                          "bg-white/95 backdrop-blur-xl border border-slate-200/60 rounded-2xl",
-                          "shadow-2xl shadow-slate-900/10 p-4 text-left z-30",
+                          "absolute left-full ml-4 top-1/2 -translate-y-1/2 w-72",
+                          "bg-white border border-gray-200 rounded-xl",
+                          "shadow-xl p-2 text-left z-50",  // p-3 to p-2
                           "pointer-events-none",
                           "animate-in slide-in-from-left-2 fade-in duration-200"
                         )}>
-                          <div className="text-xs font-semibold text-slate-900 mb-2.5 flex items-center gap-2">
+                          <div className="text-xs font-semibold text-gray-900 mb-2 flex items-center gap-2 flex-wrap">
                             {opt.thinking ? (
-                              <Brain className="w-4 h-4 text-indigo-500" />
+                              <Brain className="w-4 h-4 text-gray-600" />
+                            ) : opt.modelId === 'gemini-2.5-flash' || opt.modelId === 'gemini-2.5-flash-lite' ? (
+                              <>
+                                <Sparkles className="w-4 h-4 text-gray-400" />
+                                <Zap className="w-4 h-4 text-emerald-500 opacity-80" />
+                              </>
                             ) : (
-                              <Sparkles className="w-4 h-4 text-slate-400" />
+                              <Sparkles className="w-4 h-4 text-gray-400" />
                             )}
-                            {opt.label}
+                            <span className="truncate">{opt.label}</span>
+                            <span className="text-[10px] text-gray-500">({opt.modelId})</span>
                           </div>
-                          <div className="space-y-1.5 text-[11px] text-slate-600">
-                            <div className="flex justify-between items-center py-1">
-                              <span className="text-slate-500 font-medium">Contexto:</span>
-                              <span className="font-semibold text-slate-800">{specs.contextWindow}</span>
-                            </div>
-                            <div className="flex justify-between items-center py-1">
-                              <span className="text-slate-500 font-medium">Conocimiento:</span>
-                              <span className="font-semibold text-slate-800">{specs.knowledgeCutoff}</span>
-                            </div>
-                            <div className="border-t border-slate-200/60 pt-3 mt-3">
-                              <div className="text-xs text-slate-600 leading-relaxed">
-                                {opt.modelId === 'gemini-3-pro-preview' ? (
-                                  opt.thinkingMode === 'low'
-                                    ? 'Perfil: menor costo y menor latencia (pensamiento bajo).'
-                                    : 'Perfil: mayor razonamiento y precisión (mayor costo y latencia).'
-                                ) : opt.modelId === 'gemini-2.5-pro' ? (
-                                  'Perfil: buen razonamiento (costo medio/alto, latencia moderada).'
-                                ) : opt.modelId === 'gemini-2.5-flash' ? (
-                                  'Perfil: rápido (costo bajo).'
-                                ) : (
-                                  'Perfil: muy rápido (costo muy bajo).'
-                                )}
-                              </div>
-                            </div>
-                            {opt.thinkingMode && (
-                              <div className="border-t border-slate-200/60 pt-3 mt-3">
-                                <div className={cn(
-                                  "text-xs font-semibold px-2 py-1.5 rounded-lg",
-                                  opt.thinkingMode === 'high'
-                                    ? "bg-indigo-100 text-indigo-700 border border-indigo-200"
-                                    : "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                                )}>
-                                  {                                  opt.thinkingMode === 'high'
-                                    ? '⚡ Razonamiento profundo (más lento, más preciso)'
-                                    : '🚀 Modo rápido (menor latencia y costo)'}
-                                </div>
-                              </div>
+                          <div className="space-y-0.25 text-[10px] text-gray-600">
+                            {opt.modelId === 'gemini-3-pro-preview' ? (
+                              <>
+                                <div>• <DollarSign className="w-3 h-3 inline text-gray-400 opacity-50 mr-1" /> <strong>Costo Muy Alto:</strong> Premium para avanzado</div>
+                                <div>• <strong>Análisis profundo:</strong> Ideal para tareas complejas y largas</div>
+                                <div>• <strong>Multimodal superior:</strong> Excelente con imágenes y datos mixtos</div>
+                                <div>• <strong>Modos avanzados:</strong> {opt.thinkingMode === 'low' ? 'Bajo (rápido)' : 'Alto (detallado)'}</div>
+                              </>
+                            ) : opt.modelId === 'gemini-2.5-pro' ? (
+                              <>
+                                <div>• <DollarSign className="w-3 h-3 inline text-gray-400 opacity-50 mr-1" /> <strong>Costo Alto:</strong> Inversión para calidad</div>
+                                <div>• <strong>Insights empresariales:</strong> Confiable para análisis de negocio</div>
+                                <div>• <strong>Calidad consistente:</strong> Rendimiento estable en producción</div>
+                                <div>• <strong>Versátil profesional:</strong> Maneja casos complejos con precisión</div>
+                              </>
+                            ) : opt.modelId === 'gemini-2.5-flash' ? (
+                              <>
+                                <div>• <DollarSign className="w-3 h-3 inline text-gray-400 opacity-50 mr-1" /> <strong>Costo Bajo:</strong> Asequible y eficiente</div>
+                                <div>• <strong>Respuestas rápidas:</strong> Perfecto para uso diario</div>
+                                <div>• <strong>Versátil equilibrado:</strong> Buena potencia para la mayoría de tareas</div>
+                                <div>• <strong>Eficiencia óptima:</strong> Velocidad sin sacrificar calidad</div>
+                              </>
+                            ) : (
+                              <>
+                                <div>• <DollarSign className="w-3 h-3 inline text-gray-400 opacity-50 mr-1" /> <strong>Costo Muy Bajo:</strong> Opción económica</div>
+                                <div>• <strong>Respuestas instantáneas:</strong> Para consultas simples</div>
+                                <div>• <strong>Ultra-ligero:</strong> Bajo consumo, alta velocidad</div>
+                                <div>• <strong>Presupuesto amigable:</strong> Ideal para pruebas y básicos</div>
+                              </>
                             )}
                           </div>
+                          {opt.thinkingMode && (
+                            <div className="border-t border-gray-200 pt-3 mt-3">
+                              <div className={cn(
+                                "text-xs font-semibold px-2 py-1.5 rounded-lg",
+                                opt.thinkingMode === 'high'
+                                  ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                                  : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              )}>
+                                {opt.thinkingMode === 'high'
+                                  ? '⚡ Razonamiento profundo (más lento, preciso)'
+                                  : '🚀 Modo rápido (baja latencia, costo)'}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </button>

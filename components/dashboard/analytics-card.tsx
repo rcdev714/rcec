@@ -10,49 +10,28 @@ type Point = { date: string; searches: number };
 
 export default function AnalyticsCard() {
   const [_series] = useState<Point[]>([]);
-  // Keep internal series if we later add tiny sparklines; not shown now
   const [monthlyCounts, setMonthlyCounts] = useState<{ searches: number; tokens: number; dollars: number }>({ searches: 0, tokens: 0, dollars: 0 });
   const [limits, setLimits] = useState<{ searches: number; dollars: number }>({ searches: -1, dollars: -1 });
 
   useEffect(() => {
     async function load() {
       try {
-        // Fetch summary and cost summary for accurate data
         const [sumRes, costSummaryRes] = await Promise.all([
           fetch('/api/usage/summary'),
-          fetch('/api/agent/cost-summary') // New dedicated endpoint for accurate cost aggregation
+          fetch('/api/agent/cost-summary')
         ]);
         
-        if (!sumRes.ok) {
-          console.error('[Analytics] Failed to fetch usage summary:', sumRes.status, sumRes.statusText);
-          const errorText = await sumRes.text();
-          console.error('[Analytics] Error response:', errorText);
-          return;
-        }
+        if (!sumRes.ok) return;
         
         const summary = await sumRes.json();
-        console.log('[Analytics] Summary response:', summary);
         
-        // Get accurate cost from dedicated aggregation endpoint
-        let totalDollars = summary.usage?.cost_dollars || 0; // Fallback to DB value
+        let totalDollars = summary.usage?.cost_dollars || 0;
         let totalTokens = (summary.usage?.input_tokens || 0) + (summary.usage?.output_tokens || 0);
         
         if (costSummaryRes.ok) {
           const costData = await costSummaryRes.json();
           totalDollars = costData.totalCost || 0;
           totalTokens = costData.totalTokens || 0;
-          
-          console.log('[Analytics] Using cost summary data:', { 
-            totalTokens, 
-            totalDollars,
-            messageCount: costData.messageCount 
-          });
-        } else {
-          console.error('[Analytics] Failed to fetch cost summary:', costSummaryRes.status, costSummaryRes.statusText);
-          console.log('[Analytics] Using fallback data from summary:', { 
-            totalTokens, 
-            totalDollars 
-          });
         }
         
         setMonthlyCounts({
@@ -63,16 +42,6 @@ export default function AnalyticsCard() {
         setLimits({
           searches: summary.limits?.searches ?? -1,
           dollars: summary.limits?.prompt_dollars ?? -1
-        });
-        
-        console.log('[Analytics] Final values set:', {
-          searches: summary.usage?.searches || 0,
-          tokens: totalTokens,
-          dollars: totalDollars,
-          limits: {
-            searches: summary.limits?.searches ?? -1,
-            dollars: summary.limits?.prompt_dollars ?? -1
-          }
         });
       } catch (error) {
         console.error('[Analytics] Error loading data:', error);
@@ -91,28 +60,29 @@ export default function AnalyticsCard() {
     const progressValue = limit !== -1 ? Math.min((value / limit) * 100, 100) : 0;
 
     return (
-      <div className="bg-white border border-gray-200 p-2 text-center">
-        <div className="text-base text-gray-900 mb-1 border-b border-gray-300 pb-1">
-          {isDollars ? (
-            <span>
-              ${value.toFixed(2)}
-              {limit !== -1 ? ` / $${limit.toFixed(2)}` : ''}
-            </span>
-          ) : isTokens ? (
-            <span>{formatTokenCount(value)}</span>
-          ) : (
-            <>
+      <div className="flex flex-col p-4 rounded-lg bg-gray-50/50 border border-gray-100">
+        <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-2 font-semibold">{label}</div>
+        <div className="flex items-baseline gap-1.5 mt-auto">
+          <div className="text-xl font-medium text-gray-900">
+            {isDollars ? (
+              `$${value.toFixed(2)}`
+            ) : isTokens ? (
+              formatTokenCount(value)
+            ) : (
               <AnimatedCounter targetNumber={value} />
-              {limit !== -1 ? ` / ${limit}` : ''}
-            </>
+            )}
+          </div>
+          {limit !== -1 && (
+            <span className="text-xs text-gray-400 font-light">
+              / {isDollars ? `$${limit.toFixed(2)}` : limit}
+            </span>
           )}
         </div>
-        <div className="text-xs text-gray-600 mb-1 uppercase">{label}</div>
         {isDollars && limit !== -1 && (
-          <div className="mt-2">
+          <div className="mt-3">
             <Progress
               value={progressValue}
-              className="h-2 bg-indigo-100 [&>div]:bg-indigo-600"
+              className="h-1.5 bg-gray-200 [&>div]:bg-indigo-600"
             />
           </div>
         )}
@@ -121,21 +91,17 @@ export default function AnalyticsCard() {
   };
 
   return (
-    <Card className="font-mono bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 text-gray-900">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-xs text-gray-600 text-center tracking-wide">
-        Tu Uso
-        </CardTitle>
+    <Card className="shadow-sm border-gray-200 bg-white">
+      <CardHeader className="pb-3 border-b border-gray-100/50">
+        <CardTitle className="text-sm font-medium text-gray-900">Resumen de Actividad</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          {renderBullet('Búsquedas en Base de Datos', metrics.searches, limits.searches)}
+      <CardContent className="pt-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {renderBullet('Búsquedas', metrics.searches, limits.searches)}
           {renderBullet('Uso Agente', metrics.dollars, limits.dollars, true)}
-          {renderBullet('Tokens Procesados', metrics.tokens, -1, false, true)}
+          {renderBullet('Tokens', metrics.tokens, -1, false, true)}
         </div>
       </CardContent>
     </Card>
   );
 }
-
-

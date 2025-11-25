@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import ClientLayout from "@/components/client-layout";
 import { Inter } from 'next/font/google';
+import { getDefaultUrl } from "@/lib/base-url";
 
 const inter = Inter({
   subsets: ['latin'],
@@ -11,23 +12,39 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
-const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN
-  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-  : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
-// Ensure no double protocol and normalize the URL
-const defaultUrl = baseUrl.startsWith('http://') || baseUrl.startsWith('https://')
-  ? baseUrl
-  : `https://${baseUrl}`;
+const defaultUrl = getDefaultUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
   title: {
-    default: 'Camella | Tu Agente Personal de Ventas',
+    default: 'Camella | Agente Empresarial',
     template: '%s | Camella',
   },
-  description: "Encuentra prospectos B2B ideales en Ecuador con nuestro Agente Personal de Ventas. Accede a datos de más de 300,000 empresas, optimiza tu prospección y cierra más ventas.",
-  keywords: ['b2b', 'ventas', 'ecuador', 'prospectos', 'empresas ecuatorianas', 'inteligencia artificial', 'finanzas'],
+  description: "Busca, audita y conecta con empresas, sin abogados ni terceros a la velocidad de la luz.",
+  keywords: [
+    'camella',
+    'b2b',
+    'ventas ia',
+    'ecuador',
+    'prospectos',
+    'empresas ecuatorianas',
+    'inteligencia artificial',
+    'finanzas',
+    'agente comercial ia',
+    'gemini 3 pro',
+    'prospeccion empresas',
+    'ventas con ia',
+    'auditoria empresas',
+    'auditoria ia',
+    'busqueda de empresas',
+    'busqueda de contactos',
+    'busqueda de leads',
+    'busqueda de clientes',
+    'busqueda de oportunidades',
+    'busqueda de mercado',
+    'busqueda de negocios',
+    'busqueda de inversiones',
+  ],
   authors: [{ name: 'Camella' }],
   robots: {
     index: true,
@@ -45,20 +62,22 @@ export const metadata: Metadata = {
     locale: 'es_EC',
     url: defaultUrl,
     siteName: 'Camella.app',
-    title: 'Camella | Tu Agente Personal de Ventas B2B en Ecuador',
-    description: 'Aumenta tus ventas B2B en Ecuador. Camella te conecta con empresas ideales usando inteligencia artificial.',
+    title: 'Camella | Agente Empresarial',
+    description: 'Busca, audita y conecta con empresas, sin abogados ni terceros a la velocidad de la luz.',
     images: [
       {
-        url: '/logo.png',
-        alt: 'Logo',
+        url: '/HeroImage.jpeg',
+        width: 1200,
+        height: 630,
+        alt: 'Camella - Agente Empresarial',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Camella | Ventas B2B Inteligentes en Ecuador',
-    description: 'Descubre prospectos, analiza empresas y cierra más negocios en Ecuador con la ayuda de IA.',
-    images: [`${defaultUrl}/logo.png`],
+    title: 'Camella | Agente Empresarial',
+    description: 'Busca, audita y conecta con empresas, sin abogados ni terceros a la velocidad de la luz.',
+    images: [`${defaultUrl}/HeroImage.jpeg`],
   },
   alternates: {
     canonical: defaultUrl,

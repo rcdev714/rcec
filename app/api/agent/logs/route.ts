@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { calculateGeminiCost } from "@/lib/token-counter";
+import { getMonthlyPeriodForAnchor, resolveUsageAnchorIso } from "@/lib/usage";
 
 export const runtime = "edge";
 
@@ -23,7 +24,22 @@ export async function GET(req: Request) {
     const limit = Math.max(1, Math.min(100, parseInt(url.searchParams.get("limit") || "50")));
     const offset = Math.max(0, parseInt(url.searchParams.get("offset") || "0"));
 
-    // Fetch conversation messages for this user with token counts
+    // Determine billing period so logs and analytics align
+    const { data: subscription } = await supabase
+      .from("user_subscriptions")
+      .select("*")
+      .eq("user_id", user.id)
+      .single();
+
+    const plan = (subscription?.plan ?? "FREE") as "FREE" | "PRO" | "ENTERPRISE";
+    const anchorIso = resolveUsageAnchorIso(
+      plan,
+      subscription,
+      user.created_at || new Date().toISOString()
+    );
+    const { start, end } = getMonthlyPeriodForAnchor(anchorIso);
+
+    // Fetch conversation messages for this user with token counts (scoped to billing period)
     const { data: conversations, error: conversationsError } = await supabase
       .from("conversations")
       .select("id")
@@ -53,6 +69,8 @@ export async function GET(req: Request) {
       .in("conversation_id", conversationIds)
       .eq("role", "assistant") // Only show assistant messages (agent responses)
       .gt("token_count", 0) // Only messages with token counts
+      .gte("created_at", start.toISOString())
+      .lt("created_at", end.toISOString())
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -95,6 +113,8 @@ export async function GET(req: Request) {
       total: count || 0,
       limit,
       offset,
+      periodStart: start.toISOString(),
+      periodEnd: end.toISOString(),
     });
   } catch (error) {
     console.error("Error in agent logs API:", error);

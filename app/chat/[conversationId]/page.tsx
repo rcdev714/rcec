@@ -8,6 +8,8 @@ interface ConversationPageProps {
   }>
 }
 
+const APP_SIDEBAR_COLLAPSED_WIDTH = 64 // Matches collapsed width in components/sidebar.tsx
+
 export default async function ConversationPage({ params }: ConversationPageProps) {
   const { conversationId } = await params
   const supabase = await createClient()
@@ -38,13 +40,12 @@ export default async function ConversationPage({ params }: ConversationPageProps
     .order('created_at', { ascending: true })
 
   return (
-    <div className="flex flex-col h-screen">
-      <div className="flex-1 overflow-hidden">
-        <ChatUI 
-          initialConversationId={conversationId}
-          initialMessages={messages || []}
-        />
-      </div>
-    </div>
+    <section className="flex h-[100dvh] min-h-0 w-full">
+      <ChatUI 
+        initialConversationId={conversationId}
+        initialMessages={messages || []}
+        appSidebarOffset={APP_SIDEBAR_COLLAPSED_WIDTH}
+      />
+    </section>
   )
 }

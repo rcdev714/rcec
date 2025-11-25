@@ -2,42 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Check, X, Calendar, RefreshCw } from 'lucide-react';
-// Removed server-side imports to fix Next.js error
+import { Check, RefreshCw, Lock } from 'lucide-react';
 import { UserSubscription, SubscriptionStatus as SubscriptionStatusType } from '@/types/subscription';
 
-// Client-side function to get subscription status
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function getSubscriptionStatus(subscription: UserSubscription | null): SubscriptionStatusType {
-  if (!subscription) {
-    return {
-      plan: 'FREE',
-      status: 'inactive',
-      isActive: false,
-      canAccessFeature: () => false,
-    };
-  }
-
-  const isActive = subscription.status === 'active' || subscription.status === 'trialing';
-  
-  return {
-    plan: subscription.plan as 'FREE' | 'PRO' | 'ENTERPRISE',
-    status: subscription.status as 'active' | 'inactive' | 'trialing' | 'past_due' | 'cancelled',
-    isActive,
-    canAccessFeature: () => true, // Simplified for client-side
-    currentPeriodEnd: subscription.current_period_end || undefined,
-    cancelAtPeriodEnd: subscription.cancel_at_period_end,
-  };
-}
 
 export default function PlanAndSubscriptionCard() {
   const [_subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [status, setStatus] = useState<SubscriptionStatusType | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<{ start: string; end: string } | null>(null);
-  const [periodError, setPeriodError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchSubscription() {
@@ -63,15 +37,13 @@ export default function PlanAndSubscriptionCard() {
     (async () => {
       try {
         const res = await fetch('/api/usage/summary', { cache: 'no-store' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) return;
         const json = await res.json();
         if (isMounted) {
           setPeriod(json?.period ?? null);
         }
       } catch {
-        if (isMounted) {
-          setPeriodError('No se pudo cargar el periodo de uso.');
-        }
+        // silent error
       }
     })();
     return () => { isMounted = false; };
@@ -79,221 +51,108 @@ export default function PlanAndSubscriptionCard() {
 
   const handleManageSubscription = async () => {
     try {
-      const response = await fetch('/api/subscriptions/portal', {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        throw new Error('No se pudo crear la sesión del portal');
-      }
-
+      const response = await fetch('/api/subscriptions/portal', { method: 'POST' });
+      if (!response.ok) throw new Error('Error');
       const { url } = await response.json();
       window.location.href = url;
     } catch (error) {
       console.error('Error creating portal session:', error);
-      alert('No se pudo abrir el portal de facturación. Por favor, intenta de nuevo.');
     }
   };
-
 
   const translatePlan = (plan: string) => {
     switch (plan) {
-      case 'FREE':
-        return 'Gratuito';
-      case 'PRO':
-        return 'Pro';
-      case 'ENTERPRISE':
-        return 'Empresarial';
-      default:
-        return plan;
+      case 'FREE': return 'Gratuito';
+      case 'PRO': return 'Pro';
+      case 'ENTERPRISE': return 'Empresarial';
+      default: return plan;
     }
-  };
-
-  const translateStatus = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'Activo';
-      case 'inactive':
-        return 'Inactivo';
-      case 'trialing':
-        return 'En prueba';
-      case 'past_due':
-        return 'Vencido';
-      case 'cancelled':
-        return 'Cancelado';
-      default:
-        return status.charAt(0).toUpperCase() + status.slice(1);
-    }
-  };
-
-  const getPlanFeatures = (plan: string) => {
-    const features = {
-      FREE: {
-        prompts: '$5.00 en tokens/mes',
-        search: 'Búsqueda limitada (10/mes)',
-        linkedin: <span className="flex items-center gap-1"><X className="w-3 h-3 text-red-500" />LinkedIn bloqueado</span>,
-        reasoning: <span className="flex items-center gap-1"><X className="w-3 h-3 text-red-500" />Modelo de razonamiento avanzado bloqueado</span>,
-        analytics: <span className="flex items-center gap-1"><X className="w-3 h-3 text-red-500" />Analíticas avanzadas de uso bloqueadas</span>
-      },
-      PRO: {
-        prompts: '$20.00 en tokens/mes',
-        search: <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" />Búsqueda ilimitada</span>,
-        linkedin: <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" />LinkedIn disponible</span>,
-        reasoning: <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" />Modelo de razonamiento avanzado disponible</span>,
-        analytics: <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" />Analíticas avanzadas de uso disponibles</span>
-      },
-      ENTERPRISE: {
-        prompts: '$200.00 en tokens/mes',
-        search: <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" />Búsqueda ilimitada</span>,
-        linkedin: <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" />LinkedIn disponible</span>,
-        reasoning: <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" />Modelo de razonamiento avanzado disponible</span>,
-        analytics: <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-600" />Analíticas avanzadas de uso disponibles</span>
-      }
-    };
-    return features[plan as keyof typeof features] || features.FREE;
   };
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm text-center">Plan y Suscripción</CardTitle>
+      <Card className="shadow-sm border-gray-200 bg-white">
+        <CardHeader className="pb-3 border-b border-gray-100/50">
+          <CardTitle className="text-sm font-medium text-gray-900">Tu Plan</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="text-center py-4 text-gray-500">Cargando...</div>
+        <CardContent className="py-6 text-center text-xs text-gray-400">
+          Cargando información...
         </CardContent>
       </Card>
     );
   }
 
-  if (!status) {
-    return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm text-center">Plan y Suscripción</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-4 text-red-600">Error cargando estado</div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const currentFeatures = status ? getPlanFeatures(status.plan) : getPlanFeatures('FREE');
+  const currentPlan = status?.plan || 'FREE';
+  const isPro = currentPlan !== 'FREE';
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm text-center">Plan y Suscripción</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          <div className="text-center">
-            <Badge variant="secondary" className="mb-2">
-              {status ? translatePlan(status.plan) : '—'}
-            </Badge>
-          </div>
-          <div className="text-center">
-            <Badge variant="outline">
-              {status ? translateStatus(status.status) : '—'}
-            </Badge>
-          </div>
-
-          <div className="space-y-2 text-xs">
-            <div className="flex justify-between">
-              <span>Prompts Agente:</span>
-              <span className="font-medium">{currentFeatures.prompts}</span>
+    <Card className="shadow-sm border-gray-200 bg-white overflow-hidden">
+      <CardHeader className="pb-3 border-b border-gray-100/50 bg-gray-50/30">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tu Plan</CardTitle>
+          {status?.status === 'active' && (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-[10px] font-medium border border-green-100">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              Activo
             </div>
-            <div className="flex justify-between">
-              <span>Búsqueda:</span>
-              <span>{currentFeatures.search}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>LinkedIn:</span>
-              <span>{currentFeatures.linkedin}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Razonamiento avanzado:</span>
-              <span>{currentFeatures.reasoning}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Analíticas avanzadas:</span>
-              <span>{currentFeatures.analytics}</span>
-            </div>
-          </div>
-
-          {/* Billing Period Section */}
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="flex items-start gap-2">
-              <Calendar className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <h4 className="text-xs font-semibold text-gray-900 mb-2">
-                  Periodo de Facturación y Uso
-                </h4>
-                {period ? (
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="font-medium text-gray-900">Inicio:</span>
-                      <span className="text-indigo-600">
-                        {new Date(period.start).toLocaleDateString('es-ES', {
-                          weekday: 'short',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <RefreshCw className="h-3 w-3 text-gray-500" />
-                      <span className="font-medium text-gray-900">Reinicio:</span>
-                      <span className="text-indigo-600">
-                        {new Date(period.end).toLocaleDateString('es-ES', {
-                          weekday: 'short',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </span>
-                    </div>
-                    <div className="mt-2 pt-2 border-t border-gray-200">
-                      <p className="text-xs text-gray-600">
-                        Tu uso se reinicia automáticamente en la fecha de reinicio mostrada arriba.
-                      </p>
-                    </div>
-                  </div>
-                ) : periodError ? (
-                  <p className="text-xs text-red-600">{periodError}</p>
-                ) : (
-                  <div className="flex items-center gap-2 text-xs text-gray-600">
-                    <div className="animate-spin h-3 w-3 border-2 border-gray-400 border-t-transparent rounded-full"></div>
-                    <span>Cargando periodo de facturación...</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-2 mt-4">
-          {status?.plan !== 'FREE' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleManageSubscription}
-              className="flex-1"
-            >
-              Gestionar
-            </Button>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.location.href = '/pricing'}
-            className="flex-1"
-          >
-            {status?.plan === 'FREE' ? 'Actualizar' : 'Cambiar'}
-          </Button>
         </div>
+      </CardHeader>
+      <CardContent className="pt-5 pb-5">
+        <div className="mb-6">
+          <div className="flex items-baseline gap-2 mb-1">
+            <h3 className="text-xl font-semibold text-gray-900">
+              {translatePlan(currentPlan)}
+            </h3>
+            {currentPlan === 'FREE' && (
+               <span className="text-xs text-gray-500 font-normal">Basic</span>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 leading-relaxed">
+            {currentPlan === 'FREE' 
+              ? 'Actualiza para desbloquear todas las funciones.' 
+              : 'Tienes acceso completo a la plataforma.'}
+          </p>
+        </div>
+
+        <div className="space-y-3 mb-6">
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            {isPro ? <Check className="w-3.5 h-3.5 text-indigo-600" /> : <Lock className="w-3.5 h-3.5 text-gray-400" />}
+            <span>Búsquedas ilimitadas</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            {isPro ? <Check className="w-3.5 h-3.5 text-indigo-600" /> : <Lock className="w-3.5 h-3.5 text-gray-400" />}
+            <span>Acceso a LinkedIn</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            {isPro ? <Check className="w-3.5 h-3.5 text-indigo-600" /> : <Lock className="w-3.5 h-3.5 text-gray-400" />}
+            <span>Analíticas avanzadas</span>
+          </div>
+        </div>
+
+        {period && (
+          <div className="bg-gray-50/50 rounded-lg p-3 mb-4 border border-gray-100">
+             <div className="flex items-center gap-2 mb-2">
+               <RefreshCw className="w-3 h-3 text-gray-400" />
+               <span className="text-[10px] font-medium text-gray-500 uppercase">Renovación</span>
+             </div>
+             <p className="text-xs text-gray-700">
+               {new Date(period.end).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}
+             </p>
+          </div>
+        )}
+
+        <Button
+          onClick={isPro ? handleManageSubscription : () => window.location.href = '/pricing'}
+          className={`w-full h-9 text-xs font-medium ${
+            isPro 
+              ? 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900' 
+              : 'bg-gray-900 text-white hover:bg-gray-800'
+          }`}
+          variant={isPro ? "outline" : "default"}
+        >
+          {isPro ? 'Gestionar Suscripción' : 'Actualizar Plan'}
+        </Button>
       </CardContent>
     </Card>
   );

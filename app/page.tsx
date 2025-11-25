@@ -1,12 +1,29 @@
 import type { Metadata } from "next";
 import HomeContent from "@/components/home-content";
+import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Camella",
-  description: "Encuentra prospectos B2B ideales en Ecuador con nuestro Agente Personal. Accede a datos de más de 300,000 empresas, optimiza tu prospección y cierra más ventas.",
+  title: "Camella | Agente Empresarial",
+  description: "Busca, audita y conecta con empresas, sin abogados ni terceros a la velocidad de la luz.",
+  keywords: [
+    'camella',
+    'planes ventas b2b',
+    'ventas b2b',
+    'ventas con ia',
+    'auditoria empresas',
+    'auditoria ia',
+    'ecuador',
+    'prospectos',
+    'empresas ecuatorianas',
+    'inteligencia artificial',
+    'agente comercial ia',
+    'prospectos empresas',
+    'gemini 3 pro gratis',
+    'ventas inteligentes',
+  ],
   openGraph: {
     title: "Camella | Agente Empresarial",
-    description: "Aumenta tus ventas B2B en Ecuador. Camella te conecta con empresas ideales usando inteligencia artificial.",
+    description: "Busca, audita y conecta con empresas, sin abogados ni terceros a la velocidad de la luz.",
     images: ['/logo.png'],
   },
   alternates: {
@@ -14,6 +31,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Home() {
-  return <HomeContent />;
+export default async function Home() {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  return <HomeContent initialUser={user ?? null} />;
 }

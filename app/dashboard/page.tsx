@@ -6,125 +6,122 @@ import AnalyticsCard from "@/components/dashboard/analytics-card";
 import AnalyticsChartsCard from "@/components/dashboard/analytics-charts-card";
 import AgentLogsCard from "@/components/dashboard/agent-logs-card";
 import Link from "next/link";
-import { FileText, Infinity, Building, Package, CreditCard, Settings, CheckCircle, Activity, TrendingUp } from "lucide-react";
+import { FileText, Infinity, Building, Package, CreditCard, Settings, TrendingUp, Activity } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<'analytics' | 'logs'>('analytics');
 
-  // Show success message if redirected from successful checkout
-  const showSuccessMessage = false; // Handled client-side now
-
   return (
-    <div className="min-h-screen bg-white text-gray-900 p-6">
-      <div className="max-w-5xl mx-auto">
-        {/* Success Message Banner */}
-        {showSuccessMessage && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
-            <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <h3 className="text-sm font-semibold text-green-900">
-                ¡Suscripción activada exitosamente!
-              </h3>
-              <p className="mt-1 text-sm text-green-700">
-                Tu plan ha sido actualizado. Ya puedes disfrutar de todas las funciones premium.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
-          <p className="mt-1 text-xs text-gray-600">
-            Monitorea tu uso mensual de búsquedas y conversaciones con el Agente. Gestiona tu suscripción y analiza tu actividad.
-          </p>
-        </div>
+    <div className="min-h-screen bg-[#FAFAFA] text-gray-900 p-4 sm:p-8 font-inter selection:bg-indigo-100 selection:text-indigo-900">
+      <div className="max-w-6xl mx-auto space-y-8">
         
-        {/* Toggle Tabs */}
-        <div className="flex justify-center mb-8">
-          <div className="relative flex items-center p-1 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200/50 shadow-sm backdrop-blur-sm min-h-[36px]">
-            {/* Sliding indicator */}
-            <div
-              className={`absolute top-1 bottom-1 bg-white rounded-md shadow-sm border border-gray-100 transition-all duration-300 ease-out ${
-                activeTab === 'analytics'
-                  ? 'left-1 right-[calc(50%+1px)]'
-                  : 'left-[calc(50%+1px)] right-1'
-              }`}
-            />
-
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-medium tracking-tight text-gray-900">Dashboard</h1>
+            <p className="text-sm text-gray-500 mt-1 font-light">
+              Vista general de tu actividad y consumo.
+            </p>
+          </div>
+          
+          {/* Modern Tab Switcher */}
+          <div className="bg-white border border-gray-200 rounded-lg p-1 flex items-center shadow-sm">
             <button
               onClick={() => setActiveTab('analytics')}
-              className={`relative z-10 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium transition-all duration-300 ease-out min-w-0 flex-1 ${
-                activeTab === 'analytics'
-                  ? 'text-gray-900'
-                  : 'text-gray-500 hover:text-gray-700'
+              className={`relative px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                activeTab === 'analytics' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              <TrendingUp className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="hidden sm:inline whitespace-nowrap">Analíticas</span>
-              <span className="sm:hidden whitespace-nowrap">Analíticas</span>
+              {activeTab === 'analytics' && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute inset-0 bg-gray-100 rounded-md -z-10"
+                  transition={{ type: "spring", duration: 0.5 }}
+                />
+              )}
+              <span className="flex items-center gap-2">
+                <TrendingUp className="w-3.5 h-3.5" />
+                Analíticas
+              </span>
             </button>
             <button
               onClick={() => setActiveTab('logs')}
-              className={`relative z-10 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium transition-all duration-300 ease-out min-w-0 flex-1 ${
-                activeTab === 'logs'
-                  ? 'text-gray-900'
-                  : 'text-gray-500 hover:text-gray-700'
+              className={`relative px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                activeTab === 'logs' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              <Activity className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="hidden sm:inline whitespace-nowrap">Registros Agente</span>
-              <span className="sm:hidden whitespace-nowrap">Registros</span>
+              {activeTab === 'logs' && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute inset-0 bg-gray-100 rounded-md -z-10"
+                  transition={{ type: "spring", duration: 0.5 }}
+                />
+              )}
+              <span className="flex items-center gap-2">
+                <Activity className="w-3.5 h-3.5" />
+                Registros
+              </span>
             </button>
           </div>
         </div>
 
-        {/* Analytics/Logs Content */}
-        <div className="space-y-6 mb-8">
-          {activeTab === 'analytics' ? (
-            <>
-              <AnalyticsCard />
-              <AnalyticsChartsCard />
-            </>
-          ) : (
-            <AgentLogsCard />
-          )}
-        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          {/* Main Content Area */}
+          <div className="lg:col-span-2 space-y-6">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="space-y-6"
+            >
+              {activeTab === 'analytics' ? (
+                <>
+                  <AnalyticsCard />
+                  <AnalyticsChartsCard />
+                </>
+              ) : (
+                <AgentLogsCard />
+              )}
+            </motion.div>
+          </div>
 
-        {/* Plan y Subscripcion */}
-        <div className="mb-8">
-          <PlanAndSubscriptionCard />
+          {/* Sidebar Area */}
+          <div className="space-y-6">
+            <div className="sticky top-8 space-y-6">
+              <PlanAndSubscriptionCard />
+              
+              {/* Quick Actions */}
+              <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Accesos Rápidos</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <QuickLink href="/chat" icon={<Infinity size={18} />} label="Agente" />
+                  <QuickLink href="/companies" icon={<Building size={18} />} label="Empresas" />
+                  <QuickLink href="/offerings" icon={<Package size={18} />} label="Servicios" />
+                  <QuickLink href="/docs" icon={<FileText size={18} />} label="Docs" />
+                  <QuickLink href="/pricing" icon={<CreditCard size={18} />} label="Planes" />
+                  <QuickLink href="/settings" icon={<Settings size={18} />} label="Ajustes" />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-
-        {/* Quick Links */}
-        <div className="grid grid-cols-3 gap-3 mb-8">
-          <Link href="/docs" className="flex items-center justify-center gap-2 rounded border border-gray-200 py-3 hover:bg-gray-50 transition-colors">
-            <FileText size={18} />
-            <span className="text-xs">Docs</span>
-          </Link>
-          <Link href="/chat" className="flex items-center justify-center gap-2 rounded border border-gray-200 py-3 hover:bg-gray-50 transition-colors">
-            <Infinity size={18} />
-            <span className="text-xs">Agente</span>
-          </Link>
-          <Link href="/companies" className="flex items-center justify-center gap-2 rounded border border-gray-200 py-3 hover:bg-gray-50 transition-colors">
-            <Building size={18} />
-            <span className="text-xs">Empresas</span>
-          </Link>
-          <Link href="/offerings" className="flex items-center justify-center gap-2 rounded border border-gray-200 py-3 hover:bg-gray-50 transition-colors">
-            <Package size={18} />
-            <span className="text-xs">Servicios</span>
-          </Link>
-          <Link href="/pricing" className="flex items-center justify-center gap-2 rounded border border-gray-200 py-3 hover:bg-gray-50 transition-colors">
-            <CreditCard size={18} />
-            <span className="text-xs">Suscripción</span>
-          </Link>
-          <Link href="/settings" className="flex items-center justify-center gap-2 rounded border border-gray-200 py-3 hover:bg-gray-50 transition-colors">
-            <Settings size={18} />
-            <span className="text-xs">Configuración</span>
-          </Link>
-        </div>
-
       </div>
     </div>
+  );
+}
+
+function QuickLink({ href, icon, label }: { href: string, icon: React.ReactNode, label: string }) {
+  return (
+    <Link 
+      href={href} 
+      className="flex flex-col items-center justify-center gap-2 p-3 rounded-lg border border-gray-100 hover:border-indigo-100 hover:bg-indigo-50/50 hover:text-indigo-600 transition-all text-gray-600 group bg-gray-50/30"
+    >
+      <div className="text-gray-400 group-hover:text-indigo-500 transition-colors">
+        {icon}
+      </div>
+      <span className="text-xs font-medium">{label}</span>
+    </Link>
   );
 }

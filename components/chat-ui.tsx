@@ -3,7 +3,7 @@
 import { useState, FormEvent, ChangeEvent, useRef, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowDown, LoaderCircle, Copy, CopyCheck, ArrowUp, Sparkles, Infinity, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowDown, LoaderCircle, Copy, CopyCheck, ArrowUp, Infinity, CheckCircle2, XCircle } from "lucide-react";
 import { ModelSelector } from "./model-selector";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -124,9 +124,10 @@ interface ChatUIProps {
       type?: 'text' | 'company_results' | 'export_link' | 'email_draft' | 'planning';
     }
   }[];
+  appSidebarOffset?: number;
 }
 
-export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIProps) {
+export function ChatUI({ initialConversationId, initialMessages = [], appSidebarOffset = 0 }: ChatUIProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
@@ -263,7 +264,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
   const allSuggestions = useMemo(() => [
     'Analiza el sector de logística en Guayas: principales jugadores y cuotas',
     'Investiga la salud financiera de Corporación Favorita y sus subsidiarias',
-    'Busca proveedores de tecnología en Quito con ingresos > $1M',
+    'Busca proveedores de alimentos en Quito con ingresos > $100k',
     'Encuentra al Gerente de Compras de Pronaca y redacta un correo de presentación',
     'Comparativa de métricas financieras: Supermaxi vs Mi Comisariato',
     'Mapea competidores en el sector farmacéutico en Cuenca',
@@ -1129,15 +1130,15 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
   const formLayout = (
     <div className="w-full flex flex-col items-center">
       <form onSubmit={handleSubmit} className="relative w-full max-w-3xl group">
-        <div className="bg-white/95 backdrop-blur-md border border-slate-200/60 rounded-2xl p-2.5 md:p-3 shadow-sm hover:shadow-lg focus-within:ring-2 focus-within:ring-indigo-400/20 focus-within:border-indigo-300 transition-all duration-300 ease-out">
+        <div className="bg-white border border-gray-200 rounded-2xl p-3 shadow-sm focus-within:border-gray-900 focus-within:ring-1 focus-within:ring-gray-900/10 transition-colors">
           <input
             type="text"
             value={input}
             onChange={handleInputChange}
-            placeholder="busca, analiza, conecta..."
-            className="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-sm placeholder:text-slate-400 pr-3"
+            placeholder="Escribe una instrucción o pega información para analizar..."
+            className="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-[15px] placeholder:text-gray-400 text-gray-900 pr-3"
           />
-          <div className="mt-2.5 flex items-center justify-between gap-2">
+          <div className="mt-3 flex items-center justify-between gap-2">
             <ModelSelector
               value={selectedModel}
               onChange={handleModelChange}
@@ -1149,13 +1150,13 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
             <button
               type="submit"
               disabled={isSending || !input.trim()}
-              className="w-8 h-8 md:w-9 md:h-9 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl hover:from-indigo-600 hover:to-indigo-700 active:from-indigo-700 active:to-indigo-800 disabled:from-slate-300 disabled:to-slate-400 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md active:shadow-sm disabled:shadow-none flex items-center justify-center touch-manipulation hover:scale-105 active:scale-95"
+              className="w-9 h-9 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center text-sm transition-colors"
               title="Enviar mensaje"
             >
               {isSending ? (
-                <LoaderCircle className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" />
+                <LoaderCircle className="w-4 h-4 animate-spin" />
               ) : (
-                <ArrowUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <ArrowUp className="w-4 h-4" />
               )}
             </button>
           </div>
@@ -1165,19 +1166,14 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
   );
 
   return (
-    <div className="relative flex h-screen bg-white overflow-hidden">
-      {/* Empty background accent (lightweight) */}
-      {messages.length === 0 && (
-        <div className="pointer-events-none absolute inset-0 flex items-start justify-center opacity-[0.06] -z-10">
-          <Sparkles className="w-[420px] h-[420px] mt-16" />
-        </div>
-      )}
+    <div className="relative flex h-full min-h-[100dvh] w-full bg-[#F8F8F8] overflow-hidden">
 
       {/* Conversation Sidebar as a normal flex child on desktop; mobile drawer handled inside */}
       <ConversationSidebar
         currentConversationId={conversationId}
         onConversationChange={handleConversationChange}
         onNewConversation={handleNewConversation}
+        appSidebarOffset={appSidebarOffset}
       />
 
       {/* Main Chat Area */}
@@ -1198,27 +1194,15 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1, duration: 0.4 }}
-                  className="w-full max-w-3xl"
+                  className="w-full max-w-2xl text-center space-y-3"
                 >
-                  <div className="bg-gradient-to-br from-white to-gray-50/50 backdrop-blur-sm rounded-3xl p-8 md:p-10 lg:p-12">
-                    <div className="text-center space-y-4">
-                      <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 mb-4 shadow-lg">
-                        <Infinity className="w-8 h-8 md:w-10 md:h-10 text-white" />
-                      </div>
-                      <h1 className="text-xl md:text-2xl lg:text-3xl tracking-tight text-gray-900 mb-4 font-normal">
-                        Agente
-                      </h1>
-                      <div className="space-y-4">
-                        <p className="text-xs md:text-sm text-gray-700 max-w-2xl mx-auto leading-relaxed font-normal">
-                          Tu analista de inteligencia empresarial: investigación de mercado, due diligence y estrategia corporativa.
-                        </p>
-                        <div className="w-24 h-0.5 bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-purple-500 mx-auto rounded-full"></div>
-                        <p className="text-[11px] md:text-xs text-gray-600 max-w-2xl mx-auto leading-relaxed font-normal">
-                          Identifica oportunidades B2B, analiza salud financiera de empresas, mapea competidores y encuentra contactos clave para tus negocios.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  <p className="text-[11px] md:text-[13px] uppercase tracking-[0.2em] text-gray-400">Impulsado por Gemini</p>
+                  <h1 className="text-2xl md:text-3xl lg:text-4xl font-medium text-gray-900 leading-tight">
+                    Agente Empresarial
+                  </h1>
+                  <p className="text-sm md:text-base lg:text-lg text-gray-600 font-light leading-relaxed px-4">
+                    Analiza empresas, compara mercados y genera ideas accionables con una interfaz enfocada en la información.
+                  </p>
                 </motion.div>
 
                 {/* Suggestions */}
@@ -1226,14 +1210,13 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2, duration: 0.4 }}
-                  className="w-full max-w-4xl"
+                  className="w-full max-w-3xl px-4 md:px-0"
                 >
-                  <div className="mb-4">
-                    <h2 className="text-[10px] font-normal text-gray-500 uppercase tracking-wider text-center mb-6">
-                      Sugerencias
-                    </h2>
+                  <div className="flex items-center justify-between mb-3 md:mb-4">
+                    <p className="text-sm font-medium text-gray-800">Ideas para empezar</p>
+                    <span className="text-xs text-gray-400">Selecciona una</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
                     {suggestions.map((s, i) => (
                       <motion.button
                         key={i}
@@ -1241,14 +1224,9 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.25 + i * 0.05, duration: 0.3 }}
                         onClick={() => handleSuggestionClick(s)}
-                        className="group relative p-4 text-left border rounded-2xl text-xs text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow-lg hover:border-indigo-300 border-gray-200 hover:-translate-y-0.5"
+                        className="text-left p-3 rounded-xl border border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 text-xs md:text-sm text-gray-600 transition-colors"
                       >
-                        <span className="block pr-6 leading-relaxed">
-                          {s}
-                        </span>
-                        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all text-indigo-500 transform group-hover:translate-x-1">
-                          →
-                        </span>
+                        {s}
                       </motion.button>
                     ))}
                   </div>
@@ -1259,7 +1237,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.35, duration: 0.4 }}
-                  className="w-full max-w-3xl mt-4"
+                  className="w-full max-w-3xl mt-4 px-4 md:px-0"
                 >
                   {formLayout}
                 </motion.div>
@@ -1273,40 +1251,40 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
           <>
             <div
               ref={scrollContainerRef}
-              className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-0 scroll-smooth"
+              className="flex-1 overflow-y-auto p-2 md:p-6 lg:p-8 pb-0 scroll-smooth"
             >
-              <div className="w-full max-w-4xl lg:max-w-5xl mx-auto space-y-4 md:space-y-6">
+              <div className="w-full max-w-4xl lg:max-w-5xl mx-auto space-y-3 md:space-y-6">
 
                 {messages.map((msg, index) => {
                   // Special rendering for planning messages
                   if (msg.role === "system" && msg.metadata?.type === 'planning' && msg.todos) {
                     return (
-                      <div key={msg.id} className="w-full mb-4">
-                        <div className="bg-gradient-to-br from-indigo-50 to-purple-50/50 border border-indigo-200/60 rounded-2xl p-5 shadow-sm">
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center text-xs font-normal shadow-sm">
+                      <div key={msg.id} className="w-full mb-4 px-1 md:px-0">
+                        <div className="bg-white border border-gray-200 rounded-2xl p-4 md:p-5 shadow-sm">
+                          <div className="flex items-center gap-3 mb-3 md:mb-4">
+                            <div className="w-6 h-6 md:w-8 md:h-8 rounded-lg md:rounded-xl bg-gray-900 text-white flex items-center justify-center text-[10px] md:text-xs font-semibold">
                               AI
                             </div>
-                            <h4 className="font-normal text-indigo-900 text-xs">Plan de acción</h4>
+                            <h4 className="font-medium text-gray-900 text-xs md:text-sm">Plan de acción</h4>
                           </div>
-                          <div className="space-y-2.5">
+                          <div className="space-y-2">
                             {msg.todos.map((todo, todoIndex) => (
-                              <div key={todoIndex} className="flex items-start gap-3 text-xs p-2 rounded-lg bg-white/60">
+                              <div key={todoIndex} className="flex items-start gap-2 md:gap-3 text-xs md:text-sm p-2 rounded-xl border border-gray-100 bg-gray-50">
                                 <span className={cn(
-                                  "flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center text-xs font-normal shadow-sm",
-                                  todo.status === 'completed' && "bg-green-500 text-white",
-                                  todo.status === 'in_progress' && "bg-amber-500 text-white animate-pulse",
-                                  todo.status === 'pending' && "bg-gray-300 text-gray-700",
-                                  todo.status === 'failed' && "bg-red-500 text-white"
+                                  "flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-[11px] font-medium",
+                                  todo.status === 'completed' && "bg-green-100 text-green-700",
+                                  todo.status === 'in_progress' && "bg-yellow-100 text-yellow-700",
+                                  todo.status === 'pending' && "bg-gray-200 text-gray-600",
+                                  todo.status === 'failed' && "bg-red-100 text-red-700"
                                 )}>
                                   {todo.status === 'completed' ? '✓' : todoIndex + 1}
                                 </span>
                                 <span className={cn(
-                                  "flex-1 leading-relaxed pt-0.5",
-                                  todo.status === 'completed' && "text-gray-600 line-through",
-                                  todo.status === 'in_progress' && "text-gray-900 font-normal",
+                                  "flex-1 leading-relaxed",
+                                  todo.status === 'completed' && "text-gray-500 line-through",
+                                  todo.status === 'in_progress' && "text-gray-900 font-medium",
                                   todo.status === 'pending' && "text-gray-600",
-                                  todo.status === 'failed' && "text-red-600 font-normal"
+                                  todo.status === 'failed' && "text-red-600 font-medium"
                                 )}>
                                   {todo.description}
                                 </span>
@@ -1323,7 +1301,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                     <div
                       key={msg.id}
                       className={cn(
-                        "flex items-start gap-3 md:gap-4",
+                        "flex items-start gap-2 md:gap-4",
                         msg.role === "user" && "flex-row-reverse"
                       )}
                     >
@@ -1332,16 +1310,16 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                           <UserAvatar />
                         </div>
                       ) : (
-                        <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-sm border-2 border-white mt-1">
-                          <Infinity className="w-5 h-5 md:w-5 md:h-5" />
+                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-sm border-2 border-white mt-1">
+                          <Infinity className="w-4 h-4 md:w-5 md:h-5" />
                         </div>
                       )}
                       <div
                         className={cn(
-                          "max-w-[85%] md:max-w-[75%] lg:max-w-[70%] px-3 md:px-4 py-2.5 md:py-3 rounded-xl relative group shadow-sm touch-manipulation transition-all duration-200 hover:shadow-md",
+                          "max-w-[90%] md:max-w-[75%] lg:max-w-[70%] rounded-2xl relative group",
                           msg.role === "user"
-                            ? "bg-white text-slate-900 border border-slate-200/50 rounded-br-sm hover:bg-gray-50"
-                            : "bg-white/95 backdrop-blur-sm text-slate-900 border border-slate-200/50 rounded-bl-sm hover:bg-white"
+                            ? "bg-white text-gray-900 border border-gray-200 px-3 py-2.5 md:px-4 md:py-3 shadow-sm"
+                            : "bg-white text-gray-800 border border-gray-100 px-3 py-2.5 md:px-4 md:py-3 shadow-sm rounded-bl-sm"
                         )}
                       >
                         {msg.role === 'assistant' && msg.content === '' && isSending ? (
@@ -1349,7 +1327,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                             <LoadingSpinner />
                           </div>
                         ) : (
-                          <div className="space-y-4">
+                          <div className="space-y-3 md:space-y-4">
                             {/* Agent timeline: render events in chronological order */}
                             {msg.role === 'assistant' && msg.agentStateEvents && msg.agentStateEvents.length > 0 && (() => {
                               const raw = msg.agentStateEvents as AgentStateEvent[];
@@ -1424,32 +1402,47 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                                 }
                               };
                               if (runs.length === 0) return null;
-                              return (
-                                <div className="mb-3 p-3 bg-gradient-to-br from-indigo-50/60 to-slate-50/40 border border-indigo-200/40 rounded-lg shadow-sm">
-                                  <div className="flex items-center gap-2 mb-2.5">
-                                    <div className="w-4 h-4 rounded-lg bg-indigo-500 text-white flex items-center justify-center text-xs font-normal shadow-sm">⚙</div>
-                                    <span className="text-xs font-medium text-indigo-900">Ejecución del agente</span>
-                                    <span className="ml-auto text-[10px] font-medium text-indigo-600 bg-indigo-100 px-1.5 py-0.5 rounded-full">
-                                      {runs.length} {runs.length === 1 ? 'acción' : 'acciones'}
-                                    </span>
+                                return (
+                                  <div className="mb-3 p-2.5 md:p-3 bg-white border border-gray-200 rounded-xl shadow-sm">
+                                    <div className="flex items-center gap-2 mb-2.5 text-xs text-gray-600">
+                                      <span className="font-medium text-gray-900">Ejecución del agente</span>
+                                      <span className="ml-auto text-[11px] text-gray-400">
+                                        {runs.length} {runs.length === 1 ? 'paso' : 'pasos'}
+                                      </span>
                                   </div>
                                   <div className="space-y-2">
                                     {runs.map((run, i) => {
                                       const derivedThought = run.thought || summarizeOutput(run.output);
+                                      const statusLabel = run.status === 'pending'
+                                        ? 'En progreso'
+                                        : run.status === 'failed'
+                                          ? 'Error'
+                                          : 'Completado';
+                                      const statusColor = run.status === 'pending'
+                                        ? 'text-amber-500'
+                                        : run.status === 'failed'
+                                          ? 'text-red-500'
+                                          : 'text-green-500';
+
                                       return (
                                         <div key={`run-${run.toolCallId || i}`} className="text-xs rounded-lg bg-white/90 border border-indigo-100/60 shadow-sm">
                                           <div className="flex items-center gap-2.5 p-2">
                                             <div className="flex-shrink-0">
                                               {run.status === 'pending' ? (
-                                                <LoaderCircle className="w-4 h-4 text-indigo-500 animate-spin" />
+                                                <LoaderCircle className="w-3.5 h-3.5 md:w-4 md:h-4 text-indigo-500 animate-spin" />
                                               ) : run.status === 'success' ? (
-                                                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                                <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-green-500" />
                                               ) : (
-                                                <XCircle className="w-4 h-4 text-red-500" />
+                                                <XCircle className="w-3.5 h-3.5 md:w-4 md:h-4 text-red-500" />
                                               )}
                                             </div>
-                                            <div className="flex-1 font-normal text-gray-700">
-                                              {formatToolName(run.toolName)}
+                                            <div className="flex-1">
+                                              <div className="text-xs font-medium text-gray-900">
+                                                {formatToolName(run.toolName)}
+                                              </div>
+                                              <div className={cn("text-[10px] font-semibold uppercase tracking-wide", statusColor)}>
+                                                {statusLabel}
+                                              </div>
                                             </div>
                                           </div>
                                           {(run.error || derivedThought) && (
@@ -1458,7 +1451,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                                                 <div className="text-[10px] text-red-500/80 mt-0.5 truncate" title={run.error}>{run.error}</div>
                                               )}
                                               {derivedThought && (
-                                                <div className="mt-1 p-2 rounded bg-indigo-50/70 border border-indigo-100/60 text-[11px] text-indigo-800">
+                                                <div className="mt-1 p-2 rounded-lg bg-gray-50 border border-gray-100 text-[10px] md:text-[11px] text-gray-700">
                                                   {derivedThought}
                                                 </div>
                                               )}
@@ -1473,7 +1466,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
                             })()}
 
                             {msg.content && (
-                              <div className="chat-content overflow-x-auto text-xs md:text-sm leading-relaxed prose prose-xs md:prose-sm prose-gray max-w-none" aria-live={msg.role === 'assistant' ? 'polite' : undefined}>
+                              <div className="chat-content overflow-x-auto text-[13px] md:text-sm leading-relaxed prose prose-xs md:prose-sm prose-gray max-w-none" aria-live={msg.role === 'assistant' ? 'polite' : undefined}>
                                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                                   {sanitizeForRender(msg.content)}
                                 </ReactMarkdown>
@@ -1546,7 +1539,7 @@ export function ChatUI({ initialConversationId, initialMessages = [] }: ChatUIPr
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.3 }}
-              className="border-t border-slate-200/40 bg-white/95 backdrop-blur-md p-3 md:p-4 lg:p-5 pb-4 md:pb-5 shadow-lg"
+              className="border-t border-gray-200 bg-white p-2 md:p-4 lg:p-5 pb-3 md:pb-5"
             >
               {banner && (
                 <div className="max-w-3xl mx-auto mb-2.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 px-3 py-2 text-xs flex items-start gap-2">

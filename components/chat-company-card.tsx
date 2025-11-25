@@ -49,7 +49,7 @@ export function ChatCompanyCard({ company, index = 0 }: ChatCompanyCardProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.1 }}
-      className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200 max-w-md"
+      className="bg-white border border-gray-200 rounded-lg p-3 md:p-4 hover:shadow-md transition-all duration-200 w-full"
     >
       {/* Header with company name and link */}
       <div className="flex items-start justify-between mb-3">

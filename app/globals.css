@@ -15,7 +15,7 @@
     --card-foreground: 0 0% 14.5%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 14.5%;
-    --primary: 0 0% 14.5%;
+    --primary: 226 71% 55%; /* Indigo 600 */
     --primary-foreground: 0 0% 100%;
     --secondary: 210 17% 98%;
     --secondary-foreground: 0 0% 14.5%;
@@ -27,7 +27,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 0 0% 14.5%;
+    --ring: 226 71% 55%; /* Indigo 600 */
     --radius: 0.5rem;
     /* Remove any chart color references */
     --chart-1: 215 14% 46%;
@@ -37,6 +37,10 @@
     --chart-5: 215 14% 46%;
   }
   
+  ::selection {
+    background-color: #e0e7ff; /* indigo-100 */
+    color: #312e81; /* indigo-900 */
+  }
 }
 
 @layer base {

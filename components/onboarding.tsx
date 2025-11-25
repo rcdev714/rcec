@@ -20,6 +20,18 @@ type OnboardingEntry = {
   icon?: React.ElementType;
 };
 
+const isAuthSessionMissingError = (error: unknown) => {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const { name, message } = error as { name?: string; message?: string };
+  return (
+    name === "AuthSessionMissingError" ||
+    (typeof message === "string" && message.toLowerCase().includes("auth session missing"))
+  );
+};
+
 // Per-page onboarding content
 const onboardingContentByRoute: Record<string, OnboardingEntry> = {
   dashboard: {
@@ -43,7 +55,7 @@ const onboardingContentByRoute: Record<string, OnboardingEntry> = {
       "Contacta directamente a los decision makers de la empresa"
     ],
     planInfo: "Los planes Pro y Empresarial incluyen acceso al modelo de razonamiento avanzado para análisis más profundos y complejos. Ademas de acceso a LinkedIn.",
-    videoSrc: "/onboarding/chat.mp4",
+    videoSrc: "/landingpagedemos/DemoAgente1.mp4",
     icon: MessageSquare,
   },
   companies: {
@@ -55,7 +67,7 @@ const onboardingContentByRoute: Record<string, OnboardingEntry> = {
       "Contacta directamente a los decision makers"
     ],
     planInfo: "El Plan Gratuito incluye 10 búsquedas por mes. Actualiza tu plan para obtener búsqueda ilimitada.",
-    videoSrc: "/onboarding/companies.mp4",
+    videoSrc: "/landingpagedemos/companiesDbDemo.mp4",
     icon: Building2,
   },
   offerings: {
@@ -66,7 +78,7 @@ const onboardingContentByRoute: Record<string, OnboardingEntry> = {
       "Establece precios y información pública",
       "Comparte un link personalizado para facilitar el contacto"
     ],
-    videoSrc: "/onboarding/offerings.mp4",
+    videoSrc: "/landingpagedemos/CatalogoServiciosDemo.mp4",
     icon: Package,
   },
 };
@@ -89,12 +101,24 @@ export default function Onboarding() {
   const pageContent = onboardingContentByRoute[routeSegment];
 
   useEffect(() => {
+    if (!pageContent || !routeSegment) {
+      setIsLoading(false);
+      return;
+    }
+
+    const supabase = createClient();
+    let isMounted = true;
+
     const initOnboarding = async () => {
-      const supabase = createClient();
       try {
         const { data: { user }, error } = await supabase.auth.getUser();
+
+        if (!isMounted) return;
+
         if (error) {
-          console.error('Error fetching user for onboarding:', error);
+          if (!isAuthSessionMissingError(error)) {
+            console.error('Error fetching user for onboarding:', error);
+          }
           setIsLoading(false);
           return;
         }
@@ -106,36 +130,36 @@ export default function Onboarding() {
 
         setUserId(user.id);
 
-        // Check if we should show page-specific onboarding
-        if (routeSegment && pageContent) {
-          const pageKey = getStorageKey(user.id, routeSegment);
-          const hasSeenPage = localStorage.getItem(pageKey) === "done";
+        const pageKey = getStorageKey(user.id, routeSegment);
+        const hasSeenPage = localStorage.getItem(pageKey) === "done";
 
-          if (!hasSeenPage) {
-            setShowPageOnboarding(true);
-          }
+        if (!hasSeenPage) {
+          setShowPageOnboarding(true);
         }
 
         setIsLoading(false);
       } catch (err) {
-        console.error('Failed to initialize onboarding:', err);
+        if (!isAuthSessionMissingError(err)) {
+          console.error('Failed to initialize onboarding:', err);
+        }
         setIsLoading(false);
       }
-      
-      // Subscribe to auth changes
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        (_event, session) => {
-          setUserId(session?.user?.id ?? null);
-        }
-      );
-      
-      return () => {
-        subscription.unsubscribe();
-      };
     };
 
     initOnboarding();
-  }, [pathname, routeSegment, pageContent]);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (!isMounted) return;
+        setUserId(session?.user?.id ?? null);
+      }
+    );
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [routeSegment, pageContent]);
 
   const markPageComplete = () => {
     if (userId && routeSegment) {
@@ -163,7 +187,7 @@ export default function Onboarding() {
           {pageContent.videoSrc && (
             <div className="bg-black">
               <video
-                className="w-full h-auto"
+                className="w-full h-auto object-contain"
                 controls
                 autoPlay
                 muted

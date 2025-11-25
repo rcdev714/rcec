@@ -21,9 +21,13 @@ import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { SubscriptionStatus as SubscriptionStatusType } from '@/types/subscription';
 
-const Sidebar = () => {
+interface SidebarProps {
+  isCollapsed: boolean;
+  toggleSidebar: () => void;
+}
+
+const Sidebar = ({ isCollapsed, toggleSidebar }: SidebarProps) => {
   const pathname = usePathname();
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatusType | null>(null);
 
   useEffect(() => {
@@ -62,10 +66,6 @@ const Sidebar = () => {
     { href: "/companies", icon: Building, label: "Empresas" },
     { href: "/pricing", icon: CreditCard, label: "Suscripción" },
   ];
-
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed);
-  };
 
   return (
     <aside

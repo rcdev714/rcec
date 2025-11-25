@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,12 +13,14 @@ interface ConversationSidebarProps {
   currentConversationId: string | null;
   onConversationChange: (id: string | null) => void;
   onNewConversation: () => void;
+  appSidebarOffset?: number;
 }
 
 export default function ConversationSidebar({ 
   currentConversationId, 
   onConversationChange, 
-  onNewConversation 
+  onNewConversation,
+  appSidebarOffset = 0
 }: ConversationSidebarProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false); // mobile drawer
@@ -28,6 +31,16 @@ export default function ConversationSidebar({
   
   // Limit to show initially
   const INITIAL_LIMIT = 5;
+
+  const mobileOffsetStyles = useMemo<CSSProperties | undefined>(() => {
+    if (!appSidebarOffset || appSidebarOffset <= 0) {
+      return undefined;
+    }
+    return {
+      left: appSidebarOffset,
+      maxWidth: `calc(100vw - ${appSidebarOffset}px)`,
+    };
+  }, [appSidebarOffset]);
 
   const loadConversations = useCallback(async () => {
     await conversationManager.initialize();
@@ -163,6 +176,7 @@ export default function ConversationSidebar({
 
       {/* Sidebar container: mobile drawer + desktop static */}
       <div
+        style={mobileOffsetStyles}
         className={cn(
           "z-40 bg-white transition-all duration-300 ease-in-out border-r border-gray-200",
           "fixed inset-y-0 left-0 w-64",

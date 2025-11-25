@@ -5,105 +5,123 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { Menu, X } from "lucide-react";
-import { FaLinkedin } from "react-icons/fa";
-import { StarField } from "@/components/star-field";
-import { AnimatedCounter } from "@/components/animated-counter";
-import { ScrollAnimation } from "@/components/scroll-animation";
 import { useState, useEffect } from "react";
 import { User } from "@supabase/supabase-js";
-import dynamic from "next/dynamic";
+import { motion } from "framer-motion";
 
-const MapGlobe = dynamic(() => import("@/components/map-globe").then(mod => ({ default: mod.MapGlobe })), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-white rounded-2xl border border-indigo-200/50">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-indigo-600">Cargando mapa...</p>
-      </div>
-    </div>
-  ),
-});
+// Feature data for the scrolling section
+const features = [
+  {
+    id: "analysis",
+    title: "Agente Empresarial",
+    description: "Tu agente empresarial te ayuda a buscar, analizar y conectar con mas de 300K empresas en segundos. Puedes preguntarle sobre las empresas, sus estados financieros, contactos y redes sociales.",
+    videoSrc: "/landingpagedemos/DemoAgente1.mp4",
+    poster: "/heroImage.jpg",
+    tags: ["Busqueda de empresas", "Análisis financiero", "Procesamiento de lenguaje natural", "Conecta con decision makers"]
+  },
+  {
+    id: "search",
+    title: "Base de datos de empresas",
+    description: "Encuentra prospectos ideales en segundos. Filtra por industria, ubicación y tamaño con nuestra base de datos de más de 300,000 empresas.",
+    videoSrc: "/landingpagedemos/companiesDbDemo.mp4",
+    poster: "/HeroImage.jpeg",
+    tags: ["Base de datos en tiempo real", "Filtros avanzados", "Análisis financiero", "Contactos directos reales"]
+  },
+  {
+    id: "management",
+    title: "Catálogo de Servicios",
+    description: "Crea y comparte un catálogo de servicios público con un link para ofrecer a tus leads. La IA usa este contexto para mejorar el targeting de posibles clientes y personalizar recomendaciones.",
+    videoSrc: "/landingpagedemos/CatalogoServiciosDemo.mp4",
+    poster: "/onboarding/offerings-Cover.jpg",
+    tags: ["Catálogo público", "Compartir servicios", "Targeting IA", "Personalización leads"]
+  }
+];
 
-export default function HomeContent() {
+type HomeContentProps = {
+  initialUser?: User | null;
+};
+
+export default function HomeContent({ initialUser = null }: HomeContentProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(initialUser);
 
   useEffect(() => {
     const supabase = createClient();
-    const getUser = async () => {
-      try {
-        const { data: { user }, error } = await supabase.auth.getUser();
-        if (error) {
-          console.error('Error fetching user:', error);
-          return;
-        }
-        setUser(user);
-      } catch (err) {
-        console.error('Failed to fetch user:', err);
+    let isMounted = true;
+
+    const syncUser = async () => {
+      if (initialUser) {
+        setUser(initialUser);
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (isMounted) {
+        setUser(user ?? null);
       }
     };
-    getUser();
+
+    syncUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        setUser(session?.user ?? null);
+        if (isMounted) {
+          setUser(session?.user ?? null);
+        }
       }
     );
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [initialUser]);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
   return (
-    <div className="min-h-screen bg-white w-full overflow-hidden">
-      {/* Navigation Header */}
-      <nav className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
+    <div className="min-h-screen bg-[#FAFAFA] w-full overflow-x-hidden font-inter text-gray-900 selection:bg-indigo-100 selection:text-indigo-900">
+      {/* Navigation */}
+      <nav className="fixed top-0 w-full z-50 bg-[#FAFAFA]/80 backdrop-blur-md border-b border-gray-100/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
-              <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
-                <Image src="/logo.svg" alt="Camella Icon" width={24} height={24} className="sm:w-[30px] sm:h-[30px]" />
-                <Image src="/camella-logo.svg" alt="Camella Logo" width={80} height={80} className="sm:w-[110px] sm:h-[110px]" />
-              </Link>
-            </div>
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="relative w-6 h-6 transition-transform duration-300 group-hover:scale-105">
+                <Image src="/logo.svg" alt="Camella Icon" fill className="object-contain" />
+              </div>
+              <span className="font-medium text-lg tracking-tight text-gray-900">Camella</span>
+            </Link>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-1">
-              <Link href="/pricing" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200">
-                Precios
-              </Link>
-              <Link href="/inversores" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200">
-                Inversores
-              </Link>
-              <Link href="/carreras" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200">
-                Carreras
-              </Link>
-              <Link href="/docs" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200">
-                Documentación
-              </Link>
+            <div className="hidden md:flex items-center gap-8">
+              {["Precios", "Inversores", "Carreras", "Documentación"].map((item) => (
+                <Link 
+                  key={item}
+                  href={`/${item.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}`}
+                  className="text-[13px] font-normal text-gray-500 hover:text-gray-900 transition-colors"
+                >
+                  {item}
+                </Link>
+              ))}
             </div>
 
             {/* Desktop Auth Buttons */}
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden md:flex items-center gap-4">
               {user ? (
                 <Link href="/dashboard">
-                  <Button size="sm" className="bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow-md transition-all duration-200">
+                  <Button size="sm" className="rounded-full bg-indigo-600 hover:bg-indigo-700 text-white px-5 h-9 text-xs font-medium transition-all">
                     Dashboard
                   </Button>
                 </Link>
               ) : (
                 <>
                   <Link href="/auth/login">
-                    <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200">
+                    <Button variant="ghost" size="sm" className="text-xs font-medium text-gray-500 hover:text-gray-900">
                       Iniciar Sesión
                     </Button>
                   </Link>
                   <Link href="/auth/sign-up">
-                    <Button size="sm" className="bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow-md transition-all duration-200">
+                    <Button size="sm" className="rounded-full bg-indigo-600 hover:bg-gray-700 text-white px-5 h-9 text-xs font-medium transition-all">
                       Registrarse
                     </Button>
                   </Link>
@@ -113,320 +131,176 @@ export default function HomeContent() {
 
             {/* Mobile menu button */}
             <div className="md:hidden">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleMenu}
-                className="text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-              >
+              <Button variant="ghost" size="icon" onClick={toggleMenu} className="text-gray-900">
                 {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </Button>
             </div>
           </div>
+        </div>
 
-          {/* Mobile Navigation Menu */}
-          {isMenuOpen && (
-            <div className="md:hidden border-t border-gray-200 bg-white/95 backdrop-blur-sm">
-              <div className="px-2 pt-2 pb-3 space-y-1">
+        {/* Mobile Menu */}
+        {isMenuOpen && (
+          <div className="absolute top-16 left-0 w-full bg-white border-b border-gray-100 md:hidden animate-in slide-in-from-top-5">
+            <div className="p-4 space-y-4">
+              {["Precios", "Inversores", "Carreras", "Documentación"].map((item) => (
                 <Link
-                  href="/pricing"
-                  className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors duration-200"
+                  key={item}
+                  href={`/${item.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}`}
+                  className="block text-sm font-medium text-gray-600"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  Precios
+                  {item}
                 </Link>
-                <Link
-                  href="/inversores"
-                  className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors duration-200"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Inversores
-                </Link>
-                <Link
-                  href="/carreras"
-                  className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors duration-200"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Carreras
-                </Link>
-                <Link
-                  href="/docs"
-                  className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors duration-200"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Documentación
-                </Link>
-                <div className="border-t border-gray-200 pt-4 mt-4">
-                  {user ? (
-                    <Link href="/dashboard" onClick={() => setIsMenuOpen(false)}>
-                      <Button size="sm" className="w-full bg-indigo-600 text-white hover:bg-indigo-700">
-                        Dashboard
-                      </Button>
+              ))}
+              <div className="pt-4 border-t border-gray-100 space-y-3">
+                {user ? (
+                  <Link href="/dashboard">
+                    <Button className="w-full rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm">Dashboard</Button>
+                  </Link>
+                ) : (
+                  <>
+                    <Link href="/auth/login">
+                      <Button variant="ghost" className="w-full justify-start text-sm">Iniciar Sesión</Button>
                     </Link>
-                  ) : (
-                    <div className="space-y-2">
-                      <Link href="/auth/login" onClick={() => setIsMenuOpen(false)}>
-                        <Button variant="ghost" size="sm" className="w-full text-gray-600 hover:text-gray-900 hover:bg-gray-50">
-                          Iniciar Sesión
-                        </Button>
-                      </Link>
-                      <Link href="/auth/sign-up" onClick={() => setIsMenuOpen(false)}>
-                        <Button size="sm" className="w-full bg-indigo-600 text-white hover:bg-indigo-700">
-                          Registrarse
-                        </Button>
-                      </Link>
-                    </div>
-                  )}
-                </div>
+                    <Link href="/auth/sign-up">
+                      <Button className="w-full rounded-full bg-gray-900 text-white text-sm">Registrarse</Button>
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </nav>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-white to-indigo-50/20">
-        <StarField className="opacity-25" />
-        <div className="absolute inset-0 bg-gradient-to-b from-white/95 via-white/80 to-white/70" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 md:py-10 lg:py-12">
-          <div className="text-center max-w-4xl mx-auto w-full">
-            <div className="mb-4 sm:mb-6">
-              <span className="inline-block px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700 border border-emerald-200/50 shadow-sm text-center">
-                No requiere tarjeta • gratis
-              </span>
+      <main className="pt-32 pb-16 sm:pt-40 sm:pb-24">
+        {/* Hero Section */}
+        <section className="max-w-5xl mx-auto px-6 lg:px-8 text-center mb-24 sm:mb-32">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-[9px] sm:text-[10px] md:text-xs font-medium text-gray-600 mb-6">
+              <span>USD $5 gratis en uso · Sin tarjeta requerida</span>
             </div>
-            <h1 className="text-[30px] sm:text-[44px] md:text-[64px] lg:text-[80px] leading-[1.05] tracking-tight text-gray-900 mb-4 sm:mb-6">
-              <span className="block text-base sm:text-lg md:text-xl lg:text-2xl font-sans font-medium text-gray-600 mb-1 sm:mb-2">Conoce a tu nuevo:</span>
-              <span className="block">Agente Empresarial</span>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-medium tracking-tight text-gray-900 mb-6 leading-[1.1]">
+              Agente Empresarial
             </h1>
-            <p className="text-base sm:text-lg md:text-xl text-gray-700 max-w-2xl mx-auto leading-relaxed font-medium px-2 text-center">
-              Tu agente inteligente para encontrar y analizar oportunidades de negocios reales y aumentar tus ventas.
+            
+            <p className="max-w-xl mx-auto text-base sm:text-lg text-gray-500 mb-8 leading-relaxed font-light">
+              Busca, audita y conecta con empresas, sin abogados ni terceros a la velocidad de la luz.
+              
             </p>
-            <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-2">
-              {user ? (
-                <Link href="/dashboard">
-                  <Button className="px-6 py-3 text-sm font-medium bg-indigo-500 text-white hover:bg-indigo-600 shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 active:scale-95">
-                    Dashboard
-                  </Button>
-                </Link>
-              ) : (
-                <Link href="/auth/sign-up">
-                  <Button className="px-6 py-3 text-sm font-medium bg-indigo-500 text-white hover:bg-indigo-600 shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 active:scale-95">
-                    Empezar Gratis
-                  </Button>
-                </Link>
-              )}
-              <Link href="/companies">
-                <Button variant="outline" className="px-6 py-3 text-sm font-medium border border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50 hover:text-gray-900 shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-105 active:scale-95">
-                  Explorar Empresas
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link href={user ? "/dashboard" : "/auth/sign-up"}>
+                <Button className="h-10 px-6 rounded-full text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md">
+                  {user ? "Ir al Dashboard" : "Empezar Gratis"}
                 </Button>
               </Link>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Statistics and Globe Section */}
-      <ScrollAnimation delay={200}>
-        <section className="py-6 sm:py-8 bg-white border-b border-gray-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-            <div className="grid grid-cols-1 lg:grid-cols-[18%_82%] gap-3 lg:gap-4 items-start">
-              {/* Cards Column - Left Side */}
-              <div className="space-y-2">
-                {/* Stats in database column format */}
-                <div className="flex flex-col gap-2">
-                  <ScrollAnimation delay={400}>
-                    <div className="bg-white border border-gray-200 p-2 text-center font-mono">
-                      <div className="text-lg font-bold text-gray-900 mb-1 border-b border-gray-300 pb-1">
-                        <AnimatedCounter targetNumber={300000} />+
-                      </div>
-                      <div className="text-xs text-gray-600 mb-1">EMPRESAS</div>
-                      <div className="text-xs text-gray-400">ECUADOR</div>
-                    </div>
-                  </ScrollAnimation>
-                  <ScrollAnimation delay={500}>
-                    <div className="bg-white border border-gray-200 p-2 text-center font-mono">
-                      <div className="text-lg font-bold text-gray-900 mb-1 border-b border-gray-300 pb-1">
-                        <AnimatedCounter targetNumber={1500000} />
-                      </div>
-                      <div className="text-xs text-gray-600 mb-1">REGISTROS</div>
-                      <div className="text-xs text-gray-400">FINANCIEROS</div>
-                    </div>
-                  </ScrollAnimation>
-                  <ScrollAnimation delay={600}>
-                    <div className="bg-white border border-gray-200 p-2 text-center font-mono">
-                      <div className="text-lg font-bold text-gray-900 mb-1 border-b border-gray-300 pb-1">
-                        <AnimatedCounter targetNumber={200000} />
-                      </div>
-                      <div className="text-xs text-gray-600 mb-1">CONTACTOS</div>
-                      <div className="text-xs text-gray-400">LINKEDIN</div>
-                    </div>
-                  </ScrollAnimation>
-                </div>
-                {/* Countries card below */}
-                <ScrollAnimation delay={700}>
-                  <div className="bg-white border border-gray-200 p-2 font-mono">
-                    <div className="text-xs text-gray-600 mb-2 text-center border-b border-gray-300 pb-1">PAÍSES</div>
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="text-green-600 text-xs font-bold">✓</span>
-                        <span className="text-xs font-medium text-gray-900">ECUADOR</span>
-                      </div>
-                      <div className="text-xs text-gray-400 mt-2 mb-1 text-center">PRÓXIMAMENTE:</div>
-                      <div className="flex flex-col gap-0.5">
-                        {["COLOMBIA", "MÉXICO", "USA", "PARAGUAY", "CHILE"].map((country) => (
-                          <div key={country} className="flex items-center justify-center gap-2">
-                            <span className="text-gray-300 text-xs">○</span>
-                            <span className="text-xs text-gray-400">{country}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </ScrollAnimation>
-              </div>
-
-              {/* Globe Column - Right Side - Center Stage */}
-              <ScrollAnimation delay={300}>
-                <div className="flex justify-center items-center h-full">
-                  <div className="w-full max-w-2xl h-[400px] sm:h-[500px] lg:h-[600px] min-h-[400px]">
-                    <MapGlobe />
-                  </div>
-                </div>
-              </ScrollAnimation>
-            </div>
-          </div>
+          </motion.div>
         </section>
-      </ScrollAnimation>
 
+        {/* Feature Story Section */}
+        <section className="max-w-7xl mx-auto px-6 lg:px-8 mb-24 space-y-16">
+          {features.map((feature) => (
+            <div key={feature.id} className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.5 }}
+                transition={{ duration: 0.4 }}
+                className="space-y-2"
+              >
+                <h3 className="text-xl sm:text-2xl font-medium text-gray-900">{feature.title}</h3>
+                <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                  {feature.description}
+                </p>
+                <div className="flex flex-wrap gap-2 text-[11px] text-gray-500">
+                  {feature.tags.map(tag => (
+                    <span key={tag} className="px-2 py-0.5 rounded-full border border-gray-200">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </motion.div>
 
-      {/* Features Section - Database Style */}
-      <ScrollAnimation delay={200}>
-        <section className="py-12 sm:py-16 md:py-20 bg-white">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-8 sm:mb-10">
-              <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2 font-mono">
-                PROCESO DE PROSPECCIÓN
-              </h2>
-              <p className="text-sm text-gray-600 font-mono">
-                IA que encuentra, analiza y conecta por ti.
-              </p>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.99 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true, amount: 0.4 }}
+                transition={{ duration: 0.4 }}
+                className={(feature.id === "search" || feature.id === "management") ? "max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-6xl mx-auto relative overflow-hidden rounded-xl border border-gray-200 bg-white" : "max-w-2xl mx-auto relative overflow-hidden rounded-xl border border-gray-200 bg-white"}
+              >
+                <video
+                  className="w-full h-auto object-contain"
+                  src={feature.videoSrc}
+                  poster={feature.poster}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  controls
+                />
+              </motion.div>
             </div>
-
-            <div className="space-y-1 max-w-2xl mx-auto">
-              <ScrollAnimation delay={400}>
-                <div className="bg-white border border-gray-200 p-3 font-mono">
-                  <div className="flex items-start gap-3">
-                    <span className="text-gray-500 text-xs font-bold mt-0.5">01</span>
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-gray-900 mb-1 border-b border-gray-300 pb-1">
-                        AHORRA TIEMPO
-                      </div>
-                      <div className="text-xs text-gray-600 leading-relaxed">
-                        Olvídate de búsquedas manuales y obtén prospectos perfectos al instante.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </ScrollAnimation>
-
-              <ScrollAnimation delay={500}>
-                <div className="bg-white border border-gray-200 p-3 font-mono">
-                  <div className="flex items-start gap-3">
-                    <span className="text-gray-500 text-xs font-bold mt-0.5">02</span>
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-gray-900 mb-1 border-b border-gray-300 pb-1">
-                        TOMA MEJORES DECISIONES
-                      </div>
-                      <div className="text-xs text-gray-600 leading-relaxed">
-                        Nuestra IA analiza finanzas y sugiere oportunidades reales para tu negocio.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </ScrollAnimation>
-
-              <ScrollAnimation delay={600}>
-                <div className="bg-white border border-gray-200 p-3 font-mono">
-                  <div className="flex items-start gap-3">
-                    <span className="text-green-600 text-xs font-bold mt-0.5">03</span>
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-gray-900 mb-1 border-b border-gray-300 pb-1">
-                        CONECTA DIRECTAMENTE
-                      </div>
-                      <div className="text-xs text-gray-600 leading-relaxed">
-                        Accede a contactos y datos estratégicos para cierres más rápidos.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </ScrollAnimation>
-            </div>
-          </div>
+          ))}
         </section>
-      </ScrollAnimation>
 
-      {/* Footer */}
-      <footer className="bg-gray-50 border-t border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 w-full">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-            {/* Company Info */}
-            <div className="sm:col-span-2 md:col-span-2">
-              <Link href="/" className="flex items-center gap-2 mb-3">
-                <Image src="/logo.svg" alt="Camella Icon" width={24} height={24} className="sm:w-8 sm:h-8" />
-                <Image src="/camella-logo.svg" alt="Camella Logo" width={60} height={60} className="sm:w-20 sm:h-20" />
-              </Link>
-              <p className="text-gray-600 mb-3 max-w-md text-xs sm:text-sm">
-                Conecta y crece tu negocio con la plataforma más avanzada de conexiones empresariales en Ecuador, impulsada por Inteligencia Artificial.
-              </p>
-              <div className="flex space-x-3">
-                <a href="#" className="text-gray-400 hover:text-gray-600 transition-colors">
-                  <FaLinkedin className="h-4 w-4" />
-                </a>
-                <a href="#" className="text-gray-400 hover:text-gray-600 transition-colors">
-                  <span className="text-xs">Twitter</span>
-                </a>
-                <a href="#" className="text-gray-400 hover:text-gray-600 transition-colors">
-                  <span className="text-xs">Blog</span>
-                </a>
-              </div>
-            </div>
-
-            {/* Product */}
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-2 sm:mb-3 text-xs sm:text-sm">Producto</h3>
-              <ul className="space-y-1.5">
-                <li><Link href="/companies" className="text-gray-600 hover:text-gray-900 transition-colors text-xs sm:text-sm">Empresas</Link></li>
-                <li><Link href="/offerings" className="text-gray-600 hover:text-gray-900 transition-colors text-xs sm:text-sm">Ofertas</Link></li>
-                <li><Link href="/pricing" className="text-gray-600 hover:text-gray-900 transition-colors text-xs sm:text-sm">Precios</Link></li>
-                <li><Link href="/docs" className="text-gray-600 hover:text-gray-900 transition-colors text-xs sm:text-sm">Documentación</Link></li>
-              </ul>
-            </div>
-
-            {/* Company */}
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-2 sm:mb-3 text-xs sm:text-sm">Empresa</h3>
-              <ul className="space-y-1.5">
-                <li><Link href="/contacto" className="text-gray-600 hover:text-gray-900 transition-colors text-xs sm:text-sm">Contacto</Link></li>
-                <li><Link href="/carreras" className="text-gray-600 hover:text-gray-900 transition-colors text-xs sm:text-sm">Carreras</Link></li>
-                <li><Link href="/inversores" className="text-gray-600 hover:text-gray-900 transition-colors text-xs sm:text-sm">Inversores</Link></li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-200 mt-4 sm:mt-6 pt-4 sm:pt-6 flex flex-col sm:flex-row justify-between items-center">
-            <p className="text-gray-600 text-xs">
-              © 2025 Camella. Todos los derechos reservados.
+        {/* Promo CTA */}
+        <section className="max-w-4xl mx-auto px-6 lg:px-8 mb-24">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4 }}
+            className="rounded-2xl border border-gray-200 bg-white p-8 sm:p-10 text-center"
+          >
+            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 mb-3">
+              Promo de lanzamiento
             </p>
-            <div className="flex space-x-3 sm:space-x-4 mt-3 sm:mt-0">
-              <a href="#" className="text-gray-600 hover:text-gray-900 text-xs transition-colors">Privacidad</a>
-              <a href="#" className="text-gray-600 hover:text-gray-900 text-xs transition-colors">Términos</a>
-              <a href="#" className="text-gray-600 hover:text-gray-900 text-xs transition-colors">Cookies</a>
+            <h3 className="text-2xl sm:text-3xl font-medium text-gray-900 mb-4">
+              Recibe USD $5 para usar Gemini 3 Pro gratis
+            </h3>
+            <p className="text-sm sm:text-base text-gray-600 mb-6">
+              Activa tu cuenta y prueba las búsquedas y el agente sin costo. Los créditos se asignan de inmediato.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link href={user ? "/dashboard" : "/auth/sign-up"} className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto h-11 px-8 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-full">
+                  {user ? "Ir al Dashboard" : "Reclamar crédito"}
+                </Button>
+              </Link>
+              {!user && (
+                <Link href="/auth/login" className="text-xs text-gray-500 hover:text-gray-900">
+                  Ya tienes cuenta? Inicia sesión
+                </Link>
+              )}
             </div>
-          </div>
-        </div>
-      </footer>
+          </motion.div>
+        </section>
 
+        {/* Simple Footer */}
+        <footer className="max-w-7xl mx-auto px-6 lg:px-8 pt-16 border-t border-gray-100">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12">
+            <div className="flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
+              <Image src="/logo.svg" alt="Logo" width={24} height={24} />
+              <span className="font-medium text-sm text-gray-900">Camella</span>
+            </div>
+            <div className="flex gap-6 text-xs text-gray-500">
+              <Link href="/pricing" className="hover:text-gray-900">Precios</Link>
+              <Link href="/companies" className="hover:text-gray-900">Empresas</Link>
+              <Link href="/contacto" className="hover:text-gray-900">Contacto</Link>
+              <Link href="/login" className="hover:text-gray-900">Login</Link>
+            </div>
+            <p className="text-xs text-gray-400">
+              © 2025 Perceptron Labs.
+            </p>
+          </div>
+        </footer>
+      </main>
     </div>
   );
 }
