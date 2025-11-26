@@ -9,7 +9,7 @@ import { ensurePromptAllowedAndTrack, estimateTokensFromTextLength } from "@/lib
 // Use Node.js runtime for full compatibility with LangChain and streaming
 // Edge runtime has limitations with certain Node.js APIs
 export const runtime = "nodejs";
-export const maxDuration = 30; // Maximum allowed duration for Vercel Hobby plan
+export const maxDuration = 180; // 3 minutes for complex agentic workflows
 
 export async function POST(req: Request) {
   // Validate environment variables

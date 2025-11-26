@@ -85,11 +85,13 @@ export async function chatWithSalesAgent(
             toolOutputs: [],
             modelName: options?.modelName || "gemini-2.5-flash",
             thinkingLevel: options?.thinkingLevel || 'high',
+            // CRITICAL: Set start time for time-based circuit breaker
+            startTime: new Date(),
           },
           {
             ...config,
             streamMode: "updates" as const, // Changed to "updates" to track node execution
-            recursionLimit: 50, // Increased from default 25 to handle complex workflows
+            recursionLimit: 100, // High limit for complex multi-tool workflows (time-based circuit breaker will stop earlier if needed)
           }
         );
 

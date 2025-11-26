@@ -963,6 +963,7 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
         .trim();
 
       // Synthesize missing tool_result events so UI doesn't show infinite loaders
+      // This handles cases where the server times out before tool completion
       try {
         const openToolCalls = new Map<string, { toolName: string }>();
         for (const ev of agentEvents) {
@@ -973,13 +974,19 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
           }
         }
         if (openToolCalls.size > 0) {
+          // If tools were pending when stream ended, it's likely a timeout
+          const isLikelyTimeout = openToolCalls.size > 0 && agentEvents.some(e => e.type === 'tool_call');
+          const errorMessage = isLikelyTimeout 
+            ? 'La solicitud tardó demasiado tiempo. El servidor procesó parcialmente tu consulta. Intenta una búsqueda más simple.'
+            : 'No se recibió resultado de la herramienta';
+          
           for (const [toolCallId, info] of openToolCalls.entries()) {
             agentEvents.push({
               type: 'tool_result',
               toolName: info.toolName,
               toolCallId,
               success: false,
-              error: 'No se recibió resultado de la herramienta',
+              error: errorMessage,
             } as AgentStateEvent);
           }
         }

@@ -304,13 +304,22 @@ REGLAS:
  */
 export async function think(state: SalesAgentStateType): Promise<Partial<SalesAgentStateType>> {
   try {
+    // TIME CHECK: If we're running low on time, don't bind tools - force the model to generate a response
+    const elapsedMs = state.startTime ? Date.now() - new Date(state.startTime).getTime() : 0;
+    const SKIP_TOOLS_THRESHOLD_MS = 150000; // After 2.5 minutes, stop allowing new tool calls (leave 30s for finalization)
+    const shouldSkipTools = elapsedMs > SKIP_TOOLS_THRESHOLD_MS;
+    
+    if (shouldSkipTools) {
+      console.log('[think] Time limit approaching, skipping tool binding to force response generation', { elapsedMs });
+    }
+    
     // Import tools dynamically to bind to model
     const { companyTools } = await import("@/lib/tools/company-tools");
     const { webSearchTool, webExtractTool } = await import("@/lib/tools/web-search");
     const { enrichCompanyContactsTool } = await import("@/lib/tools/contact-tools");
     const { offeringTools } = await import("@/lib/tools/offerings-tools");
     
-    const allTools = [
+    const allTools = shouldSkipTools ? [] : [
       ...companyTools,
       webSearchTool,
       webExtractTool,
@@ -360,14 +369,15 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
     // Decision: Prioritize tool usage for the 'think' node. Disable thinking hint if it conflicts.
     // We will override the thinkingHint variable if we are binding tools.
     
-    if (isGemini3Thinking) {
+    if (isGemini3Thinking && allTools.length > 0) {
         console.log('[think] Disabling thinking mode to allow tool usage for Gemini 3');
         // Clear the thinking hint from the prompt context so we don't trigger the mode
         // We can't easily clear the variable 'thinkingHint' passed to prompt construction below, 
         // so we'll handle it by NOT passing it in the prompt construction if tools are bound.
     }
     
-    const model = baseModel.bindTools(allTools);
+    // Only bind tools if we have them (time-based skip may have emptied the array)
+    const model = allTools.length > 0 ? baseModel.bindTools(allTools) : baseModel;
     
     console.log('[think] Using model:', modelName);
     console.log('[think] Tools bound to model:', allTools.map(t => t.name));
@@ -551,6 +561,11 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
       contextParts.push('Intenta con una consulta más simple o una herramienta diferente');
     }
 
+    // Add time-critical instruction if we're skipping tools
+    if (shouldSkipTools && contextParts.length > 0) {
+      contextParts.push('\n[INSTRUCCIÓN URGENTE] El tiempo de procesamiento está llegando al límite. NO llames más herramientas. Genera una respuesta AHORA con la información que tienes disponible. Si tienes resultados de búsquedas previas, úsalos para dar una respuesta completa al usuario.');
+    }
+    
     const contextMessage = contextParts.length > 0 
       ? `\n\n[CONTEXTO INTERNO]\n${contextParts.join('\n')}\n[/CONTEXTO INTERNO]\n`
       : '';
@@ -788,12 +803,16 @@ export function processToolResults(state: SalesAgentStateType): Partial<SalesAge
   const lastOutput = newOutputs[newOutputs.length - 1];
   const shouldRetry = !allSucceeded && state.retryCount < MAX_RETRIES;
 
+  // Increment iteration counter to track loop progress and enable MAX_ITERATIONS backstop
+  const newIterationCount = (state.iterationCount || 0) + 1;
+
   return {
     toolOutputs: newOutputs,
     lastTool: lastOutput.toolName,
     lastToolSuccess: allSucceeded,
     retryCount: shouldRetry ? state.retryCount + 1 : 0,
     errorInfo: allSucceeded ? null : lastOutput.errorMessage,
+    iterationCount: newIterationCount,
   };
 }
 
@@ -1074,17 +1093,24 @@ Genera tu respuesta final ahora. DEBE ser completa, profesional y útil.`);
     
     // Invoke model for final response
     // Note: finalize does not bind tools, so this call is safe for Gemini 3 + Thinking
-    // REVISED STRATEGY: For reliability, if the user chose Gemini 3, we use Gemini 2.5 Pro for the final synthesis
-    // unless it's a simple query. Gemini 3 Preview can be unstable for pure synthesis after long contexts.
+    // REVISED STRATEGY: Use fastest model available when time is limited
     let synthesisModelName = modelName;
-    if (modelName.startsWith('gemini-3')) {
+    
+    // Check elapsed time to determine if we need to use a faster model
+    const elapsedMs = state.startTime ? Date.now() - new Date(state.startTime).getTime() : 0;
+    const TIME_CRITICAL_THRESHOLD_MS = 165000; // If past 2:45, use fast model (leave 15s for response)
+    
+    if (elapsedMs > TIME_CRITICAL_THRESHOLD_MS) {
+      console.log('[finalize] Time critical, using gemini-2.5-flash for fast synthesis', { elapsedMs });
+      synthesisModelName = 'gemini-2.5-flash';
+    } else if (modelName.startsWith('gemini-3')) {
       console.log('[finalize] Switching from Gemini 3 to Gemini 2.5 Pro for reliable synthesis');
       synthesisModelName = 'gemini-2.5-pro';
     }
     
     const model = getGeminiModel(synthesisModelName);
     
-    console.log('[finalize] Generating final response with model:', synthesisModelName);
+    console.log('[finalize] Generating final response with model:', synthesisModelName, 'elapsedMs:', elapsedMs);
     if (effectiveThinkingHint) {
       console.log('[finalize] Thinking level: low (optimizing for speed)');
     }
@@ -1156,11 +1182,12 @@ Genera tu respuesta final ahora. DEBE ser completa, profesional y útil.`);
 
 /**
  * Execute a tool with timeout protection
+ * 45s per tool allows for complex database queries and web scraping
  */
 async function executeToolWithTimeout(
   tool: any,
   toolCall: any,
-  timeoutMs: number = 30000 // 30 second default timeout
+  timeoutMs: number = 45000 // 45 second timeout per individual tool
 ): Promise<any> {
   let timeoutId: ReturnType<typeof setTimeout>;
   const timeoutPromise = new Promise((_, reject) => {
@@ -1189,10 +1216,39 @@ async function executeToolWithTimeout(
  */
 export async function callTools(state: SalesAgentStateType): Promise<Partial<SalesAgentStateType>> {
   try {
+    // TIME CHECK: Don't start tool execution if we're already past the safe time limit
+    const elapsedMs = state.startTime ? Date.now() - new Date(state.startTime).getTime() : 0;
+    const TOOL_CUTOFF_TIME_MS = 155000; // Don't start new tools after 2:35 (leave ~25s for processing and finalization)
+    
+    if (elapsedMs > TOOL_CUTOFF_TIME_MS) {
+      console.log('[callTools] Time limit exceeded, skipping tool execution', { elapsedMs, cutoff: TOOL_CUTOFF_TIME_MS });
+      // Return an error ToolMessage to signal we couldn't execute due to time constraints
+      const { ToolMessage } = await import("@langchain/core/messages");
+      const messages = state.messages;
+      const lastMessage = messages[messages.length - 1];
+      
+      if (lastMessage._getType() === 'ai' && 'tool_calls' in lastMessage) {
+        const toolCalls = (lastMessage as any).tool_calls;
+        if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+          const timeoutMessages = toolCalls.map((tc: any) => new ToolMessage({
+            content: JSON.stringify({
+              success: false,
+              error: 'Tiempo de ejecución excedido. La solicitud fue demasiado compleja. Por favor intenta una consulta más simple.',
+              timeout: true,
+            }),
+            tool_call_id: tc.id,
+            name: tc.name || 'unknown_tool',
+          }));
+          return { messages: timeoutMessages };
+        }
+      }
+      return {};
+    }
+    
     const messages = state.messages;
     const lastMessage = messages[messages.length - 1];
     
-    console.log('[callTools] Processing, messages count:', messages.length);
+    console.log('[callTools] Processing, messages count:', messages.length, 'elapsedMs:', elapsedMs);
     
     // Verify we have an AIMessage with tool_calls
     if (lastMessage._getType() !== 'ai' || !('tool_calls' in lastMessage)) {
@@ -1309,8 +1365,24 @@ export async function callTools(state: SalesAgentStateType): Promise<Partial<Sal
  * Routing functions for conditional edges
  */
 
+// Maximum execution time before forcing finalization (in ms)
+// Allow 3 minutes for complex multi-tool workflows, leave 20s buffer for finalization
+const MAX_EXECUTION_TIME_MS = 160000; // 2:40 (160 seconds)
+
 export function shouldCallTools(state: SalesAgentStateType): string {
-  // Check iteration limit first
+  // TIME-BASED CIRCUIT BREAKER: Check elapsed time first
+  // This ensures we always have time to generate a response before Vercel kills us
+  const elapsedMs = state.startTime ? Date.now() - new Date(state.startTime).getTime() : 0;
+  if (elapsedMs > MAX_EXECUTION_TIME_MS) {
+    console.log('[shouldCallTools] Time limit approaching, forcing finalization', {
+      elapsedMs,
+      maxMs: MAX_EXECUTION_TIME_MS,
+      iterationCount: state.iterationCount,
+    });
+    return 'finalize';
+  }
+  
+  // Check iteration limit
   if (state.iterationCount >= MAX_ITERATIONS) {
     console.log('[shouldCallTools] Max iterations reached, finalizing');
     return 'finalize';
@@ -1342,6 +1414,7 @@ export function shouldCallTools(state: SalesAgentStateType): string {
     iterationCount: state.iterationCount,
     retryCount: state.retryCount,
     hasError: !!state.errorInfo,
+    elapsedMs,
   });
   
   // Check if this is an AIMessage with tool_calls
