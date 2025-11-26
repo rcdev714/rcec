@@ -864,7 +864,18 @@ export async function finalize(state: SalesAgentStateType): Promise<Partial<Sale
   
   // If last message is an AIMessage with substantial content, we're good
   if (lastMessage && lastMessage._getType() === 'ai') {
-    const content = lastMessage.content.toString().trim();
+    let content = lastMessage.content.toString().trim();
+    
+    // Clean content similar to how index.ts does it to ensure we're measuring visible text
+    content = content
+      .replace(/\[object Object\],?/g, '')
+      .replace(/^Herramienta utilizada:[\s\S]*?(?=\n\n|$)/gmi, '')
+      .replace(/^Parámetros:[\s\S]*?(?=\n\n|$)/gmi, '')
+      .replace(/\[CALL:[^\]]*\][^\n]*\n?/g, '')
+      .replace(/\[STATE_EVENT\][\s\S]*?\[\/STATE_EVENT\]/g, '')
+      .replace(/\[AGENT_PLAN\][\s\S]*?\[\/AGENT_PLAN\]/g, '')
+      .trim();
+
     // Check if content is substantial (not just internal context markers or empty)
     const hasSubstantialContent = content.length > 50 && 
       !content.startsWith('[CONTEXTO INTERNO]') &&

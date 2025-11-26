@@ -914,6 +914,19 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
           }
         } while (tokenUsageBlockFound);
 
+        // Optimized buffering: Move safe text (before any potential tag start) to assistantResponseText
+        // This ensures users see text immediately instead of waiting for the stream to end or a tag to appear
+        const tagStartIndex = buffer.indexOf('[');
+        if (tagStartIndex === -1) {
+          // No potential tags, flush all
+          assistantResponseText += buffer;
+          buffer = "";
+        } else if (tagStartIndex > 0) {
+          // Flush text before the tag start
+          assistantResponseText += buffer.substring(0, tagStartIndex);
+          buffer = buffer.substring(tagStartIndex);
+        }
+
         // Update UI with processed text only (not the raw buffer with unparsed tags)
         scheduleAssistantContentUpdate(assistantResponseText);
       }

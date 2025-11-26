@@ -150,7 +150,33 @@ export async function chatWithLangGraph(
         
         // Get the final AI response
         if (result && result.messages && Array.isArray(result.messages)) {
-          const lastMessage = result.messages[result.messages.length - 1];
+          let lastMessage = result.messages[result.messages.length - 1];
+          
+          // Check if the agent stopped at a tool output without generating a final response
+          // This happens if the agent hits the recursion limit or stops unexpectedly
+          const isToolMessage = lastMessage && (
+            (lastMessage as any).tool_call_id || 
+            lastMessage._getType() === 'tool' || 
+            lastMessage._getType() === 'function'
+          );
+          
+          if (isToolMessage) {
+            console.log('[chatWithLangGraph] Agent stopped at tool output, forcing final response generation');
+            try {
+              // Invoke the model directly with the full history to generate a final response
+              const model = getGeminiModel(modelName);
+              // Ensure we have a valid history ending with the tool output
+              const history = result.messages;
+              const finalResponseMsg = await model.invoke(history);
+              lastMessage = finalResponseMsg;
+              // Append to result messages for completeness (though we just use it for finalResponse)
+              result.messages.push(finalResponseMsg);
+            } catch (err) {
+              console.error('[chatWithLangGraph] Error generating forced final response:', err);
+              // Fallback: don't update lastMessage, we'll try to use what we have
+            }
+          }
+
           if (lastMessage && lastMessage.content) {
             finalResponse = lastMessage.content.toString();
           }

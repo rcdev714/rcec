@@ -279,7 +279,8 @@ export async function chatWithSalesAgent(
                   .replace(/\[AGENT_PLAN\][\s\S]*?\[\/AGENT_PLAN\]/g, '')
                   .trim();
                 // If content is only commas/whitespace or too short, skip
-                if (!content || content.match(/^[,\s]*$/) || content.length < 5) {
+                // Reduced min length from 5 to 2 to allow short confirmations like "Ok." or "Si."
+                if (!content || content.match(/^[,\s]*$/) || content.length < 2) {
                   content = '';
                 }
               }
@@ -378,7 +379,8 @@ export async function chatWithSalesAgent(
                     .replace(/\[AGENT_PLAN\][\s\S]*?\[\/AGENT_PLAN\]/g, '')
                     .trim();
                   
-                  if (content && !content.match(/^[,\s]*$/) && content.length >= 5 && !content.startsWith('[CONTEXTO INTERNO]')) {
+                  // Reduced min length to 2 to match stream logic
+                  if (content && !content.match(/^[,\s]*$/) && content.length >= 2 && !content.startsWith('[CONTEXTO INTERNO]')) {
                     fallbackContent = content;
                     break;
                   }
