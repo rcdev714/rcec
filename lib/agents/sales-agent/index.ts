@@ -183,8 +183,8 @@ export async function chatWithSalesAgent(
             });
           }
 
-          // Track todo planning - emit as a special message
-          if (nodeName === 'plan_todos' && nodeOutput.todo && nodeOutput.todo.length > 0) {
+          // Track todo planning and updates - emit as a special message
+          if ((nodeName === 'plan_todos' || nodeName === 'update_todos') && nodeOutput.todo && nodeOutput.todo.length > 0) {
             // Send todos as a structured tag so UI can render them
             const todosTag = `\n\n[AGENT_PLAN]${JSON.stringify(nodeOutput.todo)}[/AGENT_PLAN]\n\n`;
             controller.enqueue(new TextEncoder().encode(todosTag));

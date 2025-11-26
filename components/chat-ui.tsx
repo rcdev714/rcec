@@ -13,7 +13,7 @@ import ConversationManager from "@/lib/conversation-manager";
 import { ChatCompanyResults } from "./chat-company-card";
 import { CompanySearchResult } from "@/types/chat";
 import { EmailDraftCard } from "./email-draft-card";
-import { type AgentStateEvent } from "./agent-state-indicator";
+import { AgentStateEvent, AgentStateDetail } from "./agent-state-indicator";
 
 interface EmailDraft {
   subject: string;
@@ -144,6 +144,13 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
   const [banner, setBanner] = useState<string | null>(null);
   const [confirmState, setConfirmState] = useState<{ open: boolean; message: string; resolve?: (v: boolean) => void }>({ open: false, message: "" });
   const openConfirm = (message: string) => new Promise<boolean>(resolve => setConfirmState({ open: true, message, resolve }));
+  
+  // State for detailed debug views per message
+  const [expandedDebug, setExpandedDebug] = useState<Record<string, boolean>>({});
+  const toggleDebug = (msgId: string) => {
+    setExpandedDebug(prev => ({ ...prev, [msgId]: !prev[msgId] }));
+  };
+
   // Note: currentAgentEvents tracking removed - state events are now stored in message metadata
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -814,22 +821,34 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
 
               if (process.env.NODE_ENV === 'development') console.log("Successfully parsed agent plan:", todos);
 
-              // Insert a system message with the plan right after the user message
+              // Insert or update a system message with the plan right after the user message
               setMessages((prev) => {
                 const newMessages = [...prev];
-                // Insert plan message after user message (before assistant response)
-                const planMessage: Message = {
-                  id: genId(),
-                  role: "system",
-                  content: "",
-                  todos: todos,
-                  metadata: { type: 'planning' }
-                };
-                // Insert before the last message (which is the assistant's empty message)
-                if (newMessages.length > 0 && newMessages[newMessages.length - 1].role === "assistant") {
-                  newMessages.splice(newMessages.length - 1, 0, planMessage);
+                
+                // Check if a planning message already exists
+                const existingPlanIndex = newMessages.findIndex(m => m.role === "system" && m.metadata?.type === 'planning');
+                
+                if (existingPlanIndex !== -1) {
+                  // Update existing plan
+                  newMessages[existingPlanIndex] = {
+                    ...newMessages[existingPlanIndex],
+                    todos: todos
+                  };
                 } else {
-                  newMessages.push(planMessage);
+                  // Insert plan message after user message (before assistant response)
+                  const planMessage: Message = {
+                    id: genId(),
+                    role: "system",
+                    content: "",
+                    todos: todos,
+                    metadata: { type: 'planning' }
+                  };
+                  // Insert before the last message (which is the assistant's empty message)
+                  if (newMessages.length > 0 && newMessages[newMessages.length - 1].role === "assistant") {
+                    newMessages.splice(newMessages.length - 1, 0, planMessage);
+                  } else {
+                    newMessages.push(planMessage);
+                  }
                 }
                 return newMessages;
               });
@@ -1477,6 +1496,15 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
                                 </div>
                               );
                             })()}
+
+                            {/* Detailed Agent State View (Debug/Diagnostic) */}
+                            {msg.role === 'assistant' && msg.agentStateEvents && msg.agentStateEvents.length > 0 && (
+                              <AgentStateDetail 
+                                events={msg.agentStateEvents} 
+                                isExpanded={!!expandedDebug[msg.id]} 
+                                onToggle={() => toggleDebug(msg.id)} 
+                              />
+                            )}
 
                             {msg.content && (
                               <div className="chat-content overflow-x-auto text-[13px] md:text-sm leading-relaxed prose prose-xs md:prose-sm prose-gray max-w-none" aria-live={msg.role === 'assistant' ? 'polite' : undefined}>

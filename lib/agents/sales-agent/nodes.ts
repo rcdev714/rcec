@@ -31,7 +31,7 @@ function getGeminiModel(modelName: string = "gemini-2.5-flash"): ChatGoogleGener
     const apiVersion = isGemini3 ? 'v1beta' : undefined; 
     // Lower temperatures for stricter instruction-following
     // Increase slightly to avoid repetition loops
-    const temperature = isGemini3 ? 0.85 : 0.2;
+    const temperature = isGemini3 ? 0.1 : 0.2;
 
     // Workaround: Remove 'tools' from Gemini 3 initialization if they are causing issues
     // or bind them later. For now, we initialize the base model without binding tools here.
@@ -201,10 +201,10 @@ REGLAS:
     const plan = JSON.parse(jsonText);
     
     // Map to TodoItem type
-    const todos: TodoItem[] = (plan.todos || []).map((t: any) => ({
+    const todos: TodoItem[] = (plan.todos || []).map((t: any, index: number) => ({
       id: t.id || Math.random().toString(36).substring(7),
       description: t.description,
-      status: 'pending',
+      status: index === 0 ? 'in_progress' : 'pending',
       createdAt: new Date(),
     }));
 
@@ -213,7 +213,7 @@ REGLAS:
       todos.push({
         id: 'respond_to_query',
         description: 'Responder a la consulta del usuario',
-        status: 'pending',
+        status: 'in_progress',
         createdAt: new Date(),
       });
     }
@@ -273,6 +273,11 @@ REGLAS:
         status: 'pending',
         createdAt: new Date(),
       });
+    }
+
+    // Auto-start first todo
+    if (todos.length > 0) {
+      todos[0].status = 'in_progress';
     }
   
     // Determine goal
@@ -746,6 +751,28 @@ export function processToolResults(state: SalesAgentStateType): Partial<SalesAge
     }
   }
 
+  // Circuit Breaker: Check for infinite loops (same tool, same args repeated)
+  if (newOutputs.length > 0 && state.toolOutputs.length > 0) {
+    const lastOldOutput = state.toolOutputs[state.toolOutputs.length - 1];
+    const lastNewOutput = newOutputs[newOutputs.length - 1];
+    
+    // Simple equality check for inputs
+    const isSameTool = lastOldOutput.toolName === lastNewOutput.toolName;
+    const isSameInput = JSON.stringify(lastOldOutput.input) === JSON.stringify(lastNewOutput.input);
+    
+    // Also check if the output was an error (retrying same error is bad) or if it was successful but we're doing it again
+    if (isSameTool && isSameInput) {
+      console.warn('[processToolResults] Detected tool loop. Forcing finalization.');
+      return {
+        toolOutputs: newOutputs,
+        lastTool: lastNewOutput.toolName,
+        lastToolSuccess: false, // Mark as failed to trigger reflection/stop
+        errorInfo: 'Loop detectado: El agente está repitiendo la misma acción sin progreso.',
+        retryCount: MAX_RETRIES // Force stop on next check
+      };
+    }
+  }
+
   if (newOutputs.length === 0) {
     // If no new ToolMessages found, but we have a system error, increment retry
     if (state.errorInfo) {
@@ -814,9 +841,12 @@ export async function reflection(state: SalesAgentStateType): Promise<Partial<Sa
  * Update todos based on progress
  */
 export function updateTodos(state: SalesAgentStateType): Partial<SalesAgentStateType> {
+  let hasCompletedCurrent = false;
+
   const updatedTodos = state.todo.map(todo => {
     // Mark completed todos
     if (todo.status === 'in_progress' && state.lastToolSuccess) {
+      hasCompletedCurrent = true;
       return {
         ...todo,
         status: 'completed' as const,
@@ -826,6 +856,7 @@ export function updateTodos(state: SalesAgentStateType): Partial<SalesAgentState
     
     // Mark failed todos
     if (todo.status === 'in_progress' && !state.lastToolSuccess && state.retryCount >= MAX_RETRIES) {
+      hasCompletedCurrent = true; // Moved past it (failed)
       return {
         ...todo,
         status: 'failed' as const,
@@ -835,6 +866,17 @@ export function updateTodos(state: SalesAgentStateType): Partial<SalesAgentState
     
     return todo;
   });
+
+  // If we finished a task, start the next one
+  if (hasCompletedCurrent) {
+    const nextTodoIndex = updatedTodos.findIndex(t => t.status === 'pending');
+    if (nextTodoIndex !== -1) {
+      updatedTodos[nextTodoIndex] = {
+        ...updatedTodos[nextTodoIndex],
+        status: 'in_progress'
+      };
+    }
+  }
 
   return {
     todo: updatedTodos,
@@ -1032,9 +1074,17 @@ Genera tu respuesta final ahora. DEBE ser completa, profesional y útil.`);
     
     // Invoke model for final response
     // Note: finalize does not bind tools, so this call is safe for Gemini 3 + Thinking
-    const model = getGeminiModel(modelName);
+    // REVISED STRATEGY: For reliability, if the user chose Gemini 3, we use Gemini 2.5 Pro for the final synthesis
+    // unless it's a simple query. Gemini 3 Preview can be unstable for pure synthesis after long contexts.
+    let synthesisModelName = modelName;
+    if (modelName.startsWith('gemini-3')) {
+      console.log('[finalize] Switching from Gemini 3 to Gemini 2.5 Pro for reliable synthesis');
+      synthesisModelName = 'gemini-2.5-pro';
+    }
     
-    console.log('[finalize] Generating final response with model:', modelName);
+    const model = getGeminiModel(synthesisModelName);
+    
+    console.log('[finalize] Generating final response with model:', synthesisModelName);
     if (effectiveThinkingHint) {
       console.log('[finalize] Thinking level: low (optimizing for speed)');
     }

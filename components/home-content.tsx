@@ -32,7 +32,7 @@ const features = [
     title: "Catálogo de Servicios",
     description: "Crea y comparte un catálogo de servicios público con un link para ofrecer a tus leads. La IA usa este contexto para mejorar el targeting de posibles clientes y personalizar recomendaciones.",
     videoSrc: "/landingpagedemos/CatalogoServiciosDemo.mp4",
-    poster: "/onboarding/offerings-Cover.jpg",
+    poster: "/HeroImage.jpeg",
     tags: ["Catálogo público", "Compartir servicios", "Targeting IA", "Personalización leads"]
   }
 ];
