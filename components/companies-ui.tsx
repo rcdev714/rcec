@@ -53,7 +53,7 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
     if (isFetching) {
       setIsFetching(false);
     }
-  }, [companies, totalCount, page]);
+  }, [companies, totalCount, page, isFetching]);
 
   // Initialize filters state from the current URL search parameters.
   const initialFilters = {

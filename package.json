@@ -21,7 +21,8 @@
     "sync-data-fast": "node --max-old-space-size=12288 scripts/sync_financial_data.js",
     "verify-data": "node scripts/verify_aceites_data.js",
     "verify-all": "node --max-old-space-size=4096 scripts/verify_all_companies_data.js",
-    "verify-fast": "node --max-old-space-size=6144 scripts/verify_all_companies_data.js"
+    "verify-fast": "node --max-old-space-size=6144 scripts/verify_all_companies_data.js",
+    "trigger:deploy": "npx trigger.dev@latest deploy"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -40,6 +41,7 @@
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.58.0",
     "@tavily/core": "^0.5.12",
+    "@trigger.dev/sdk": "^4.1.2",
     "@types/three": "^0.180.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -73,6 +75,7 @@
     "@testing-library/jest-dom": "^6.4.0",
     "@testing-library/react": "^16.0.0",
     "@testing-library/user-event": "^14.5.0",
+    "@trigger.dev/build": "^4.1.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

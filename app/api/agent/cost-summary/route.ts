@@ -52,6 +52,15 @@ export async function GET() {
       .eq('period_start', start.toISOString())
       .maybeSingle();
 
+    // Fetch agent_runs for this period (Trigger.dev background tasks)
+    const agentRunsPromise = supabase
+      .from('agent_runs')
+      .select('input_tokens, output_tokens, model_name')
+      .eq('user_id', user.id)
+      .gte('created_at', start.toISOString())
+      .lt('created_at', end.toISOString())
+      .eq('status', 'completed');
+
     // Use database-level aggregation for optimal performance
     // This avoids transferring all message records to the client
     const { data: summary, error: summaryError } = await supabase
@@ -61,11 +70,40 @@ export async function GET() {
         p_period_end: end.toISOString()
       });
 
-    const { data: usageRow, error: usageError } = await usageSnapshotPromise;
+    const [{ data: usageRow, error: usageError }, { data: agentRuns }] = await Promise.all([
+      usageSnapshotPromise,
+      agentRunsPromise
+    ]);
+    
     if (usageError) {
       console.warn("Unable to read usage snapshot for cost summary merge:", usageError);
     }
+    
+    // Calculate agent_runs totals
+    let agentRunsSnapshot: UsageSnapshot = { cost: 0, inputTokens: 0, outputTokens: 0 };
+    if (agentRuns && agentRuns.length > 0) {
+      agentRunsSnapshot = agentRuns.reduce((acc, run) => {
+        const inputTokens = run.input_tokens || 0;
+        const outputTokens = run.output_tokens || 0;
+        const modelName = run.model_name || 'gemini-2.5-flash';
+        const cost = calculateGeminiCost(modelName, inputTokens, outputTokens);
+        
+        return {
+          cost: acc.cost + cost,
+          inputTokens: acc.inputTokens + inputTokens,
+          outputTokens: acc.outputTokens + outputTokens,
+        };
+      }, { cost: 0, inputTokens: 0, outputTokens: 0 });
+    }
+    
     const usageSnapshot = normalizeUsageSnapshot(usageRow);
+    
+    // Use the maximum of user_usage and agent_runs
+    const mergedUsageSnapshot: UsageSnapshot = {
+      cost: Math.max(usageSnapshot.cost, agentRunsSnapshot.cost),
+      inputTokens: Math.max(usageSnapshot.inputTokens, agentRunsSnapshot.inputTokens),
+      outputTokens: Math.max(usageSnapshot.outputTokens, agentRunsSnapshot.outputTokens),
+    };
 
     let aggregatedSummary: AggregatedSummary;
 
@@ -85,7 +123,7 @@ export async function GET() {
       aggregatedSummary = mapRpcResultToSummary(result);
     }
 
-    const payload = mergeUsageAndAggregate(aggregatedSummary, usageSnapshot, start, end);
+    const payload = mergeUsageAndAggregate(aggregatedSummary, mergedUsageSnapshot, start, end);
 
     return NextResponse.json(payload);
   } catch (error) {

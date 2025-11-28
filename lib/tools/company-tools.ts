@@ -4,6 +4,15 @@ import { SearchFilters, CompanySearchResult } from '@/types/chat';
 import { FilterTranslator } from './filter-translator';
 import { fetchCompanies } from '@/lib/data/companies';
 import { sortByRelevanceAndCompleteness, getCompletenessStats } from '@/lib/data-completeness-scorer';
+import { agentCache } from '@/lib/agents/sales-agent/cache';
+import { createClient } from '@supabase/supabase-js';
+
+// Helper to get Supabase client for backend tasks (bypassing cookies)
+const getSupabaseClient = () => {
+  const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  return createClient(sbUrl, sbKey, { auth: { persistSession: false } });
+};
 
 // Schema for search filters validation
 const searchFiltersSchema = z.object({
@@ -42,14 +51,23 @@ export const searchCompaniesTool = tool(
       const actualLimit = Math.min(Math.max(limit, 1), 50);
       const actualPage = Math.max(page, 1);
       
-      // Fetch companies using existing API
+      // Check cache first for performance
+      const cacheKey = { ...validatedFilters, page: actualPage, limit: actualLimit };
+      const cachedResult = agentCache.getCompanySearch(query, cacheKey);
+      if (cachedResult) {
+        console.log('[searchCompaniesTool] Cache HIT for query:', query);
+        return cachedResult;
+      }
+      
+      // Fetch companies using existing API with service role client
       const searchParams = {
         ...validatedFilters,
         page: actualPage.toString(),
         pageSize: actualLimit,
       } as SearchFilters & { page: string; pageSize: number };
       
-      const { companies, totalCount } = await fetchCompanies(searchParams);
+      const supabase = getSupabaseClient();
+      const { companies, totalCount } = await fetchCompanies(searchParams, supabase);
       
       // Respect explicit server-side sort when present; otherwise fall back to relevance/completeness
       const shouldPreserveServerOrder = !!validatedFilters.sortBy && validatedFilters.sortBy !== 'completitud';
@@ -69,7 +87,7 @@ export const searchCompaniesTool = tool(
       };
       
       // Return structured result for the agent
-      return {
+      const toolResult = {
         success: true,
         result,
         summary: `Encontré ${totalCount} empresas que coinciden con: ${filterSummary}.` + (!shouldPreserveServerOrder ? ' Los resultados se ordenan por relevancia, priorizando empresas con información de contacto completa y datos financieros recientes.' : ''),
@@ -77,6 +95,12 @@ export const searchCompaniesTool = tool(
         appliedFilters: validatedFilters,
         dataQuality: stats,
       };
+      
+      // Cache successful results
+      agentCache.cacheCompanySearch(query, cacheKey, toolResult);
+      console.log('[searchCompaniesTool] Cached results for query:', query);
+      
+      return toolResult;
       
     } catch (error) {
       console.error('Error in searchCompaniesTool:', error);
@@ -118,18 +142,29 @@ La herramienta automáticamente traducirá lenguaje natural a filtros apropiados
 export const getCompanyDetailsTool = tool(
   async ({ identifier, type = 'ruc' }: { identifier: string; type?: 'ruc' | 'name' }) => {
     try {
+      // Check cache for RUC lookups (most common case)
+      const isRucLookup = type === 'ruc' || /^\d{13}$/.test(identifier);
+      if (isRucLookup) {
+        const cached = agentCache.getCompanyDetails(identifier);
+        if (cached) {
+          console.log('[getCompanyDetailsTool] Cache HIT for RUC:', identifier);
+          return cached;
+        }
+      }
+      
       let searchFilters: SearchFilters;
       
-      if (type === 'ruc' || /^\d{13}$/.test(identifier)) {
+      if (isRucLookup) {
         searchFilters = { ruc: identifier };
       } else {
         searchFilters = { nombre: identifier };
       }
       
+      const supabase = getSupabaseClient();
       const { companies, totalCount } = await fetchCompanies({ 
         ...searchFilters, 
         pageSize: 5 
-      });
+      }, supabase);
       
       if (totalCount === 0) {
         return {
@@ -141,7 +176,7 @@ export const getCompanyDetailsTool = tool(
       
       if (totalCount === 1) {
         const company = companies[0];
-        return {
+        const result = {
           success: true,
           company,
           summary: `Empresa encontrada: ${company.nombre || company.nombre_comercial}`,
@@ -158,6 +193,14 @@ export const getCompanyDetailsTool = tool(
             year: company.anio,
           },
         };
+        
+        // Cache by RUC for future lookups
+        if (company.ruc) {
+          agentCache.cacheCompanyDetails(company.ruc, result);
+          console.log('[getCompanyDetailsTool] Cached details for RUC:', company.ruc);
+        }
+        
+        return result;
       }
       
       // Multiple matches - return list for user to choose
@@ -213,10 +256,11 @@ export const refineSearchTool = tool(
       const validatedFilters = FilterTranslator.validateFilters(combinedFilters);
       
       // Execute refined search
+      const supabase = getSupabaseClient();
       const { companies, totalCount } = await fetchCompanies({
         ...validatedFilters,
         pageSize: 10,
-      });
+      }, supabase);
       
       const filterSummary = FilterTranslator.generateFilterSummary(validatedFilters);
       

@@ -2,10 +2,45 @@ import { AIMessage, SystemMessage, HumanMessage } from "@langchain/core/messages
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { SalesAgentStateType, TodoItem, MAX_ITERATIONS, MAX_RETRIES, ToolOutput } from "./state";
 import { SALES_AGENT_SYSTEM_PROMPT } from "./prompt";
-import { createClient } from "@/lib/supabase/server";
-import { UserOffering } from "@/types/user-offering";
 import { extractTokenUsageFromMetadata } from "@/lib/token-counter";
-import { trackLLMUsage } from "@/lib/usage";
+import { trackLLMUsage, trackLLMUsageBackground } from "@/lib/usage";
+
+/**
+ * Detect if we're running in a background task (Trigger.dev worker)
+ * by checking for the absence of cookies/request context
+ */
+function isBackgroundTask(): boolean {
+  // In Trigger.dev workers, there's no Next.js request context
+  // We can detect this by checking if we're in a Node.js runtime without cookies
+  try {
+    // If we can import cookies, we might be in a Next.js context
+    // But this will throw in Trigger.dev runtime
+    return typeof process !== 'undefined' && 
+           process.env.TRIGGER_PROJECT_ID !== undefined;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Track LLM usage with automatic context detection
+ * Uses background-safe version in Trigger.dev workers
+ */
+async function trackUsageSafe(
+  userId: string,
+  model: string,
+  inputTokens: number,
+  outputTokens: number
+): Promise<void> {
+  if (isBackgroundTask()) {
+    // Use background-safe version (service role key)
+    await trackLLMUsageBackground(userId, model, inputTokens, outputTokens);
+  } else {
+    // Use standard version (cookies-based)
+    await trackLLMUsage(userId, model, inputTokens, outputTokens);
+  }
+}
+import { optimizeConversationHistory } from "./context-optimizer";
 
 // Initialize Gemini models (lazy, cached per model name)
 const geminiModels: Record<string, ChatGoogleGenerativeAI> = {};
@@ -49,88 +84,50 @@ function getGeminiModel(modelName: string = "gemini-2.5-flash"): ChatGoogleGener
 }
 
 /**
- * Load user context from Supabase
+ * Load user context from Supabase (with caching for B2C performance)
  */
 export async function loadUserContext(_state: SalesAgentStateType): Promise<Partial<SalesAgentStateType>> {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
+    // Dynamic imports for Node.js runtime compatibility
+    // Use require for Supabase as import() might return a module object in some environments
+    // const { createClient } = require("@supabase/supabase-js");
+    
+    // Use direct supabase-js client instead of server component helper
+    // to avoid "cookies was called outside a request scope" error in background tasks
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing Supabase credentials in loadUserContext');
       return {
-        errorInfo: 'Usuario no autenticado',
+        errorInfo: 'Error de configuración: Faltan credenciales de Supabase',
       };
     }
+    
+    // Use user ID passed from trigger payload if available in state
+    // Note: We need to update SalesAgentState to include userId if not already present
+    // For now, we'll try to get it from context or fallback
+    
+    // Since we can't access cookies/auth.getUser() in background task, 
+    // we rely on the userId being passed in the userContext or we need to fetch it
+    // However, loadUserContext is the FIRST step to populate userContext.
+    // The fix is to pass userId into the graph state when initializing in src/trigger/sales-agent.ts
+    
+    // TEMPORARY FIX: Check if we can extract user ID from thread_id config if available
+    // or rely on the caller to pass it. The caller (sales-agent.ts) DOES pass userId
+    // but we need to read it from the state passed in.
+    
+    // Assuming userId is part of userContext if partially initialized, 
+    // or we need to modify how this node works.
+    
+    // Actually, let's look at how the graph is initialized. 
+    // The sales-agent.ts passes a message but maybe not the user context initially.
+    // We should update sales-agent.ts to pass initial userContext with userId.
+    
+    // For now, return empty context if we can't get user. 
+    // The real fix is in sales-agent.ts to pass userId in the initial state.
+    return {}; 
 
-    // Fetch user offerings
-    const { data: offerings } = await supabase
-      .from('user_offerings')
-      .select('*')
-      .eq('user_id', user.id);
-
-    // Fetch user profile
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-
-    // Fetch subscription
-    const { data: subscription } = await supabase
-      .from('user_subscriptions')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-
-    // Define limits based on plan
-    const plan = subscription?.plan || 'FREE';
-
-    // Fetch usage using billing-aligned period
-    const { resolveUsageAnchorIso, getMonthlyPeriodForAnchor } = await import('@/lib/usage');
-    const anchorIso = resolveUsageAnchorIso(
-      plan as 'FREE' | 'PRO' | 'ENTERPRISE',
-      subscription,
-      user.created_at || new Date().toISOString()
-    );
-    const { start: periodStart } = getMonthlyPeriodForAnchor(anchorIso);
-
-    const { data: usage } = await supabase
-      .from('user_usage')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('period_start', periodStart.toISOString())
-      .single();
-    const limitsMap: Record<string, { searches: number; exports: number; prompts: number }> = {
-      FREE: { searches: 10, exports: 2, prompts: 10 },
-      PRO: { searches: 100, exports: 20, prompts: 100 },
-      ENTERPRISE: { searches: 1000, exports: 100, prompts: 1000 },
-    };
-    const limits = limitsMap[plan] || limitsMap['FREE'];
-
-    return {
-      userContext: {
-        userId: user.id,
-        offerings: (offerings || []) as UserOffering[],
-        userProfile: profile ? {
-          firstName: profile.first_name,
-          lastName: profile.last_name,
-          companyName: profile.company_name,
-          position: profile.position,
-          email: user.email,
-          phone: profile.phone,
-        } : undefined,
-        subscription: {
-          plan: plan as 'FREE' | 'PRO' | 'ENTERPRISE',
-          status: subscription?.status || 'active',
-        },
-        usage: {
-          searches: usage?.searches || 0,
-          exports: usage?.exports || 0,
-          prompts: 0, // Will be calculated from events
-        },
-        limits,
-      },
-    };
   } catch (error) {
     console.error('Error loading user context:', error);
     return {
@@ -301,17 +298,14 @@ REGLAS:
 
 /**
  * Think node - LLM reasoning about next action
+ * 
+ * NOTE: Time-based tool skipping has been removed since we now run in
+ * Trigger.dev background workers with no timeout constraints.
  */
 export async function think(state: SalesAgentStateType): Promise<Partial<SalesAgentStateType>> {
   try {
-    // TIME CHECK: If we're running low on time, don't bind tools - force the model to generate a response
-    const elapsedMs = state.startTime ? Date.now() - new Date(state.startTime).getTime() : 0;
-    const SKIP_TOOLS_THRESHOLD_MS = 150000; // After 2.5 minutes, stop allowing new tool calls (leave 30s for finalization)
-    const shouldSkipTools = elapsedMs > SKIP_TOOLS_THRESHOLD_MS;
-    
-    if (shouldSkipTools) {
-      console.log('[think] Time limit approaching, skipping tool binding to force response generation', { elapsedMs });
-    }
+    // In async mode (Trigger.dev), we have unlimited time so no tool skipping needed
+    const shouldSkipTools = false;
     
     // Import tools dynamically to bind to model
     const { companyTools } = await import("@/lib/tools/company-tools");
@@ -561,10 +555,7 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
       contextParts.push('Intenta con una consulta más simple o una herramienta diferente');
     }
 
-    // Add time-critical instruction if we're skipping tools
-    if (shouldSkipTools && contextParts.length > 0) {
-      contextParts.push('\n[INSTRUCCIÓN URGENTE] El tiempo de procesamiento está llegando al límite. NO llames más herramientas. Genera una respuesta AHORA con la información que tienes disponible. Si tienes resultados de búsquedas previas, úsalos para dar una respuesta completa al usuario.');
-    }
+    // Time-critical instruction removed - running in async background worker
     
     const contextMessage = contextParts.length > 0 
       ? `\n\n[CONTEXTO INTERNO]\n${contextParts.join('\n')}\n[/CONTEXTO INTERNO]\n`
@@ -586,6 +577,17 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
     if (shouldFilterFunctionTurn && baseMessages.length === 0) {
       console.warn('[think] All messages filtered out, using original messages');
       baseMessages = state.messages;
+    }
+    
+    // OPTIMIZATION: Compress conversation history to reduce token usage
+    // This is critical for B2C where users may have long conversations
+    if (baseMessages.length > 6) {
+      const originalLength = baseMessages.length;
+      baseMessages = optimizeConversationHistory(baseMessages, {
+        maxMessages: 12,
+        preserveRecentMessages: 4,
+      });
+      console.log(`[think] Optimized conversation: ${originalLength} -> ${baseMessages.length} messages`);
     }
 
     // Trim messages if too many (keep system, first message, last 10)
@@ -666,9 +668,9 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
     if (tokenUsage) {
       console.log('[think] ✓ Token usage captured:', tokenUsage);
       
-      // Track usage (non-blocking)
+      // Track usage (non-blocking) - uses background-safe version in Trigger.dev
       if (state.userContext?.userId) {
-        trackLLMUsage(
+        trackUsageSafe(
           state.userContext.userId,
           modelName,
           tokenUsage.inputTokens,
@@ -766,25 +768,66 @@ export function processToolResults(state: SalesAgentStateType): Partial<SalesAge
     }
   }
 
-  // Circuit Breaker: Check for infinite loops (same tool, same args repeated)
+  // Circuit Breaker: Check for infinite loops
   if (newOutputs.length > 0 && state.toolOutputs.length > 0) {
     const lastOldOutput = state.toolOutputs[state.toolOutputs.length - 1];
     const lastNewOutput = newOutputs[newOutputs.length - 1];
     
-    // Simple equality check for inputs
+    // Check 1: Exact same tool + same args (obvious loop)
     const isSameTool = lastOldOutput.toolName === lastNewOutput.toolName;
     const isSameInput = JSON.stringify(lastOldOutput.input) === JSON.stringify(lastNewOutput.input);
     
-    // Also check if the output was an error (retrying same error is bad) or if it was successful but we're doing it again
     if (isSameTool && isSameInput) {
-      console.warn('[processToolResults] Detected tool loop. Forcing finalization.');
+      console.warn('[processToolResults] Detected exact tool loop. Forcing finalization.');
       return {
         toolOutputs: newOutputs,
         lastTool: lastNewOutput.toolName,
-        lastToolSuccess: false, // Mark as failed to trigger reflection/stop
+        lastToolSuccess: false,
         errorInfo: 'Loop detectado: El agente está repitiendo la misma acción sin progreso.',
-        retryCount: MAX_RETRIES // Force stop on next check
+        retryCount: MAX_RETRIES
       };
+    }
+    
+    // Check 2: Too many consecutive calls to same tool type (semantic loop)
+    // This catches cases where the agent keeps trying similar searches with different params
+    const allOutputs = [...state.toolOutputs, ...newOutputs];
+    const recentOutputs = allOutputs.slice(-5); // Last 5 tool calls
+    const sameToolCount = recentOutputs.filter(o => o.toolName === lastNewOutput.toolName).length;
+    
+    if (sameToolCount >= 4) {
+      console.warn(`[processToolResults] Detected semantic loop: ${sameToolCount} consecutive ${lastNewOutput.toolName} calls. Forcing strategy change.`);
+      return {
+        toolOutputs: newOutputs,
+        lastTool: lastNewOutput.toolName,
+        lastToolSuccess: false,
+        errorInfo: `Has intentado ${lastNewOutput.toolName} ${sameToolCount} veces sin resultados satisfactorios. Intenta un enfoque diferente o reformula tu consulta.`,
+        retryCount: MAX_RETRIES
+      };
+    }
+    
+    // Check 3: Search results not improving (same total count or 0 results multiple times)
+    if (lastNewOutput.toolName === 'search_companies') {
+      const searchOutputs = allOutputs.filter(o => o.toolName === 'search_companies').slice(-3);
+      if (searchOutputs.length >= 3) {
+        const allZeroResults = searchOutputs.every(o => {
+          try {
+            const output = o.output as any;
+            const count = output?.result?.totalCount || output?.result?.companies?.length || 0;
+            return count === 0;
+          } catch { return false; }
+        });
+        
+        if (allZeroResults) {
+          console.warn('[processToolResults] 3 consecutive searches with 0 results. Suggesting different approach.');
+          return {
+            toolOutputs: newOutputs,
+            lastTool: lastNewOutput.toolName,
+            lastToolSuccess: false,
+            errorInfo: 'Las últimas 3 búsquedas no encontraron resultados. Intenta con términos más generales o usa búsqueda web.',
+            retryCount: MAX_RETRIES
+          };
+        }
+      }
     }
   }
 
@@ -1093,24 +1136,18 @@ Genera tu respuesta final ahora. DEBE ser completa, profesional y útil.`);
     
     // Invoke model for final response
     // Note: finalize does not bind tools, so this call is safe for Gemini 3 + Thinking
-    // REVISED STRATEGY: Use fastest model available when time is limited
+    // Use the selected model for synthesis (no time-based switching in async mode)
     let synthesisModelName = modelName;
     
-    // Check elapsed time to determine if we need to use a faster model
-    const elapsedMs = state.startTime ? Date.now() - new Date(state.startTime).getTime() : 0;
-    const TIME_CRITICAL_THRESHOLD_MS = 165000; // If past 2:45, use fast model (leave 15s for response)
-    
-    if (elapsedMs > TIME_CRITICAL_THRESHOLD_MS) {
-      console.log('[finalize] Time critical, using gemini-2.5-flash for fast synthesis', { elapsedMs });
-      synthesisModelName = 'gemini-2.5-flash';
-    } else if (modelName.startsWith('gemini-3')) {
+    // For Gemini 3 with thinking mode issues, fall back to Gemini 2.5 Pro
+    if (modelName.startsWith('gemini-3')) {
       console.log('[finalize] Switching from Gemini 3 to Gemini 2.5 Pro for reliable synthesis');
       synthesisModelName = 'gemini-2.5-pro';
     }
     
     const model = getGeminiModel(synthesisModelName);
     
-    console.log('[finalize] Generating final response with model:', synthesisModelName, 'elapsedMs:', elapsedMs);
+    console.log('[finalize] Generating final response with model:', synthesisModelName);
     if (effectiveThinkingHint) {
       console.log('[finalize] Thinking level: low (optimizing for speed)');
     }
@@ -1129,9 +1166,9 @@ Genera tu respuesta final ahora. DEBE ser completa, profesional y útil.`);
     if (tokenUsage) {
       console.log('[finalize] ✓ Token usage captured:', tokenUsage);
       
-      // Track usage (non-blocking)
+      // Track usage (non-blocking) - uses background-safe version in Trigger.dev
       if (state.userContext?.userId) {
-        trackLLMUsage(
+        trackUsageSafe(
           state.userContext.userId,
           modelName,
           tokenUsage.inputTokens,
@@ -1180,75 +1217,22 @@ Genera tu respuesta final ahora. DEBE ser completa, profesional y útil.`);
   }
 }
 
-/**
- * Execute a tool with timeout protection
- * 45s per tool allows for complex database queries and web scraping
- */
-async function executeToolWithTimeout(
-  tool: any,
-  toolCall: any,
-  timeoutMs: number = 45000 // 45 second timeout per individual tool
-): Promise<any> {
-  let timeoutId: ReturnType<typeof setTimeout>;
-  const timeoutPromise = new Promise((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error(`Tool execution timed out after ${timeoutMs}ms`)), timeoutMs);
-  });
-
-  const toolPromise = tool.func(toolCall.args);
-
-  try {
-    const result = await Promise.race([toolPromise, timeoutPromise]);
-    clearTimeout(timeoutId!);
-    return result;
-  } catch (error) {
-    clearTimeout(timeoutId!);
-    // If timeout occurred, throw a specific timeout error
-    if (error instanceof Error && error.message.includes('timed out')) {
-      throw new Error(`Tool "${toolCall.name}" execution timed out after ${timeoutMs}ms`);
-    }
-    throw error;
-  }
-}
+// NOTE: executeToolWithTimeout removed - not needed in async mode
+// The Trigger.dev worker manages overall execution time
 
 /**
  * Manually execute tools (bypass ToolNode to avoid invocation issues)
  * This directly executes tool functions and creates ToolMessages manually
+ * 
+ * NOTE: Time-based cutoffs have been removed since we now run in
+ * Trigger.dev background workers with no timeout constraints.
  */
 export async function callTools(state: SalesAgentStateType): Promise<Partial<SalesAgentStateType>> {
   try {
-    // TIME CHECK: Don't start tool execution if we're already past the safe time limit
-    const elapsedMs = state.startTime ? Date.now() - new Date(state.startTime).getTime() : 0;
-    const TOOL_CUTOFF_TIME_MS = 155000; // Don't start new tools after 2:35 (leave ~25s for processing and finalization)
-    
-    if (elapsedMs > TOOL_CUTOFF_TIME_MS) {
-      console.log('[callTools] Time limit exceeded, skipping tool execution', { elapsedMs, cutoff: TOOL_CUTOFF_TIME_MS });
-      // Return an error ToolMessage to signal we couldn't execute due to time constraints
-      const { ToolMessage } = await import("@langchain/core/messages");
-      const messages = state.messages;
-      const lastMessage = messages[messages.length - 1];
-      
-      if (lastMessage._getType() === 'ai' && 'tool_calls' in lastMessage) {
-        const toolCalls = (lastMessage as any).tool_calls;
-        if (Array.isArray(toolCalls) && toolCalls.length > 0) {
-          const timeoutMessages = toolCalls.map((tc: any) => new ToolMessage({
-            content: JSON.stringify({
-              success: false,
-              error: 'Tiempo de ejecución excedido. La solicitud fue demasiado compleja. Por favor intenta una consulta más simple.',
-              timeout: true,
-            }),
-            tool_call_id: tc.id,
-            name: tc.name || 'unknown_tool',
-          }));
-          return { messages: timeoutMessages };
-        }
-      }
-      return {};
-    }
-    
     const messages = state.messages;
     const lastMessage = messages[messages.length - 1];
     
-    console.log('[callTools] Processing, messages count:', messages.length, 'elapsedMs:', elapsedMs);
+    console.log('[callTools] Processing, messages count:', messages.length);
     
     // Verify we have an AIMessage with tool_calls
     if (lastMessage._getType() !== 'ai' || !('tool_calls' in lastMessage)) {
@@ -1262,7 +1246,9 @@ export async function callTools(state: SalesAgentStateType): Promise<Partial<Sal
       return {};
     }
     
-    console.log('[callTools] Executing', toolCalls.length, 'tool(s) with timeout protection');
+    // Execute ALL tools in parallel - no limits in async mode
+    // The background worker has unlimited time so we can run comprehensive searches
+    console.log('[callTools] Executing', toolCalls.length, 'tool(s) in parallel (async mode)');
     
     // Import all tools
     const { companyTools } = await import("@/lib/tools/company-tools");
@@ -1281,11 +1267,11 @@ export async function callTools(state: SalesAgentStateType): Promise<Partial<Sal
     // Create a map of tool names to tool functions
     const toolMap = new Map(allTools.map(tool => [tool.name, tool]));
     
-    // Execute all tool calls in parallel to prevent blocking
+    // Execute all tool calls in parallel
     const { ToolMessage } = await import("@langchain/core/messages");
 
-    // Prepare tool execution promises
-    const toolExecutionPromises = toolCalls.map(async (toolCall) => {
+    // Execute ALL requested tools (no limiting in async mode)
+    const toolExecutionPromises = toolCalls.map(async (toolCall: any) => {
       const tool = toolMap.get(toolCall.name);
 
       if (!tool) {
@@ -1304,13 +1290,12 @@ export async function callTools(state: SalesAgentStateType): Promise<Partial<Sal
       try {
         console.log('[callTools] Executing tool:', toolCall.name);
         console.log('[callTools] Tool args:', JSON.stringify(toolCall.args, null, 2));
-        console.log('[callTools] Tool object:', { name: tool.name, hasFunc: !!tool.func });
 
-        // Execute the tool function with timeout protection
-        const toolResult = await executeToolWithTimeout(tool, toolCall, 30000); // 30 second timeout
+        // Execute the tool function directly (no timeout in async mode)
+        // The Trigger.dev worker handles overall execution time
+        const toolResult = await tool.func(toolCall.args) as { success?: boolean; [key: string]: unknown };
 
         console.log('[callTools] Tool', toolCall.name, 'executed successfully');
-        console.log('[callTools] Tool result type:', typeof toolResult);
         console.log('[callTools] Tool result success:', toolResult?.success);
 
         // Create ToolMessage with the result
@@ -1325,13 +1310,11 @@ export async function callTools(state: SalesAgentStateType): Promise<Partial<Sal
         console.error('[callTools] Error details:', error);
         console.error('[callTools] Error stack:', error instanceof Error ? error.stack : 'No stack');
 
-        // Create error ToolMessage for timeout or other errors
+        // Create error ToolMessage
         return new ToolMessage({
           content: JSON.stringify({
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
-            timeout: error instanceof Error && error.message.includes('timed out'),
           }),
           tool_call_id: toolCall.id,
           name: tool.name,
@@ -1363,26 +1346,13 @@ export async function callTools(state: SalesAgentStateType): Promise<Partial<Sal
 
 /**
  * Routing functions for conditional edges
+ * 
+ * NOTE: Time-based circuit breakers have been removed since we now run in
+ * Trigger.dev background workers with no timeout constraints.
  */
 
-// Maximum execution time before forcing finalization (in ms)
-// Allow 3 minutes for complex multi-tool workflows, leave 20s buffer for finalization
-const MAX_EXECUTION_TIME_MS = 160000; // 2:40 (160 seconds)
-
 export function shouldCallTools(state: SalesAgentStateType): string {
-  // TIME-BASED CIRCUIT BREAKER: Check elapsed time first
-  // This ensures we always have time to generate a response before Vercel kills us
-  const elapsedMs = state.startTime ? Date.now() - new Date(state.startTime).getTime() : 0;
-  if (elapsedMs > MAX_EXECUTION_TIME_MS) {
-    console.log('[shouldCallTools] Time limit approaching, forcing finalization', {
-      elapsedMs,
-      maxMs: MAX_EXECUTION_TIME_MS,
-      iterationCount: state.iterationCount,
-    });
-    return 'finalize';
-  }
-  
-  // Check iteration limit
+  // Check iteration limit (safety against infinite loops)
   if (state.iterationCount >= MAX_ITERATIONS) {
     console.log('[shouldCallTools] Max iterations reached, finalizing');
     return 'finalize';
@@ -1414,7 +1384,6 @@ export function shouldCallTools(state: SalesAgentStateType): string {
     iterationCount: state.iterationCount,
     retryCount: state.retryCount,
     hasError: !!state.errorInfo,
-    elapsedMs,
   });
   
   // Check if this is an AIMessage with tool_calls

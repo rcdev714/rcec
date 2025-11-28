@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent, ChangeEvent, useRef, useEffect, useMemo } from "react";
+import { useState, FormEvent, ChangeEvent, useRef, useEffect, useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowDown, LoaderCircle, Copy, CopyCheck, ArrowUp, Infinity, CheckCircle2, XCircle } from "lucide-react";
@@ -14,6 +14,7 @@ import { ChatCompanyResults } from "./chat-company-card";
 import { CompanySearchResult } from "@/types/chat";
 import { EmailDraftCard } from "./email-draft-card";
 import { AgentStateEvent, AgentStateDetail } from "./agent-state-indicator";
+import { useAgentRun, type AgentRun } from "@/lib/hooks/use-agent-run";
 
 interface EmailDraft {
   subject: string;
@@ -125,9 +126,11 @@ interface ChatUIProps {
     }
   }[];
   appSidebarOffset?: number;
+  /** Enable async mode using Trigger.dev background workers */
+  useAsyncMode?: boolean;
 }
 
-export function ChatUI({ initialConversationId, initialMessages = [], appSidebarOffset = 0 }: ChatUIProps) {
+export function ChatUI({ initialConversationId, initialMessages = [], appSidebarOffset = 0, useAsyncMode = false }: ChatUIProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
@@ -150,6 +153,105 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
   const toggleDebug = (msgId: string) => {
     setExpandedDebug(prev => ({ ...prev, [msgId]: !prev[msgId] }));
   };
+  
+  // Async mode: Use the agent run hook for realtime updates
+  const handleAgentUpdate = useCallback((run: AgentRun) => {
+    // Update the assistant message with real-time data
+    setMessages(prev => {
+      const next = [...prev];
+      const lastMessage = next[next.length - 1];
+      
+      if (lastMessage?.role === 'assistant') {
+        // Build agent state events from run progress
+        const agentEvents: AgentStateEvent[] = [];
+        if (run.current_node) {
+          agentEvents.push({
+            type: 'thinking',
+            node: run.current_node,
+            message: `Procesando: ${run.current_node}`,
+          });
+        }
+        
+        next[next.length - 1] = {
+          ...lastMessage,
+          content: run.response_content || lastMessage.content || '',
+          searchResult: run.search_results as CompanySearchResult | undefined,
+          emailDraft: run.email_draft || undefined,
+          todos: (run.todos || []).map(t => ({
+            ...t,
+            createdAt: t.createdAt ? new Date(t.createdAt) : new Date(),
+            completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
+          })) as TodoItem[],
+          agentStateEvents: agentEvents.length > 0 ? agentEvents : lastMessage.agentStateEvents,
+          metadata: {
+            ...lastMessage.metadata,
+            type: run.search_results ? 'company_results' : run.email_draft ? 'email_draft' : 'text',
+          },
+        };
+      }
+      
+      return next;
+    });
+  }, []);
+  
+  const handleAgentComplete = useCallback((run: AgentRun) => {
+    setIsSending(false);
+    
+    // Final update with complete data
+    setMessages(prev => {
+      const next = [...prev];
+      const lastMessage = next[next.length - 1];
+      
+      if (lastMessage?.role === 'assistant') {
+        next[next.length - 1] = {
+          ...lastMessage,
+          content: run.response_content || 'Tarea completada.',
+          searchResult: run.search_results as CompanySearchResult | undefined,
+          emailDraft: run.email_draft || undefined,
+          todos: (run.todos || []).map(t => ({
+            ...t,
+            createdAt: t.createdAt ? new Date(t.createdAt) : new Date(),
+            completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
+          })) as TodoItem[],
+          metadata: {
+            ...lastMessage.metadata,
+            type: run.search_results ? 'company_results' : run.email_draft ? 'email_draft' : 'text',
+          },
+        };
+      }
+      
+      return next;
+    });
+    
+    // Notify sidebar
+    window.dispatchEvent(new Event('conversation-updated'));
+  }, []);
+  
+  const handleAgentError = useCallback((error: string) => {
+    setIsSending(false);
+    setBanner(error);
+    
+    // Update message with error
+    setMessages(prev => {
+      const next = [...prev];
+      const lastMessage = next[next.length - 1];
+      
+      if (lastMessage?.role === 'assistant' && !lastMessage.content) {
+        next[next.length - 1] = {
+          ...lastMessage,
+          content: `Lo siento, ocurrió un error: ${error}`,
+        };
+      }
+      
+      return next;
+    });
+  }, []);
+  
+  const { startRun } = useAgentRun({
+    onUpdate: handleAgentUpdate,
+    onComplete: handleAgentComplete,
+    onError: handleAgentError,
+  });
 
   // Note: currentAgentEvents tracking removed - state events are now stored in message metadata
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -589,33 +691,29 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
     }
   };
 
+  /**
+   * Start a chat message - routes to sync or async mode based on useAsyncMode prop
+   */
   const startChat = async (message: string) => {
     if (!message.trim() || isSending) return;
 
-    let finalSearchResult: CompanySearchResult | undefined;
-    let finalEmailDraft: EmailDraft | undefined;
-    let agentPlan: TodoItem[] | undefined;
-    const agentEvents: AgentStateEvent[] = [];
-    let tokenUsage: { inputTokens: number; outputTokens: number; totalTokens: number } | undefined;
-
+    // Common setup
     setIsSending(true);
-    // Agent events are tracked in agentEvents array and stored in message metadata
     const userMessage: Message = { id: genId(), role: "user", content: message };
     setMessages((prev) => [...prev, userMessage]);
+    setInput("");
 
-    // Crear nueva conversación si no existe
+    // Create or get conversation
     let currentConvId = conversationId;
     if (!currentConvId) {
       currentConvId = await conversationManager.createConversation(message);
       setConversationId(currentConvId);
-      // Notify sidebar about new conversation
       window.dispatchEvent(new Event('conversation-updated'));
     } else {
-      // Actualizar actividad de conversación existente
       await conversationManager.updateActivity(currentConvId);
     }
 
-    // Store user message immediately
+    // Store user message
     if (currentConvId) {
       await conversationManager.addMessage(currentConvId, {
         id: '',
@@ -625,7 +723,56 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
       });
     }
 
-    setInput("");
+    // ASYNC MODE: Use Trigger.dev background worker
+    if (useAsyncMode) {
+      try {
+        // Add placeholder assistant message
+        const assistantMessageId = genId();
+        setMessages((prev) => [...prev, { 
+          id: assistantMessageId, 
+          role: "assistant", 
+          content: "",
+          metadata: { type: 'text' }
+        }]);
+
+        // Start async run
+        const result = await startRun({
+          message,
+          conversationId: currentConvId || undefined,
+          model: selectedModel,
+          thinkingLevel: thinkingLevel as 'high' | 'low',
+        });
+        
+        // Update conversation ID if new one was created
+        if (result.conversationId && !conversationId) {
+          setConversationId(result.conversationId);
+        }
+
+        // The hook will handle updates via realtime subscription
+        console.log('[startChat] Async run started:', result.runId);
+        
+      } catch (error) {
+        console.error('Error starting async chat:', error);
+        setIsSending(false);
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        setMessages((prev) => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last?.role === 'assistant' && !last.content) {
+            next[next.length - 1] = { ...last, content: `Lo siento, ocurrió un error: ${errorMessage}` };
+          }
+          return next;
+        });
+      }
+      return;
+    }
+
+    // SYNC MODE: Original streaming implementation
+    let finalSearchResult: CompanySearchResult | undefined;
+    let finalEmailDraft: EmailDraft | undefined;
+    let agentPlan: TodoItem[] | undefined;
+    const agentEvents: AgentStateEvent[] = [];
+    let tokenUsage: { inputTokens: number; outputTokens: number; totalTokens: number } | undefined;
 
     try {
       // Cancel any in-flight request and create a new controller

@@ -15,7 +15,11 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
   
   return (
     <section className="flex h-[100dvh] min-h-0 w-full">
-      <ChatUI key={key} appSidebarOffset={APP_SIDEBAR_COLLAPSED_WIDTH} />
+      <ChatUI
+        key={key}
+        appSidebarOffset={APP_SIDEBAR_COLLAPSED_WIDTH}
+        useAsyncMode
+      />
     </section>
   );
 }

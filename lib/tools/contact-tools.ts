@@ -15,9 +15,23 @@ export const enrichCompanyContactsTool = tool(
       // 2. LinkedIn API (if available)
       // 3. Other ethical contact enrichment services
       
-      // For now, we'll check the directors table
-      const { createClient } = await import('@/lib/supabase/server');
-      const supabase = await createClient();
+      let supabase;
+      
+      try {
+        // Try to use standard server client (works in Next.js request context)
+        // We import dynamically to avoid build-time errors in some environments
+        const { createClient: createNextClient } = await import('@/lib/supabase/server');
+        // This will throw if called outside a request scope (e.g. in Trigger.dev background job)
+        supabase = await createNextClient();
+      } catch {
+        // Fallback: Use service role client in background/worker environments
+        const { createClient: createServiceClient } = await import('@supabase/supabase-js');
+        supabase = createServiceClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          { auth: { persistSession: false } }
+        );
+      }
       
       // Search in directors table
       const query = supabase

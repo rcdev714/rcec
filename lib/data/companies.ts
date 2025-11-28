@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { Company } from "@/types/company";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 const sanitizeTextParam = (value?: string | null) => {
   if (!value) return undefined;
@@ -61,8 +62,8 @@ const ITEMS_PER_PAGE = 12;
  *
  * @returns A promise that resolves to the total company count.
  */
-export async function fetchTotalCompanyCount(): Promise<number> {
-  const supabase = await createClient();
+export async function fetchTotalCompanyCount(supabaseClient?: SupabaseClient): Promise<number> {
+  const supabase = supabaseClient ?? (await createClient());
 
   const { count, error } = await supabase
     .from("companies")
@@ -85,8 +86,11 @@ export async function fetchTotalCompanyCount(): Promise<number> {
  * @returns A promise that resolves to the paginated company
  * data.
  */
-export async function fetchCompanies(params: SearchParams & { exportAll?: boolean; pageSize?: number }): Promise<PaginatedResponse> {
-  const supabase = await createClient();
+export async function fetchCompanies(
+  params: SearchParams & { exportAll?: boolean; pageSize?: number },
+  supabaseClient?: SupabaseClient
+): Promise<PaginatedResponse> {
+  const supabase = supabaseClient ?? (await createClient());
 
   const currentPage = parseInt(params.page || "1", 10);
   const pageSize = params.pageSize || ITEMS_PER_PAGE;
@@ -231,8 +235,8 @@ export async function fetchCompanies(params: SearchParams & { exportAll?: boolea
   };
 }
 
-export async function fetchCompanyHistory(ruc: string): Promise<Company[]> {
-  const supabase = await createClient();
+export async function fetchCompanyHistory(ruc: string, supabaseClient?: SupabaseClient): Promise<Company[]> {
+  const supabase = supabaseClient ?? (await createClient());
 
   console.log("Searching for RUC:", ruc);
 

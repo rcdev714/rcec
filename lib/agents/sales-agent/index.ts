@@ -2,13 +2,50 @@ import { HumanMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
 import { getSalesAgentGraph } from "./graph";
 import { SalesAgentStateType, AgentStateEvent, EmailDraft, MAX_RETRIES } from "./state";
 import { getLangChainTracer, flushLangsmith, langsmithEnabled } from "@/lib/langsmith";
+import { optimizeConversationHistory } from "./context-optimizer";
+import { AgentRecoveryManager } from "./recovery";
+
+// Shared TextEncoder for performance (avoid creating new instances)
+const sharedEncoder = new TextEncoder();
 
 /**
  * Helper function to emit state events to the stream
+ * Uses shared encoder for better performance
  */
 function emitStateEvent(controller: ReadableStreamDefaultController, event: AgentStateEvent) {
   const eventTag = `[STATE_EVENT]${JSON.stringify(event)}[/STATE_EVENT]\n`;
-  controller.enqueue(new TextEncoder().encode(eventTag));
+  controller.enqueue(sharedEncoder.encode(eventTag));
+}
+
+/**
+ * Helper to stream content in optimized chunks
+ * Improves perceived performance by sending content progressively
+ */
+function streamContent(controller: ReadableStreamDefaultController, content: string) {
+  // For short content, send immediately
+  if (content.length < 500) {
+    controller.enqueue(sharedEncoder.encode(content + '\n'));
+    return;
+  }
+  
+  // For longer content, chunk by sentences/paragraphs for progressive rendering
+  // This improves perceived performance as users see content appear gradually
+  const chunks = content.split(/(?<=[.!?\n])\s+/);
+  let buffer = '';
+  
+  for (const chunk of chunks) {
+    buffer += chunk + ' ';
+    // Send when buffer reaches optimal size (~200 chars)
+    if (buffer.length >= 200) {
+      controller.enqueue(sharedEncoder.encode(buffer));
+      buffer = '';
+    }
+  }
+  
+  // Send remaining content
+  if (buffer.trim()) {
+    controller.enqueue(sharedEncoder.encode(buffer + '\n'));
+  }
 }
 
 /**
@@ -38,12 +75,30 @@ export async function chatWithSalesAgent(
 ): Promise<ReadableStream> {
   const userMessage = new HumanMessage(message);
 
-  // Prepare initial state
-  const initialMessages = [...conversationHistory, userMessage];
+  // OPTIMIZATION: Compress long conversation histories to reduce token usage
+  // This is critical for B2C production where conversations can be lengthy
+  let optimizedHistory = conversationHistory;
+  if (conversationHistory.length > 8) {
+    console.log(`[chatWithSalesAgent] Optimizing conversation history: ${conversationHistory.length} messages`);
+    optimizedHistory = optimizeConversationHistory(conversationHistory, {
+      maxMessages: 10,
+      preserveRecentMessages: 4,
+    });
+    console.log(`[chatWithSalesAgent] Optimized to: ${optimizedHistory.length} messages`);
+  }
 
+  // Prepare initial state
+  const initialMessages = [...optimizedHistory, userMessage];
+
+  // Extract user query for recovery
+  const userQuery = message;
+  
   // Create a readable stream to return results
   const stream = new ReadableStream({
     async start(controller) {
+      // Initialize recovery manager for guaranteed response
+      const recovery = new AgentRecoveryManager(userQuery);
+      
       try {
         const graph = getSalesAgentGraph();
 
@@ -108,6 +163,17 @@ export async function chatWithSalesAgent(
           if (nodeName && nodeName !== currentNode) {
             currentNode = nodeName;
             
+            // Update recovery checkpoint with current phase
+            const phaseMap: Record<string, 'init' | 'planning' | 'thinking' | 'tools' | 'processing' | 'finalizing'> = {
+              'load_user_context': 'init',
+              'plan_todos': 'planning',
+              'think': 'thinking',
+              'tools': 'tools',
+              'process_tool_results': 'processing',
+              'finalize': 'finalizing',
+            };
+            recovery.updatePhase(phaseMap[nodeName] || 'thinking', nodeName);
+            
             // Map node names to user-friendly messages
             const nodeMessages: Record<string, string> = {
               'load_user_context': 'Cargando tu contexto de usuario...',
@@ -153,6 +219,9 @@ export async function chatWithSalesAgent(
               const id = (out as any).toolCallId || 'unknown';
               if (emittedToolResultIds.has(id)) continue;
               emittedToolResultIds.add(id);
+              
+              // Record in recovery manager for potential recovery
+              recovery.recordToolCompletion((out as any).toolName, out as any);
 
               emitStateEvent(controller, {
                 type: 'tool_result',
@@ -187,9 +256,12 @@ export async function chatWithSalesAgent(
 
           // Track todo planning and updates - emit as a special message
           if ((nodeName === 'plan_todos' || nodeName === 'update_todos') && nodeOutput.todo && nodeOutput.todo.length > 0) {
+            // Update recovery manager with todos
+            recovery.updateTodos(nodeOutput.todo);
+            
             // Send todos as a structured tag so UI can render them
             const todosTag = `\n\n[AGENT_PLAN]${JSON.stringify(nodeOutput.todo)}[/AGENT_PLAN]\n\n`;
-            controller.enqueue(new TextEncoder().encode(todosTag));
+            controller.enqueue(sharedEncoder.encode(todosTag));
             
             emitStateEvent(controller, {
               type: 'todo_update',
@@ -216,7 +288,7 @@ export async function chatWithSalesAgent(
             
             // Also emit error as visible text content so user can see it
             const errorText = `⚠️ Error: ${nodeOutput.errorInfo}\n\n`;
-            controller.enqueue(new TextEncoder().encode(errorText));
+            controller.enqueue(sharedEncoder.encode(errorText));
             finalResponse += errorText;
           }
 
@@ -292,8 +364,11 @@ export async function chatWithSalesAgent(
               if (content && (!hasEmittedBefore || content !== finalResponse) && !content.startsWith('[CONTEXTO INTERNO]')) {
                 finalResponse = content;
                 
-                // Stream the content
-                controller.enqueue(new TextEncoder().encode(content + '\n'));  // Add newline for better chunking
+                // Update recovery manager with partial response
+                recovery.updatePartialResponse(content);
+                
+                // Stream the content with optimized chunking for progressive rendering
+                streamContent(controller, content);
               }
             }
           }
@@ -333,78 +408,91 @@ export async function chatWithSalesAgent(
         if (finalResponse.trim() === '') {
           console.log('[stream] No text emitted during loop, applying fallback');
           
-          // Try to extract from final state messages
-          let fallbackContent = '';
-          if (previousState && previousState.messages && previousState.messages.length > 0) {
-            // Find last AI-like message
-            for (let i = previousState.messages.length - 1; i >= 0; i--) {
-              const msg = previousState.messages[i];
-              const isFallbackAIMessage = (() => {
-                if (msg && typeof msg === 'object') {
-                  if (typeof msg._getType === 'function' && msg._getType() === 'ai') {
-                    return true;
+          // RECOVERY: First try to generate from recovery manager (uses tool outputs)
+          const checkpoint = recovery.getCheckpoint();
+          if (checkpoint.completedTools.length > 0 || checkpoint.toolOutputs.length > 0) {
+            console.log('[stream] Using recovery manager to generate response from tool outputs');
+            const recoveryResponse = recovery.generateRecoveryResponse();
+            finalResponse = recoveryResponse;
+            controller.enqueue(sharedEncoder.encode(recoveryResponse + '\n'));
+            console.log('[stream] Fallback: Generated recovery response from tool outputs');
+          } else {
+            // Try to extract from final state messages
+            let fallbackContent = '';
+            if (previousState && previousState.messages && previousState.messages.length > 0) {
+              // Find last AI-like message
+              for (let i = previousState.messages.length - 1; i >= 0; i--) {
+                const msg = previousState.messages[i];
+                const isFallbackAIMessage = (() => {
+                  if (msg && typeof msg === 'object') {
+                    if (typeof msg._getType === 'function' && msg._getType() === 'ai') {
+                      return true;
+                    }
+                    const msgAsAny = msg as any;
+                    if (msgAsAny.type === 'ai' || msgAsAny.role === 'assistant') {
+                      return true;
+                    }
                   }
-                  const msgAsAny = msg as any;
-                  if (msgAsAny.type === 'ai' || msgAsAny.role === 'assistant') {
-                    return true;
-                  }
-                }
-                return false;
-              })();
-              
-              if (isFallbackAIMessage) {
-                const msgAsAny = msg as any;
-                let content = '';
-                if (typeof msgAsAny.content === 'string') {
-                  content = msgAsAny.content;
-                } else if (Array.isArray(msgAsAny.content)) {
-                  content = msgAsAny.content
-                    .map((part: Record<string, unknown>) => {
-                      if (part && typeof part === 'object' && 'text' in part) {
-                        return (part as { text?: string }).text || '';
-                      }
-                      return String(part);
-                    })
-                    .join('');
-                } else if (msgAsAny.content !== null && msgAsAny.content !== undefined) {
-                  content = String(msgAsAny.content);
-                }
+                  return false;
+                })();
                 
-                // Apply same filtering
-                if (content) {
-                  content = content
-                    .replace(/\[object Object\],?/g, '').trim()
-                    .replace(/^Herramienta utilizada:[\s\S]*?(?=\n\n|$)/gmi, '')
-                    .replace(/^Parámetros:[\s\S]*?(?=\n\n|$)/gmi, '')
-                    .replace(/\[CALL:[^\]]*\][^\n]*\n?/g, '')
-                    .replace(/\[STATE_EVENT\][\s\S]*?\[\/STATE_EVENT\]/g, '')
-                    .replace(/\[AGENT_PLAN\][\s\S]*?\[\/AGENT_PLAN\]/g, '')
-                    .trim();
+                if (isFallbackAIMessage) {
+                  const msgAsAny = msg as any;
+                  let content = '';
+                  if (typeof msgAsAny.content === 'string') {
+                    content = msgAsAny.content;
+                  } else if (Array.isArray(msgAsAny.content)) {
+                    content = msgAsAny.content
+                      .map((part: Record<string, unknown>) => {
+                        if (part && typeof part === 'object' && 'text' in part) {
+                          return (part as { text?: string }).text || '';
+                        }
+                        return String(part);
+                      })
+                      .join('');
+                  } else if (msgAsAny.content !== null && msgAsAny.content !== undefined) {
+                    content = String(msgAsAny.content);
+                  }
                   
-                  // Reduced min length to 2 to match stream logic
-                  if (content && !content.match(/^[,\s]*$/) && content.length >= 2 && !content.startsWith('[CONTEXTO INTERNO]')) {
-                    fallbackContent = content;
-                    break;
+                  // Apply same filtering
+                  if (content) {
+                    content = content
+                      .replace(/\[object Object\],?/g, '').trim()
+                      .replace(/^Herramienta utilizada:[\s\S]*?(?=\n\n|$)/gmi, '')
+                      .replace(/^Parámetros:[\s\S]*?(?=\n\n|$)/gmi, '')
+                      .replace(/\[CALL:[^\]]*\][^\n]*\n?/g, '')
+                      .replace(/\[STATE_EVENT\][\s\S]*?\[\/STATE_EVENT\]/g, '')
+                      .replace(/\[AGENT_PLAN\][\s\S]*?\[\/AGENT_PLAN\]/g, '')
+                      .trim();
+                    
+                    // Reduced min length to 2 to match stream logic
+                    if (content && !content.match(/^[,\s]*$/) && content.length >= 2 && !content.startsWith('[CONTEXTO INTERNO]')) {
+                      fallbackContent = content;
+                      break;
+                    }
                   }
                 }
               }
             }
-          }
-          
-          if (fallbackContent) {
-            finalResponse = fallbackContent;
-            controller.enqueue(new TextEncoder().encode(fallbackContent + '\n'));
-            console.log('[stream] Fallback: Emitted extracted content from state');
-          } else {
-            // Ultimate fallback
-            const ultimateFallback = 'Completé la acción solicitada. Revisa los resultados adjuntos si los hay.';
-            finalResponse = ultimateFallback;
-            controller.enqueue(new TextEncoder().encode(ultimateFallback + '\n'));
-            console.log('[stream] Fallback: Emitted ultimate fallback message');
+            
+            if (fallbackContent) {
+              finalResponse = fallbackContent;
+              controller.enqueue(sharedEncoder.encode(fallbackContent + '\n'));
+              console.log('[stream] Fallback: Emitted extracted content from state');
+            } else {
+              // Ultimate fallback - use recovery manager
+              const ultimateFallback = recovery.generateRecoveryResponse();
+              finalResponse = ultimateFallback;
+              controller.enqueue(sharedEncoder.encode(ultimateFallback + '\n'));
+              console.log('[stream] Fallback: Emitted recovery manager fallback');
+            }
           }
         } else {
           console.log('[stream] Text emitted successfully during loop');
         }
+        
+        // Cleanup recovery manager
+        recovery.cleanup();
 
         // Emit finalize event
         emitStateEvent(controller, {
@@ -426,13 +514,13 @@ export async function chatWithSalesAgent(
           // Use the most specific/refined search result (usually the last one)
           const primaryResult = searchResults[searchResults.length - 1];
           const searchResultTag = `\n\n[SEARCH_RESULTS]${JSON.stringify(primaryResult)}[/SEARCH_RESULTS]`;
-          controller.enqueue(new TextEncoder().encode(searchResultTag));
+          controller.enqueue(sharedEncoder.encode(searchResultTag));
         }
 
         // Append email draft if available
         if (emailDraft) {
           const emailDraftTag = `\n\n[EMAIL_DRAFT]${JSON.stringify(emailDraft)}[/EMAIL_DRAFT]`;
-          controller.enqueue(new TextEncoder().encode(emailDraftTag));
+          controller.enqueue(sharedEncoder.encode(emailDraftTag));
         }
 
         // Append token usage if available
@@ -442,7 +530,7 @@ export async function chatWithSalesAgent(
             outputTokens: totalOutputTokens,
             totalTokens: totalTokens,
           })}[/TOKEN_USAGE]`;
-          controller.enqueue(new TextEncoder().encode(tokenUsageTag));
+          controller.enqueue(sharedEncoder.encode(tokenUsageTag));
         }
 
         // Flush LangSmith traces before closing
@@ -468,29 +556,46 @@ export async function chatWithSalesAgent(
           timestamp: new Date().toISOString(),
         });
 
-        // User-friendly error messages
-        let errorMessage = 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta de nuevo.';
+        // Add error to recovery manager
+        recovery.addWarning(error instanceof Error ? error.message : 'Error desconocido');
 
-        if (error instanceof Error) {
-          if (error.message.includes('GOOGLE_API_KEY') || error.message.includes('API key')) {
-            errorMessage = 'Error de configuración: La clave API de Google no está configurada correctamente o es inválida.';
-          } else if (error.message.includes('timeout')) {
-            errorMessage = 'La solicitud tardó demasiado tiempo. Por favor, intenta con una consulta más simple.';
-          } else if (error.message.includes('rate limit') || error.message.includes('Too Many Requests') || error.message.includes('quota')) {
-            errorMessage = 'Has excedido el límite de consultas de la API de Google. Por favor, espera o verifica tu configuración.';
-          } else if (error.message.includes('429')) {
-            errorMessage = 'Límite de consultas alcanzado. Intenta de nuevo más tarde.';
-          } else if (error.message.includes('403') || error.message.includes('Forbidden')) {
-            errorMessage = 'La clave API de Google no tiene los permisos necesarios. Verifica tu configuración en Google Cloud Console.';
-          } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
-            errorMessage = 'La clave API de Google es inválida o ha expirado. Por favor, verifica tu configuración.';
-          } else {
-            // Include the actual error message for debugging
-            errorMessage = `Error: ${error.message}`;
+        // RECOVERY: Try to generate a useful response from what we have
+        const checkpoint = recovery.getCheckpoint();
+        const hasPartialWork = checkpoint.completedTools.length > 0 || checkpoint.partialResponse.length > 50;
+        
+        if (hasPartialWork) {
+          // We have partial work - generate recovery response
+          console.log('[Recovery] Generating response from partial work...');
+          const recoveryResponse = recovery.generateRecoveryResponse();
+          controller.enqueue(sharedEncoder.encode(recoveryResponse));
+        } else {
+          // No partial work - show user-friendly error
+          let errorMessage = 'Lo siento, ocurrió un error al procesar tu consulta. Por favor, intenta de nuevo.';
+
+          if (error instanceof Error) {
+            if (error.message.includes('GOOGLE_API_KEY') || error.message.includes('API key')) {
+              errorMessage = 'Error de configuración: La clave API de Google no está configurada correctamente o es inválida.';
+            } else if (error.message.includes('timeout')) {
+              errorMessage = 'La solicitud tardó demasiado tiempo. Por favor, intenta con una consulta más simple.';
+            } else if (error.message.includes('rate limit') || error.message.includes('Too Many Requests') || error.message.includes('quota')) {
+              errorMessage = 'Has excedido el límite de consultas de la API de Google. Por favor, espera o verifica tu configuración.';
+            } else if (error.message.includes('429')) {
+              errorMessage = 'Límite de consultas alcanzado. Intenta de nuevo más tarde.';
+            } else if (error.message.includes('403') || error.message.includes('Forbidden')) {
+              errorMessage = 'La clave API de Google no tiene los permisos necesarios. Verifica tu configuración en Google Cloud Console.';
+            } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+              errorMessage = 'La clave API de Google es inválida o ha expirado. Por favor, verifica tu configuración.';
+            } else {
+              // Include the actual error message for debugging
+              errorMessage = `Error: ${error.message}`;
+            }
           }
-        }
 
-        controller.enqueue(new TextEncoder().encode(errorMessage));
+          controller.enqueue(sharedEncoder.encode(errorMessage));
+        }
+        
+        // Cleanup recovery manager
+        recovery.cleanup();
         controller.close();
       }
     },

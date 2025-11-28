@@ -9,7 +9,7 @@ import {
   finalize,
   shouldCallTools,
 } from "./nodes";
-// import { SupabaseCheckpointSaver } from "./checkpointer"; // Disabled - not currently used
+import { SupabaseCheckpointSaver } from "./checkpointer";
 
 /**
  * Build the Sales Agent StateGraph
@@ -63,12 +63,50 @@ export function buildSalesAgentGraph() {
   // finalize → END
   graph.addEdge("finalize", END);
 
-  // Compile WITHOUT checkpointer for now (causing state pollution issues)
-  // TODO: Re-enable checkpointing once tool execution is stable
-  // const checkpointer = new SupabaseCheckpointSaver();
+  // Compile graph (checkpointing is optional - enabled when passed to invoke)
+  const compiledGraph = graph.compile({});
+
+  return compiledGraph;
+}
+
+/**
+ * Build the Sales Agent StateGraph with checkpointing enabled
+ * Use this for async Trigger.dev execution where state persistence is critical
+ */
+export function buildSalesAgentGraphWithCheckpointer() {
+  const graph = new StateGraph(SalesAgentState) as any;
+
+  // Add nodes
+  graph.addNode("load_user_context", loadUserContext);
+  graph.addNode("plan_todos", planTodos);
+  graph.addNode("think", think);
+  graph.addNode("tools", callTools);
+  graph.addNode("process_tool_results", processToolResults);
+  graph.addNode("finalize", finalize);
+
+  // Define edges
+  graph.addEdge(START, "load_user_context");
+  graph.addEdge("load_user_context", "plan_todos");
+  graph.addEdge("plan_todos", "think");
+
+  graph.addConditionalEdges(
+    "think",
+    shouldCallTools,
+    {
+      tools: "tools",
+      finalize: "finalize",
+    }
+  );
+
+  graph.addEdge("tools", "process_tool_results");
+  graph.addEdge("process_tool_results", "think");
+  graph.addEdge("finalize", END);
+
+  // Compile WITH checkpointer for async mode
+  const checkpointer = new SupabaseCheckpointSaver();
   
   const compiledGraph = graph.compile({
-    // checkpointer, // Disabled temporarily
+    checkpointer,
   });
 
   return compiledGraph;

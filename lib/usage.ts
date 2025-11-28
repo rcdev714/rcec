@@ -410,6 +410,9 @@ export async function ensurePromptAllowedAndTrack(
  * Track LLM usage after completion (simple post-tracking)
  * Increments tokens and dollars atomically
  * 
+ * NOTE: This function requires cookies (uses createClient from server).
+ * For background tasks (Trigger.dev), use trackLLMUsageBackground instead.
+ * 
  * @param userId - User ID
  * @param model - Model name
  * @param inputTokens - Actual input tokens from metadata
@@ -481,6 +484,166 @@ export async function trackLLMUsage(
     }
   } catch (error) {
     console.error('[trackLLMUsage] Error tracking usage:', error);
+    // Non-critical: Don't throw, just log
+  }
+}
+
+/**
+ * Track LLM usage from background tasks (Trigger.dev workers)
+ * Uses service role key instead of cookies for authentication.
+ * 
+ * This is the background-safe version of trackLLMUsage for use in:
+ * - Trigger.dev tasks
+ * - Cron jobs
+ * - Any server-side context without request cookies
+ * 
+ * @param userId - User ID (trusted, no auth check - caller must verify)
+ * @param model - Model name
+ * @param inputTokens - Actual input tokens from metadata
+ * @param outputTokens - Actual output tokens from metadata
+ */
+export async function trackLLMUsageBackground(
+  userId: string,
+  model: GeminiModel | string,
+  inputTokens: number,
+  outputTokens: number
+): Promise<void> {
+  // Validate inputs
+  if (!userId || inputTokens < 0 || outputTokens < 0) {
+    console.error('[trackLLMUsageBackground] Invalid inputs:', { userId, inputTokens, outputTokens });
+    return;
+  }
+
+  // Use require for Supabase to avoid ESM/CJS issues in Trigger.dev runtime
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { createClient: createSupabaseClient } = require("@supabase/supabase-js");
+  
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('[trackLLMUsageBackground] Missing Supabase credentials');
+    return;
+  }
+  
+  const supabase = createSupabaseClient(supabaseUrl, supabaseServiceKey, {
+    auth: { persistSession: false }
+  });
+
+  try {
+    // Fetch user data to get created_at for period calculation
+    const { data: userData, error: userError } = await supabase
+      .from('auth.users')
+      .select('created_at')
+      .eq('id', userId)
+      .single();
+
+    // Fallback: query auth.users via admin API or use current date
+    let userCreatedAt = new Date().toISOString();
+    if (!userError && userData?.created_at) {
+      userCreatedAt = userData.created_at;
+    } else {
+      // Try using auth admin API
+      const { data: authUser } = await supabase.auth.admin.getUserById(userId);
+      if (authUser?.user?.created_at) {
+        userCreatedAt = authUser.user.created_at;
+      }
+    }
+
+    // Fetch subscription to determine plan
+    const { data: subscription } = await supabase
+      .from('user_subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    const plan: Plan = (subscription?.plan as Plan) || 'FREE';
+
+    // Resolve usage anchor based on plan and subscription
+    const anchorIso = resolveUsageAnchorIso(plan, subscription, userCreatedAt);
+    const { start, end } = getMonthlyPeriodForAnchor(anchorIso);
+
+    // Ensure usage row exists (upsert)
+    const baseRow = {
+      user_id: userId,
+      period_start: start.toISOString(),
+      period_end: end.toISOString(),
+      searches: 0,
+      exports: 0,
+      prompts_count: 0,
+      prompt_input_tokens: 0,
+      prompt_output_tokens: 0,
+      prompt_dollars: 0,
+    };
+
+    await supabase
+      .from('user_usage')
+      .upsert(baseRow, { onConflict: 'user_id,period_start', ignoreDuplicates: true });
+
+    // Calculate cost
+    const cost = dollarsFromTokens(model, inputTokens, outputTokens);
+
+    console.log('[trackLLMUsageBackground] Tracking:', {
+      userId,
+      model,
+      inputTokens,
+      outputTokens,
+      cost: cost.toFixed(4),
+      periodStart: start.toISOString(),
+    });
+
+    // Use RPC functions for atomic increments
+    // Increment input tokens
+    if (inputTokens > 0) {
+      const { error } = await supabase.rpc('atomic_increment_usage_by', {
+        p_user_id: userId,
+        p_period_start: start.toISOString(),
+        p_column: 'prompt_input_tokens',
+        p_delta: inputTokens
+      });
+      if (error) {
+        console.error('[trackLLMUsageBackground] Failed to increment input tokens:', error);
+      }
+    }
+
+    // Increment output tokens
+    if (outputTokens > 0) {
+      const { error } = await supabase.rpc('atomic_increment_usage_by', {
+        p_user_id: userId,
+        p_period_start: start.toISOString(),
+        p_column: 'prompt_output_tokens',
+        p_delta: outputTokens
+      });
+      if (error) {
+        console.error('[trackLLMUsageBackground] Failed to increment output tokens:', error);
+      }
+    }
+
+    // Increment dollars
+    if (cost > 0) {
+      const { error } = await supabase.rpc('atomic_increment_prompt_dollars', {
+        p_user_id: userId,
+        p_period_start: start.toISOString(),
+        p_amount: cost
+      });
+      if (error) {
+        console.error('[trackLLMUsageBackground] Failed to increment dollars:', error);
+      }
+    }
+
+    // Also increment prompts_count
+    const { error: countError } = await supabase.rpc('atomic_increment_usage', {
+      p_user_id: userId,
+      p_period_start: start.toISOString(),
+      p_column: 'prompts_count'
+    });
+    if (countError) {
+      console.error('[trackLLMUsageBackground] Failed to increment prompts_count:', countError);
+    }
+
+    console.log('[trackLLMUsageBackground] ✓ Usage tracked successfully');
+  } catch (error) {
+    console.error('[trackLLMUsageBackground] Error tracking usage:', error);
     // Non-critical: Don't throw, just log
   }
 }

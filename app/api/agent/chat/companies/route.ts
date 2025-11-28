@@ -36,11 +36,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Use the search tool
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await searchCompaniesTool.func({
       query,
       limit: Math.min(Math.max(limit, 1), 50),
       page: Math.max(page, 1),
-    });
+    }) as any;
 
     // Log the search for analytics
     if (result.success && result.result) {

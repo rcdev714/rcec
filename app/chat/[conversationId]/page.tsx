@@ -45,6 +45,7 @@ export default async function ConversationPage({ params }: ConversationPageProps
         initialConversationId={conversationId}
         initialMessages={messages || []}
         appSidebarOffset={APP_SIDEBAR_COLLAPSED_WIDTH}
+        useAsyncMode
       />
     </section>
   )
