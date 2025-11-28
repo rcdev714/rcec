@@ -75,6 +75,26 @@ Trigger.dev tasks run on their cloud infrastructure, separate from your Next.js 
     - Receive real-time updates via Supabase.
     - Display the final response.
 
+## Part 4: Automating Trigger.dev Deployment (GitHub Actions)
+
+This setup ensures your background tasks are automatically updated whenever you push code, just like Netlify updates your site.
+
+1.  **Get Access Token**:
+    - Go to Trigger.dev Dashboard > Profile Picture > Access Tokens.
+    - Create a token (e.g. "GitHub Actions").
+
+2.  **Add to GitHub Secrets**:
+    - Go to your GitHub Repo > Settings > Secrets and variables > Actions.
+    - Add `TRIGGER_ACCESS_TOKEN` with the value from step 1.
+
+3.  **Push the Workflow**:
+    - We have created `.github/workflows/deploy-trigger.yml`.
+    - Push this file to your repository.
+
+Now, every `git push` to main will:
+1.  Trigger Netlify to build/deploy the web app.
+2.  Trigger GitHub Actions to deploy the background tasks to Trigger.dev.
+
 ## Troubleshooting
 
 -   **"Cookies outside request scope"**: This is fixed by our recent changes to `contact-tools.ts` and `nodes.ts` which detect the background environment and use the Service Role client.
