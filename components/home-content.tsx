@@ -189,7 +189,7 @@ export default function HomeContent({ initialUser = null }: HomeContentProps) {
             </h1>
             
             <p className="max-w-xl mx-auto text-base sm:text-lg text-gray-500 mb-8 leading-relaxed font-light">
-              Busca, audita y conecta con empresas, sin abogados ni terceros a la velocidad de la luz.
+              Busca, audita y conecta con empresas, sin terceros y a la velocidad de la luz.
               
             </p>
 
