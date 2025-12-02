@@ -136,6 +136,7 @@ export const salesAgentTask = task({
       };
 
       // Stream the graph execution
+      // IMPORTANT: Initialize userContext with userId for background tools
       const streamResult = await graph.stream(
         {
           messages,
@@ -146,6 +147,14 @@ export const salesAgentTask = task({
           modelName,
           thinkingLevel,
           startTime: new Date(),
+          // Initialize userContext with userId - required for offerings tools in background
+          userContext: {
+            userId,
+            offerings: [],
+            subscription: { plan: 'FREE', status: 'active' },
+            usage: { searches: 0, exports: 0, prompts: 0 },
+            limits: { searches: 100, exports: 10, prompts: 100 },
+          },
         },
         {
           configurable: { 

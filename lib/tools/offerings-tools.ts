@@ -1,16 +1,73 @@
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
 import { UserOffering } from '@/types/user-offering';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+/**
+ * Detect if we're running in a background task (Trigger.dev worker)
+ * by checking for the absence of cookies/request context
+ */
+function isBackgroundTask(): boolean {
+  try {
+    return typeof process !== 'undefined' && 
+           process.env.TRIGGER_PROJECT_ID !== undefined;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get a Supabase client that works in both Next.js and Trigger.dev contexts
+ * Returns { client, userId } - userId is null if auth lookup is needed externally
+ */
+async function getSupabaseClientWithAuth(providedUserId?: string): Promise<{
+  client: SupabaseClient;
+  userId: string | null;
+  isBackground: boolean;
+}> {
+  // If in background task or userId is provided, use service role client
+  if (isBackgroundTask() || providedUserId) {
+    const { createClient: createServiceClient } = await import('@supabase/supabase-js');
+    const client = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    );
+    return { client, userId: providedUserId || null, isBackground: true };
+  }
+
+  // In Next.js context, use cookie-based client
+  try {
+    const { createClient: createNextClient } = await import('@/lib/supabase/server');
+    const client = await createNextClient();
+    
+    // Try to get user from auth
+    const { data: { user }, error } = await client.auth.getUser();
+    if (error || !user) {
+      console.error('[getSupabaseClientWithAuth] Auth error:', error);
+      return { client, userId: null, isBackground: false };
+    }
+    
+    return { client, userId: user.id, isBackground: false };
+  } catch {
+    // Fallback if Next.js context fails (shouldn't happen but safe fallback)
+    console.warn('[getSupabaseClientWithAuth] Next.js client failed, using service client');
+    const { createClient: createServiceClient } = await import('@supabase/supabase-js');
+    const client = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    );
+    return { client, userId: providedUserId || null, isBackground: true };
+  }
+}
 
 /**
  * Fetch all user offerings from the database
  */
-async function fetchUserOfferings(userId: string): Promise<UserOffering[]> {
+async function fetchUserOfferings(client: SupabaseClient, userId: string): Promise<UserOffering[]> {
   try {
-    const supabase = await createClient();
-    
-    const { data: offerings, error } = await supabase
+    const { data: offerings, error } = await client
       .from('user_offerings')
       .select('*')
       .eq('user_id', userId)
@@ -31,11 +88,9 @@ async function fetchUserOfferings(userId: string): Promise<UserOffering[]> {
 /**
  * Fetch a specific offering by ID (with user ownership verification)
  */
-async function fetchOfferingById(offeringId: string, userId: string): Promise<UserOffering | null> {
+async function fetchOfferingById(client: SupabaseClient, offeringId: string, userId: string): Promise<UserOffering | null> {
   try {
-    const supabase = await createClient();
-    
-    const { data: offering, error } = await supabase
+    const { data: offering, error } = await client
       .from('user_offerings')
       .select('*')
       .eq('id', offeringId)
@@ -60,26 +115,32 @@ async function fetchOfferingById(offeringId: string, userId: string): Promise<Us
 
 /**
  * Tool for listing all user offerings (lightweight summary)
+ * 
+ * In background tasks (Trigger.dev), the userId must be provided since there's no auth context.
+ * The agent automatically injects userId from state when running in background mode.
  */
 export const listUserOfferingsTool = tool(
-  async () => {
+  async ({ userId: providedUserId }: { userId?: string }) => {
     try {
-      // Get userId from authenticated session
-      const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      // Get Supabase client with auth (handles both Next.js and background contexts)
+      const { client, userId, isBackground } = await getSupabaseClientWithAuth(providedUserId);
       
-      if (authError || !user) {
-        console.error('[listUserOfferingsTool] Auth error:', authError);
+      if (!userId) {
+        console.error('[listUserOfferingsTool] No userId available');
         return {
           success: false,
-          error: 'No se pudo autenticar al usuario',
-          suggestion: 'Por favor, inicia sesión para ver tus servicios.',
+          error: isBackground 
+            ? 'userId es requerido en tareas de fondo. El agente debe proporcionar el userId.'
+            : 'No se pudo autenticar al usuario',
+          suggestion: isBackground
+            ? 'Asegúrate de que el agente proporcione el userId del contexto del usuario.'
+            : 'Por favor, inicia sesión para ver tus servicios.',
         };
       }
       
-      console.log('[listUserOfferingsTool] Fetching offerings for user:', user.id);
+      console.log('[listUserOfferingsTool] Fetching offerings for user:', userId, '(background:', isBackground, ')');
       
-      const offerings = await fetchUserOfferings(user.id);
+      const offerings = await fetchUserOfferings(client, userId);
       
       if (offerings.length === 0) {
         return {
@@ -154,33 +215,43 @@ Esta herramienta devuelve un resumen ligero de todas las ofertas del usuario, in
 
 NO necesitas esta herramienta si el contexto ya incluye información básica de offerings.
 
-IMPORTANTE: Esta herramienta NO requiere parámetros. El usuario se identifica automáticamente desde la sesión.`,
-    schema: z.object({}), // No parameters needed - user identified from session
+PARÁMETROS:
+- userId (opcional): En contextos de tarea de fondo (Trigger.dev), debes proporcionar el userId del contexto del usuario.
+  En contextos web normales, se identifica automáticamente desde la sesión.`,
+    schema: z.object({
+      userId: z.string().optional().describe('ID del usuario. Requerido en tareas de fondo (Trigger.dev). El agente lo obtiene del contexto del usuario (userContext.userId).'),
+    }),
   }
 );
 
 /**
  * Tool for getting detailed information about a specific offering
+ * 
+ * In background tasks (Trigger.dev), the userId must be provided since there's no auth context.
+ * The agent automatically injects userId from state when running in background mode.
  */
 export const getOfferingDetailsTool = tool(
-  async ({ offeringId }: { offeringId: string }) => {
+  async ({ offeringId, userId: providedUserId }: { offeringId: string; userId?: string }) => {
     try {
-      // Get userId from authenticated session
-      const supabase = await createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      // Get Supabase client with auth (handles both Next.js and background contexts)
+      const { client, userId, isBackground } = await getSupabaseClientWithAuth(providedUserId);
       
-      if (authError || !user) {
-        console.error('[getOfferingDetailsTool] Auth error:', authError);
+      if (!userId) {
+        console.error('[getOfferingDetailsTool] No userId available');
         return {
           success: false,
-          error: 'No se pudo autenticar al usuario',
-          suggestion: 'Por favor, inicia sesión para ver los detalles del servicio.',
+          error: isBackground 
+            ? 'userId es requerido en tareas de fondo. El agente debe proporcionar el userId.'
+            : 'No se pudo autenticar al usuario',
+          suggestion: isBackground
+            ? 'Asegúrate de que el agente proporcione el userId del contexto del usuario.'
+            : 'Por favor, inicia sesión para ver los detalles del servicio.',
         };
       }
       
-      console.log('[getOfferingDetailsTool] Fetching offering:', offeringId, 'for user:', user.id);
+      console.log('[getOfferingDetailsTool] Fetching offering:', offeringId, 'for user:', userId, '(background:', isBackground, ')');
       
-      const offering = await fetchOfferingById(offeringId, user.id);
+      const offering = await fetchOfferingById(client, offeringId, userId);
       
       if (!offering) {
         return {
@@ -312,10 +383,13 @@ Después de obtener los detalles, úsalos para:
 - Mencionar características relevantes para las necesidades del prospecto
 - Incluir precios y enlaces apropiados
 
-IMPORTANTE: Solo necesitas proporcionar el offeringId. El usuario se identifica automáticamente desde la sesión.
-Para obtener el offeringId correcto, primero consulta el contexto del usuario o usa list_user_offerings.`,
+PARÁMETROS:
+- offeringId (requerido): ID (UUID) del servicio/producto a consultar. Obtén este ID del contexto del usuario o de list_user_offerings.
+- userId (opcional): En contextos de tarea de fondo (Trigger.dev), debes proporcionar el userId del contexto del usuario.
+  En contextos web normales, se identifica automáticamente desde la sesión.`,
     schema: z.object({
       offeringId: z.string().describe('ID (UUID) del servicio/producto a consultar. Obtén este ID del contexto del usuario o de list_user_offerings.'),
+      userId: z.string().optional().describe('ID del usuario. Requerido en tareas de fondo (Trigger.dev). El agente lo obtiene del contexto del usuario (userContext.userId).'),
     }),
   }
 );

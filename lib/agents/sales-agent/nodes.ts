@@ -3,28 +3,14 @@ import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { SalesAgentStateType, TodoItem, MAX_ITERATIONS, MAX_RETRIES, ToolOutput } from "./state";
 import { SALES_AGENT_SYSTEM_PROMPT } from "./prompt";
 import { extractTokenUsageFromMetadata } from "@/lib/token-counter";
-import { trackLLMUsage, trackLLMUsageBackground } from "@/lib/usage";
+import { trackLLMUsageBackground } from "@/lib/usage";
 
 /**
- * Detect if we're running in a background task (Trigger.dev worker)
- * by checking for the absence of cookies/request context
- */
-function isBackgroundTask(): boolean {
-  // In Trigger.dev workers, there's no Next.js request context
-  // We can detect this by checking if we're in a Node.js runtime without cookies
-  try {
-    // If we can import cookies, we might be in a Next.js context
-    // But this will throw in Trigger.dev runtime
-    return typeof process !== 'undefined' && 
-           process.env.TRIGGER_PROJECT_ID !== undefined;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Track LLM usage with automatic context detection
- * Uses background-safe version in Trigger.dev workers
+ * Track LLM usage in background context
+ * 
+ * NOTE: The agent graph is ONLY invoked from Trigger.dev background workers,
+ * so we always use the background-safe version that uses service role key
+ * instead of cookies-based authentication.
  */
 async function trackUsageSafe(
   userId: string,
@@ -32,13 +18,8 @@ async function trackUsageSafe(
   inputTokens: number,
   outputTokens: number
 ): Promise<void> {
-  if (isBackgroundTask()) {
-    // Use background-safe version (service role key)
-    await trackLLMUsageBackground(userId, model, inputTokens, outputTokens);
-  } else {
-    // Use standard version (cookies-based)
-    await trackLLMUsage(userId, model, inputTokens, outputTokens);
-  }
+  // Always use background-safe version since this code only runs in Trigger.dev workers
+  await trackLLMUsageBackground(userId, model, inputTokens, outputTokens);
 }
 import { optimizeConversationHistory } from "./context-optimizer";
 
@@ -1270,6 +1251,9 @@ export async function callTools(state: SalesAgentStateType): Promise<Partial<Sal
     // Execute all tool calls in parallel
     const { ToolMessage } = await import("@langchain/core/messages");
 
+    // Tools that need userId injection for background task support
+    const toolsNeedingUserId = ['list_user_offerings', 'get_offering_details'];
+    
     // Execute ALL requested tools (no limiting in async mode)
     const toolExecutionPromises = toolCalls.map(async (toolCall: any) => {
       const tool = toolMap.get(toolCall.name);
@@ -1287,13 +1271,20 @@ export async function callTools(state: SalesAgentStateType): Promise<Partial<Sal
         });
       }
 
+      // Inject userId for tools that need it in background mode
+      const toolArgs = { ...toolCall.args };
+      if (toolsNeedingUserId.includes(toolCall.name) && state.userContext?.userId) {
+        toolArgs.userId = state.userContext.userId;
+        console.log('[callTools] Injected userId for', toolCall.name, ':', state.userContext.userId);
+      }
+
       try {
         console.log('[callTools] Executing tool:', toolCall.name);
-        console.log('[callTools] Tool args:', JSON.stringify(toolCall.args, null, 2));
+        console.log('[callTools] Tool args:', JSON.stringify(toolArgs, null, 2));
 
         // Execute the tool function directly (no timeout in async mode)
         // The Trigger.dev worker handles overall execution time
-        const toolResult = await tool.func(toolCall.args) as { success?: boolean; [key: string]: unknown };
+        const toolResult = await tool.func(toolArgs) as { success?: boolean; [key: string]: unknown };
 
         console.log('[callTools] Tool', toolCall.name, 'executed successfully');
         console.log('[callTools] Tool result success:', toolResult?.success);

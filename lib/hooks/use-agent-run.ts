@@ -108,12 +108,24 @@ export function useAgentRun(options: UseAgentRunOptions = {}) {
             optionsRef.current.onComplete?.(updatedRun);
           } else if (updatedRun.status === "failed") {
             setIsLoading(false);
-            setError(updatedRun.error_message || "Agent run failed");
-            optionsRef.current.onError?.(updatedRun.error_message || "Agent run failed");
+            const errorMsg = updatedRun.error_message || "Agent run failed";
+            setError(errorMsg);
+            optionsRef.current.onError?.(errorMsg);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`[Realtime] Subscribed to agent run ${runId}`);
+        }
+        if (status === 'CHANNEL_ERROR') {
+          console.error(`[Realtime] Channel error for run ${runId}`);
+          // Don't fail immediately on channel error, might be transient
+        }
+        if (status === 'TIMED_OUT') {
+          console.error(`[Realtime] Channel timeout for run ${runId}`);
+        }
+      });
 
     channelRef.current = channel;
   }, []);
