@@ -561,13 +561,10 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
     }
     
     // OPTIMIZATION: Compress conversation history to reduce token usage
-    // This is critical for B2C where users may have long conversations
-    // OPTIMIZATION: Compress conversation history to reduce token usage
-    // But preserve more recent messages to maintain context for follow-up questions
+    // Preserves more recent messages to maintain context for follow-up questions
     if (baseMessages.length > 10) {
       const originalLength = baseMessages.length;
       baseMessages = optimizeConversationHistory(baseMessages, {
-        maxMessages: 20,
         preserveRecentMessages: 8, // Increased to preserve user follow-up questions
       });
       console.log(`[think] Optimized conversation: ${originalLength} -> ${baseMessages.length} messages`);
@@ -581,9 +578,11 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
     
     let messagesToSend = [new SystemMessage(SALES_AGENT_SYSTEM_PROMPT + contextMessage + effectiveThinkingHint)];
     
-    if (baseMessages.length > 12) {
+    // Secondary trimming only if optimizer output is still too large
+    // Aligned with optimizer's maxMessages: 20 setting
+    if (baseMessages.length > 20) {
       messagesToSend.push(baseMessages[0]); // First message (to preserve context)
-      messagesToSend = messagesToSend.concat(baseMessages.slice(-10));
+      messagesToSend = messagesToSend.concat(baseMessages.slice(-18)); // Keep last 18 to stay under 20 total
     } else {
       messagesToSend = messagesToSend.concat(baseMessages);
     }

@@ -250,4 +250,3 @@ export function compressToolOutputsForContext(
   
   return `\n[RESULTADOS COMPRIMIDOS]\n${compressed.join('\n')}\n[/RESULTADOS]`;
 }
-
