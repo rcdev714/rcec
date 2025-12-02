@@ -27,8 +27,10 @@ async function getSupabaseClientWithAuth(providedUserId?: string): Promise<{
 }> {
   // If in background task or userId is provided, use service role client
   if (isBackgroundTask() || providedUserId) {
-    const { createClient: createServiceClient } = await import('@supabase/supabase-js');
-    const client = createServiceClient(
+    // Use require() for Trigger.dev compatibility (ES module import() has different structure)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { createClient } = require('@supabase/supabase-js');
+    const client = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       { auth: { persistSession: false } }
@@ -52,8 +54,10 @@ async function getSupabaseClientWithAuth(providedUserId?: string): Promise<{
   } catch {
     // Fallback if Next.js context fails (shouldn't happen but safe fallback)
     console.warn('[getSupabaseClientWithAuth] Next.js client failed, using service client');
-    const { createClient: createServiceClient } = await import('@supabase/supabase-js');
-    const client = createServiceClient(
+    // Use require() for Trigger.dev compatibility (ES module import() has different structure)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { createClient } = require('@supabase/supabase-js');
+    const client = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       { auth: { persistSession: false } }

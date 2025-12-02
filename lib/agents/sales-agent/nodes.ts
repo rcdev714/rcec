@@ -562,11 +562,13 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
     
     // OPTIMIZATION: Compress conversation history to reduce token usage
     // This is critical for B2C where users may have long conversations
-    if (baseMessages.length > 6) {
+    // OPTIMIZATION: Compress conversation history to reduce token usage
+    // But preserve more recent messages to maintain context for follow-up questions
+    if (baseMessages.length > 10) {
       const originalLength = baseMessages.length;
       baseMessages = optimizeConversationHistory(baseMessages, {
-        maxMessages: 12,
-        preserveRecentMessages: 4,
+        maxMessages: 20,
+        preserveRecentMessages: 8, // Increased to preserve user follow-up questions
       });
       console.log(`[think] Optimized conversation: ${originalLength} -> ${baseMessages.length} messages`);
     }

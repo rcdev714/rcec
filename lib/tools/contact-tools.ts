@@ -25,8 +25,10 @@ export const enrichCompanyContactsTool = tool(
         supabase = await createNextClient();
       } catch {
         // Fallback: Use service role client in background/worker environments
-        const { createClient: createServiceClient } = await import('@supabase/supabase-js');
-        supabase = createServiceClient(
+        // Use require() for Trigger.dev compatibility (ES module import() has different structure)
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { createClient } = require('@supabase/supabase-js');
+        supabase = createClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
           process.env.SUPABASE_SERVICE_ROLE_KEY!,
           { auth: { persistSession: false } }
@@ -52,7 +54,7 @@ export const enrichCompanyContactsTool = tool(
       }
       
       // Format contacts
-      const contacts = (directors || []).map((director) => ({
+      const contacts = (directors || []).map((director: { representante?: string; cargo?: string; telefono?: string; nombre?: string; ruc?: string }) => ({
         name: director.representante || 'No disponible',
         position: director.cargo || position || 'No especificado',
         phone: director.telefono || null,

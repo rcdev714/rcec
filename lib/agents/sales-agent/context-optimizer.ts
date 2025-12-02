@@ -14,10 +14,10 @@ interface OptimizationConfig {
 }
 
 const DEFAULT_CONFIG: OptimizationConfig = {
-  maxMessages: 10,
+  maxMessages: 15,
   maxToolOutputLength: 2000,
-  maxTotalContextChars: 30000, // ~7500 tokens approx
-  preserveRecentMessages: 4,
+  maxTotalContextChars: 50000, // ~12500 tokens approx
+  preserveRecentMessages: 8, // Increased to preserve more context including user follow-ups
 };
 
 /**
@@ -103,6 +103,7 @@ export function compressToolOutput(output: unknown, toolName: string, maxLength:
 
 /**
  * Optimize conversation history for reduced token usage
+ * CRITICAL: Always preserves ALL human messages to ensure follow-up questions are not lost
  */
 export function optimizeConversationHistory(
   messages: BaseMessage[],
@@ -116,6 +117,15 @@ export function optimizeConversationHistory(
   
   const optimized: BaseMessage[] = [];
   const recentStartIndex = Math.max(0, messages.length - cfg.preserveRecentMessages);
+  
+  // CRITICAL: First, collect ALL human messages - they must NEVER be compressed
+  // User follow-up questions are the agent's primary directive
+  const allHumanMessages: Array<{ index: number; message: BaseMessage }> = [];
+  for (let i = 0; i < messages.length; i++) {
+    if (messages[i]._getType() === 'human') {
+      allHumanMessages.push({ index: i, message: messages[i] });
+    }
+  }
   
   // Keep first message (usually the initial user query for context)
   if (messages.length > cfg.preserveRecentMessages && messages[0]) {
@@ -131,6 +141,11 @@ export function optimizeConversationHistory(
     const keyFindings: string[] = [];
     
     for (const msg of middleMessages) {
+      // SKIP human messages in the middle - they'll be added separately
+      if (msg._getType() === 'human') {
+        continue;
+      }
+      
       if (msg._getType() === 'ai' && 'tool_calls' in msg) {
         const aiMsg = msg as unknown as { tool_calls?: Array<{ name: string }> };
         if (aiMsg.tool_calls) {
@@ -168,6 +183,14 @@ export function optimizeConversationHistory(
       optimized.push(new AIMessage({
         content: summaryParts.join(' '),
       }));
+    }
+    
+    // CRITICAL: Add ALL human messages from the middle section that aren't the first message
+    // These are follow-up questions that must be preserved
+    for (const { index, message } of allHumanMessages) {
+      if (index > 0 && index < recentStartIndex) {
+        optimized.push(message);
+      }
     }
   }
   
