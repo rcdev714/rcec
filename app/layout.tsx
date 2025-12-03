@@ -5,6 +5,7 @@ import "./globals.css";
 import ClientLayout from "@/components/client-layout";
 import { Inter } from 'next/font/google';
 import { getDefaultUrl } from "@/lib/base-url";
+import { isAdmin } from "@/lib/admin";
 
 const inter = Inter({
   subsets: ['latin'],
@@ -87,7 +88,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -101,11 +102,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ClientLayout>{children}</ClientLayout>
+          <ClientLayout isAdmin={await isAdmin()}>{children}</ClientLayout>
         </ThemeProvider>
-        <Script 
-          src="https://js.stripe.com/v3/pricing-table.js" 
-          strategy="afterInteractive" 
+        <Script
+          src="https://js.stripe.com/v3/pricing-table.js"
+          strategy="afterInteractive"
         />
       </body>
     </html>

@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server-admin'
 import { getStripe } from '@/lib/stripe/server'
 
 export async function GET() {
   try {
     await requireAdmin()
-    
-    const supabase = await createClient()
+
+    const supabase = createServiceClient()
     const now = new Date()
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
@@ -52,8 +52,8 @@ export async function GET() {
       .select('*', { count: 'exact', head: true })
       .in('status', ['active', 'trialing'])
 
-    const churnRate = activeSubscriptions && activeSubscriptions > 0 
-      ? ((recentCancellations || 0) / activeSubscriptions) * 100 
+    const churnRate = activeSubscriptions && activeSubscriptions > 0
+      ? ((recentCancellations || 0) / activeSubscriptions) * 100
       : 0
 
     // Calculate MRR (Monthly Recurring Revenue) from Stripe
@@ -115,7 +115,7 @@ export async function GET() {
 async function getActualMRRFromStripe(): Promise<number> {
   try {
     let mrr = 0
-    
+
     // Use auto-pagination to get all active subscriptions
     const stripe = getStripe()
     for await (const subscription of stripe.subscriptions.list({
@@ -137,16 +137,16 @@ async function getActualMRRFromStripe(): Promise<number> {
     return Math.round(mrr * 100) / 100 // Round to 2 decimal places
   } catch (error) {
     console.error('Error fetching MRR from Stripe:', error)
-    
+
     // Fallback to Supabase calculation
-    const supabase = await createClient()
+    const supabase = createServiceClient()
     const { data: activeSubscriptionData } = await supabase
       .from('user_subscriptions')
       .select('plan')
       .in('status', ['active', 'trialing'])
       .neq('plan', 'FREE')
 
-    return activeSubscriptionData?.reduce((total, sub) => {
+    return activeSubscriptionData?.reduce((total: number, sub: { plan: string }) => {
       switch (sub.plan) {
         case 'PRO':
           return total + 20

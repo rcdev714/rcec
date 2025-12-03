@@ -140,27 +140,27 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId || null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [copiedInline, setCopiedInline] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash");
+  const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-pro");
   const [thinkingLevel, setThinkingLevel] = useState<'high' | 'low'>('high');
   const [userPlan, setUserPlan] = useState<'FREE' | 'PRO' | 'ENTERPRISE'>('FREE');
   const [planLoaded, setPlanLoaded] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
   const [confirmState, setConfirmState] = useState<{ open: boolean; message: string; resolve?: (v: boolean) => void }>({ open: false, message: "" });
   const openConfirm = (message: string) => new Promise<boolean>(resolve => setConfirmState({ open: true, message, resolve }));
-  
+
   // State for detailed debug views per message
   const [expandedDebug, setExpandedDebug] = useState<Record<string, boolean>>({});
   const toggleDebug = (msgId: string) => {
     setExpandedDebug(prev => ({ ...prev, [msgId]: !prev[msgId] }));
   };
-  
+
   // Async mode: Use the agent run hook for realtime updates
   const handleAgentUpdate = useCallback((run: AgentRun) => {
     // Update the assistant message with real-time data
     setMessages(prev => {
       const next = [...prev];
       const lastMessage = next[next.length - 1];
-      
+
       if (lastMessage?.role === 'assistant') {
         // Build agent state events from run progress
         const agentEvents: AgentStateEvent[] = [];
@@ -171,7 +171,7 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
             message: `Procesando: ${run.current_node}`,
           });
         }
-        
+
         next[next.length - 1] = {
           ...lastMessage,
           content: run.response_content || lastMessage.content || '',
@@ -189,19 +189,19 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
           },
         };
       }
-      
+
       return next;
     });
   }, []);
-  
+
   const handleAgentComplete = useCallback((run: AgentRun) => {
     setIsSending(false);
-    
+
     // Final update with complete data
     setMessages(prev => {
       const next = [...prev];
       const lastMessage = next[next.length - 1];
-      
+
       if (lastMessage?.role === 'assistant') {
         next[next.length - 1] = {
           ...lastMessage,
@@ -219,34 +219,34 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
           },
         };
       }
-      
+
       return next;
     });
-    
+
     // Notify sidebar
     window.dispatchEvent(new Event('conversation-updated'));
   }, []);
-  
+
   const handleAgentError = useCallback((error: string) => {
     setIsSending(false);
     setBanner(error);
-    
+
     // Update message with error
     setMessages(prev => {
       const next = [...prev];
       const lastMessage = next[next.length - 1];
-      
+
       if (lastMessage?.role === 'assistant' && !lastMessage.content) {
         next[next.length - 1] = {
           ...lastMessage,
           content: `Lo siento, ocurrió un error: ${error}`,
         };
       }
-      
+
       return next;
     });
   }, []);
-  
+
   const { startRun } = useAgentRun({
     onUpdate: handleAgentUpdate,
     onComplete: handleAgentComplete,
@@ -728,9 +728,9 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
       try {
         // Add placeholder assistant message
         const assistantMessageId = genId();
-        setMessages((prev) => [...prev, { 
-          id: assistantMessageId, 
-          role: "assistant", 
+        setMessages((prev) => [...prev, {
+          id: assistantMessageId,
+          role: "assistant",
           content: "",
           metadata: { type: 'text' }
         }]);
@@ -742,7 +742,7 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
           model: selectedModel,
           thinkingLevel: thinkingLevel as 'high' | 'low',
         });
-        
+
         // Update conversation ID if new one was created
         if (result.conversationId && !conversationId) {
           setConversationId(result.conversationId);
@@ -750,7 +750,7 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
 
         // The hook will handle updates via realtime subscription
         console.log('[startChat] Async run started:', result.runId);
-        
+
       } catch (error) {
         console.error('Error starting async chat:', error);
         setIsSending(false);
@@ -971,10 +971,10 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
               // Insert or update a system message with the plan right after the user message
               setMessages((prev) => {
                 const newMessages = [...prev];
-                
+
                 // Check if a planning message already exists
                 const existingPlanIndex = newMessages.findIndex(m => m.role === "system" && m.metadata?.type === 'planning');
-                
+
                 if (existingPlanIndex !== -1) {
                   // Update existing plan
                   newMessages[existingPlanIndex] = {
@@ -1123,10 +1123,10 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
         if (openToolCalls.size > 0) {
           // If tools were pending when stream ended, it's likely a timeout
           const isLikelyTimeout = openToolCalls.size > 0 && agentEvents.some(e => e.type === 'tool_call');
-          const errorMessage = isLikelyTimeout 
+          const errorMessage = isLikelyTimeout
             ? 'La solicitud tardó demasiado tiempo. El servidor procesó parcialmente tu consulta. Intenta una búsqueda más simple.'
             : 'No se recibió resultado de la herramienta';
-          
+
           for (const [toolCallId, info] of openToolCalls.entries()) {
             agentEvents.push({
               type: 'tool_result',
@@ -1588,13 +1588,13 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
                                 }
                               };
                               if (runs.length === 0) return null;
-                                return (
-                                  <div className="mb-3 p-2.5 md:p-3 bg-white border border-gray-200 rounded-xl shadow-sm">
-                                    <div className="flex items-center gap-2 mb-2.5 text-xs text-gray-600">
-                                      <span className="font-medium text-gray-900">Ejecución del agente</span>
-                                      <span className="ml-auto text-[11px] text-gray-400">
-                                        {runs.length} {runs.length === 1 ? 'paso' : 'pasos'}
-                                      </span>
+                              return (
+                                <div className="mb-3 p-2.5 md:p-3 bg-white border border-gray-200 rounded-xl shadow-sm">
+                                  <div className="flex items-center gap-2 mb-2.5 text-xs text-gray-600">
+                                    <span className="font-medium text-gray-900">Ejecución del agente</span>
+                                    <span className="ml-auto text-[11px] text-gray-400">
+                                      {runs.length} {runs.length === 1 ? 'paso' : 'pasos'}
+                                    </span>
                                   </div>
                                   <div className="space-y-2">
                                     {runs.map((run, i) => {
@@ -1653,10 +1653,10 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
 
                             {/* Detailed Agent State View (Debug/Diagnostic) */}
                             {msg.role === 'assistant' && msg.agentStateEvents && msg.agentStateEvents.length > 0 && (
-                              <AgentStateDetail 
-                                events={msg.agentStateEvents} 
-                                isExpanded={!!expandedDebug[msg.id]} 
-                                onToggle={() => toggleDebug(msg.id)} 
+                              <AgentStateDetail
+                                events={msg.agentStateEvents}
+                                isExpanded={!!expandedDebug[msg.id]}
+                                onToggle={() => toggleDebug(msg.id)}
                               />
                             )}
 

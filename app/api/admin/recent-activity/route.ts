@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server-admin'
 
 interface ActivityItem {
   id: string
@@ -13,13 +13,13 @@ interface ActivityItem {
 export async function GET() {
   try {
     await requireAdmin()
-    
-    const supabase = await createClient()
+
+    const supabase = createServiceClient()
     const activities: ActivityItem[] = []
 
     // Get recent signups (last 24 hours)
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
-    
+
     const { data: recentSignups } = await supabase
       .from('user_subscriptions')
       .select('created_at, user_id')

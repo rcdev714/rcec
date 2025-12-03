@@ -24,9 +24,10 @@ import { SubscriptionStatus as SubscriptionStatusType } from '@/types/subscripti
 interface SidebarProps {
   isCollapsed: boolean;
   toggleSidebar: () => void;
+  isAdmin?: boolean;
 }
 
-const Sidebar = ({ isCollapsed, toggleSidebar }: SidebarProps) => {
+const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin = false }: SidebarProps) => {
   const pathname = usePathname();
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatusType | null>(null);
 
@@ -66,6 +67,10 @@ const Sidebar = ({ isCollapsed, toggleSidebar }: SidebarProps) => {
     { href: "/companies", icon: Building, label: "Empresas" },
     { href: "/pricing", icon: CreditCard, label: "Suscripción" },
   ];
+
+  if (isAdmin) {
+    navItems.push({ href: "/admin", icon: Settings, label: "Admin" });
+  }
 
   return (
     <aside
@@ -154,7 +159,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar }: SidebarProps) => {
             "group relative flex items-center justify-start pl-3 pr-2 py-2 rounded-md transition-colors duration-200",
             "text-gray-600 hover:bg-white hover:scale-105",
             pathname.startsWith("/docs") &&
-              "bg-white text-gray-900 font-medium"
+            "bg-white text-gray-900 font-medium"
           )}
         >
           <span
@@ -192,7 +197,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar }: SidebarProps) => {
             "group relative flex items-center justify-start pl-3 pr-2 py-2 rounded-md transition-colors duration-200",
             "text-gray-600 hover:bg-white hover:scale-105",
             pathname.startsWith("/settings") &&
-              "bg-white text-gray-900 font-medium"
+            "bg-white text-gray-900 font-medium"
           )}
         >
           <span

@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server-admin'
 
 export async function GET(request: Request) {
   try {
     await requireAdmin()
-    
+
     const url = new URL(request.url)
     const range = url.searchParams.get('range') || '30d'
-    
-    const supabase = await createClient()
+
+    const supabase = createServiceClient()
     const now = new Date()
-    
+
     // Calculate date range
     let daysBack = 30
     switch (range) {
@@ -24,9 +24,9 @@ export async function GET(request: Request) {
       default:
         daysBack = 30
     }
-    
+
     const startDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000)
-    
+
     // Get usage events data (daily counts for searches/exports)
     const { data: usageEvents } = await supabase
       .from('user_usage_events')
@@ -45,24 +45,24 @@ export async function GET(request: Request) {
 
     // Group data by date
     const dataMap = new Map<string, { searches: number; exports: number; prompts: number; revenue: number }>()
-    
+
     // Initialize all dates with zero values
     for (let i = 0; i < daysBack; i++) {
       const date = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000)
       const dateKey = date.toISOString().split('T')[0]
       dataMap.set(dateKey, { searches: 0, exports: 0, prompts: 0, revenue: 0 })
     }
-    
+
     // Fill in actual data from usage events
     usageEvents?.forEach(event => {
       const existing = dataMap.get(event.event_date) || { searches: 0, exports: 0, prompts: 0, revenue: 0 }
-      
+
       if (event.kind === 'search') {
         existing.searches = (existing.searches || 0) + event.count
       } else if (event.kind === 'export') {
         existing.exports = (existing.exports || 0) + event.count
       }
-      
+
       dataMap.set(event.event_date, existing)
     })
 
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
       const inputRate = isPro ? 1.25 : 0.30;
       const outputRate = isPro ? 10.00 : 2.50;
       const profitMargin = 15; // Match config
-      
+
       const cost = ((input / 1000000) * inputRate) + ((output / 1000000) * outputRate);
       return cost * profitMargin;
     };
@@ -86,18 +86,18 @@ export async function GET(request: Request) {
       // Only aggregate if date is within our map range (it should be due to query filter)
       if (dataMap.has(dateKey)) {
         const existing = dataMap.get(dateKey)!;
-        
+
         const input = msg.input_tokens || 0;
         const output = msg.output_tokens || 0;
         const revenue = getCost(msg.model_name, input, output);
-        
+
         existing.prompts += 1;
         existing.revenue += revenue;
-        
+
         dataMap.set(dateKey, existing);
       }
     });
-    
+
     // Convert to array format
     const data = Array.from(dataMap.entries()).map(([date, values]) => ({
       date,

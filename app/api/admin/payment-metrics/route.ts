@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server-admin'
 import { getStripe } from '@/lib/stripe/server'
 
 export async function GET() {
   try {
     await requireAdmin()
-    
-    const supabase = await createClient()
+
+    const supabase = createServiceClient()
     const now = new Date()
     const _yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
 
@@ -66,7 +66,7 @@ export async function GET() {
 
     // Calculate churn rate (simplified - last 30 days)
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-    
+
     const { count: cancelledSubscriptions } = await supabase
       .from('user_subscriptions')
       .select('*', { count: 'exact', head: true })
@@ -78,8 +78,8 @@ export async function GET() {
       .select('*', { count: 'exact', head: true })
       .in('status', ['active', 'trialing'])
 
-    const churnRate = totalActiveSubscriptions && totalActiveSubscriptions > 0 
-      ? ((cancelledSubscriptions || 0) / totalActiveSubscriptions) * 100 
+    const churnRate = totalActiveSubscriptions && totalActiveSubscriptions > 0
+      ? ((cancelledSubscriptions || 0) / totalActiveSubscriptions) * 100
       : 0
 
     return NextResponse.json({
@@ -106,7 +106,7 @@ async function getRecentTransactions(): Promise<number> {
   try {
     // Get charges from last 7 days
     const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000)
-    
+
     const stripe = getStripe()
     const charges = await stripe.charges.list({
       created: { gte: sevenDaysAgo },

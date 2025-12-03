@@ -2,6 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  BarChart3,
+  Search,
+  Download,
+  MessageSquare,
+  TrendingUp,
+  Calendar
+} from 'lucide-react'
 
 interface UsageData {
   date: string
@@ -41,14 +49,17 @@ export default function UsageAnalytics() {
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Usage Analytics</CardTitle>
+      <Card className="border-gray-200 shadow-sm h-full">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-medium text-gray-700 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Analíticas de Uso
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="animate-pulse space-y-4">
-            <div className="h-32 bg-gray-200 rounded"></div>
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-32 bg-gray-100 rounded"></div>
+            <div className="h-4 bg-gray-100 rounded w-3/4"></div>
           </div>
         </CardContent>
       </Card>
@@ -58,113 +69,112 @@ export default function UsageAnalytics() {
   const maxValue = Math.max(...data.map(d => Math.max(d.searches, d.exports, d.prompts)))
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Usage Analytics</CardTitle>
-        <select 
-          value={timeRange} 
-          onChange={(e) => setTimeRange(e.target.value as '7d' | '30d' | '90d')}
-          className="text-sm border rounded px-2 py-1"
-        >
-          <option value="7d">Last 7 days</option>
-          <option value="30d">Last 30 days</option>
-          <option value="90d">Last 90 days</option>
-        </select>
+    <Card className="border-gray-200 shadow-sm h-full hover:shadow-md transition-shadow duration-200">
+      <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+        <CardTitle className="text-base font-medium text-gray-700 flex items-center gap-2">
+          <BarChart3 className="h-4 w-4 text-blue-500" />
+          Analíticas de Uso
+        </CardTitle>
+        <div className="flex items-center gap-2">
+          <Calendar className="h-3.5 w-3.5 text-gray-400" />
+          <select
+            value={timeRange}
+            onChange={(e) => setTimeRange(e.target.value as '7d' | '30d' | '90d')}
+            className="text-xs border-none bg-gray-50 rounded px-2 py-1 text-gray-600 focus:ring-0 cursor-pointer hover:bg-gray-100 transition-colors"
+          >
+            <option value="7d">Últimos 7 días</option>
+            <option value="30d">Últimos 30 días</option>
+            <option value="90d">Últimos 90 días</option>
+          </select>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         {/* Summary Stats */}
-        <div className="grid grid-cols-4 gap-4 text-center">
-          <div>
-            <p className="text-lg font-bold text-blue-600">{totalSearches.toLocaleString()}</p>
-            <p className="text-xs text-gray-600">Total Searches</p>
+        <div className="grid grid-cols-4 gap-4">
+          <div className="space-y-1">
+            <p className="text-xs text-gray-500 flex items-center gap-1">
+              <Search className="h-3 w-3" /> Búsquedas
+            </p>
+            <p className="text-xl font-bold text-gray-900">{totalSearches.toLocaleString()}</p>
           </div>
-          <div>
-            <p className="text-lg font-bold text-green-600">{totalExports.toLocaleString()}</p>
-            <p className="text-xs text-gray-600">Total Exports</p>
+          <div className="space-y-1">
+            <p className="text-xs text-gray-500 flex items-center gap-1">
+              <Download className="h-3 w-3" /> Exportaciones
+            </p>
+            <p className="text-xl font-bold text-gray-900">{totalExports.toLocaleString()}</p>
           </div>
-          <div>
-            <p className="text-lg font-bold text-purple-600">{totalPrompts.toLocaleString()}</p>
-            <p className="text-xs text-gray-600">Total Prompts</p>
+          <div className="space-y-1">
+            <p className="text-xs text-gray-500 flex items-center gap-1">
+              <MessageSquare className="h-3 w-3" /> Prompts
+            </p>
+            <p className="text-xl font-bold text-gray-900">{totalPrompts.toLocaleString()}</p>
           </div>
-          <div>
-            <p className="text-lg font-bold text-orange-600">{avgDailySearches.toFixed(0)}</p>
-            <p className="text-xs text-gray-600">Avg Daily Searches</p>
+          <div className="space-y-1">
+            <p className="text-xs text-gray-500 flex items-center gap-1">
+              <TrendingUp className="h-3 w-3" /> Promedio Diario
+            </p>
+            <p className="text-xl font-bold text-gray-900">{avgDailySearches.toFixed(0)}</p>
           </div>
         </div>
 
         {/* Simple Chart */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-xs text-gray-600">
-            <span>Activity over time</span>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center text-xs text-gray-600 border-b border-gray-100 pb-2">
+            <span className="font-medium">Actividad en el tiempo</span>
             <div className="flex space-x-4">
-              <span className="flex items-center">
-                <div className="w-3 h-3 bg-blue-500 rounded mr-1"></div>
-                Searches
+              <span className="flex items-center gap-1.5">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                Búsquedas
               </span>
-              <span className="flex items-center">
-                <div className="w-3 h-3 bg-green-500 rounded mr-1"></div>
-                Exports
+              <span className="flex items-center gap-1.5">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                Exportaciones
               </span>
-              <span className="flex items-center">
-                <div className="w-3 h-3 bg-purple-500 rounded mr-1"></div>
+              <span className="flex items-center gap-1.5">
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                 Prompts
               </span>
             </div>
           </div>
-          
-          <div className="h-32 flex items-end justify-between space-x-1">
+
+          <div className="h-40 flex items-end justify-between space-x-1 pt-4">
             {data.map((day, index) => (
-              <div key={index} className="flex-1 flex flex-col items-center space-y-1">
-                <div className="w-full flex flex-col justify-end h-24 space-y-0.5">
-                  <div 
-                    className="bg-blue-500 w-full rounded-t"
-                    style={{ height: `${(day.searches / maxValue) * 100}%` }}
-                    title={`${day.searches} searches`}
+              <div key={index} className="flex-1 flex flex-col items-center group relative">
+                {/* Tooltip */}
+                <div className="absolute bottom-full mb-2 hidden group-hover:block z-10 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
+                  <div className="font-semibold mb-1">{new Date(day.date).toLocaleDateString()}</div>
+                  <div>Search: {day.searches}</div>
+                  <div>Export: {day.exports}</div>
+                  <div>Prompt: {day.prompts}</div>
+                </div>
+
+                <div className="w-full flex flex-col justify-end h-32 space-y-0.5 relative">
+                  {/* Bars stacked */}
+                  <div
+                    className="bg-purple-500 w-full opacity-80 hover:opacity-100 transition-opacity rounded-t-sm"
+                    style={{ height: `${Math.max((day.prompts / maxValue) * 100, 2)}%` }}
                   ></div>
-                  <div 
-                    className="bg-green-500 w-full"
-                    style={{ height: `${(day.exports / maxValue) * 100}%` }}
-                    title={`${day.exports} exports`}
+                  <div
+                    className="bg-green-500 w-full opacity-80 hover:opacity-100 transition-opacity"
+                    style={{ height: `${Math.max((day.exports / maxValue) * 100, 2)}%` }}
                   ></div>
-                  <div 
-                    className="bg-purple-500 w-full"
-                    style={{ height: `${(day.prompts / maxValue) * 100}%` }}
-                    title={`${day.prompts} prompts`}
+                  <div
+                    className="bg-blue-500 w-full opacity-80 hover:opacity-100 transition-opacity rounded-b-sm"
+                    style={{ height: `${Math.max((day.searches / maxValue) * 100, 2)}%` }}
                   ></div>
                 </div>
-                <span className="text-xs text-gray-500 transform -rotate-45 origin-top-left">
-                  {new Date(day.date).toLocaleDateString(undefined, { 
-                    month: 'short', 
-                    day: 'numeric' 
-                  })}
+
+                {/* Date label - show only some dates to avoid clutter */}
+                <span className="text-[10px] text-gray-400 mt-2 transform -rotate-45 origin-top-left h-4 w-4 overflow-visible whitespace-nowrap">
+                  {index % Math.ceil(data.length / 7) === 0 ? new Date(day.date).toLocaleDateString(undefined, {
+                    month: 'numeric',
+                    day: 'numeric'
+                  }) : ''}
                 </span>
               </div>
             ))}
           </div>
         </div>
-
-        {/* Growth Indicators */}
-        {data.length >= 2 && (
-          <div className="grid grid-cols-3 gap-4 mt-4">
-            {[
-              { label: 'Searches', current: data[data.length - 1]?.searches || 0, previous: data[data.length - 2]?.searches || 0 },
-              { label: 'Exports', current: data[data.length - 1]?.exports || 0, previous: data[data.length - 2]?.exports || 0 },
-              { label: 'Prompts', current: data[data.length - 1]?.prompts || 0, previous: data[data.length - 2]?.prompts || 0 }
-            ].map(({ label, current, previous }) => {
-              const change = previous > 0 ? ((current - previous) / previous) * 100 : 0
-              return (
-                <div key={label} className="text-center p-2 bg-gray-50 rounded">
-                  <p className="text-xs text-gray-600">{label} (vs yesterday)</p>
-                  <p className={`text-sm font-semibold ${
-                    change > 0 ? 'text-green-600' : change < 0 ? 'text-red-600' : 'text-gray-600'
-                  }`}>
-                    {change > 0 ? '+' : ''}{change.toFixed(1)}%
-                  </p>
-                </div>
-              )
-            })}
-          </div>
-        )}
       </CardContent>
     </Card>
   )

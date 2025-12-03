@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server-admin'
 
 export async function GET() {
   try {
     await requireAdmin()
-    
-    const supabase = await createClient()
+
+    const supabase = createServiceClient()
 
     // Get total users count
     const { count: totalUsers } = await supabase
@@ -45,7 +45,7 @@ export async function GET() {
       const dbStart = Date.now()
       await supabase.from('subscription_plans').select('count(*)')
       const responseTime = Date.now() - dbStart
-      
+
       if (responseTime > 1000) {
         systemHealth = 'warning'
       }

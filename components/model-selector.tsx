@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
-import { Brain, ChevronUp, Lock, Sparkles, DollarSign, Zap } from "lucide-react";
+import { Brain, ChevronUp, Lock, Sparkles, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MODEL_SPECS } from "@/lib/ai-config";
 
@@ -23,9 +23,9 @@ export function ModelSelector({ value, onChange, disabled, className, userPlan: 
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const options = useMemo(() => ([
-    { value: 'gemini-3-pro-preview-high', label: 'Gemini 3 Pro Preview (high)', thinking: true, requiresPro: false, modelId: 'gemini-3-pro-preview', thinkingMode: 'high' as const },
-    { value: 'gemini-3-pro-preview-low', label: 'Gemini 3 Pro Preview (low)', thinking: true, requiresPro: false, modelId: 'gemini-3-pro-preview', thinkingMode: 'low' as const },
-    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', thinking: true, requiresPro: false, modelId: 'gemini-2.5-pro' },
+    { value: 'gemini-3-pro-preview-high', label: 'Gemini 3 Pro Preview (high)', thinking: true, requiresPro: false, modelId: 'gemini-3-pro-preview', thinkingMode: 'high' as const, badge: 'Experimental' },
+    { value: 'gemini-3-pro-preview-low', label: 'Gemini 3 Pro Preview (low)', thinking: true, requiresPro: false, modelId: 'gemini-3-pro-preview', thinkingMode: 'low' as const, badge: 'Experimental' },
+    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', thinking: true, requiresPro: false, modelId: 'gemini-2.5-pro', badge: 'Recomendado' },
     { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', thinking: true, requiresPro: false, modelId: 'gemini-2.5-flash' },
     { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', thinking: false, requiresPro: false, modelId: 'gemini-2.5-flash-lite' },
   ]), []);
@@ -182,7 +182,19 @@ export function ModelSelector({ value, onChange, disabled, className, userPlan: 
                       ) : (
                         <Sparkles className="w-4 h-4 text-gray-400 flex-shrink-0 group-hover:text-gray-600 group-hover:scale-110 transition-all duration-200" />
                       )}
-                      <span className="truncate flex-1 text-left">{opt.label}</span>
+                      <span className="truncate flex-1 text-left flex items-center gap-2">
+                        {opt.label}
+                        {opt.badge && (
+                          <span className={cn(
+                            "text-[9px] px-1.5 py-0.5 rounded-full font-medium uppercase tracking-wider",
+                            opt.badge === 'Recomendado'
+                              ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                              : "bg-amber-100 text-amber-700 border border-amber-200"
+                          )}>
+                            {opt.badge}
+                          </span>
+                        )}
+                      </span>
 
                       {/* Hover card */}
                       {isHovered && specs && (
@@ -207,34 +219,26 @@ export function ModelSelector({ value, onChange, disabled, className, userPlan: 
                             <span className="truncate">{opt.label}</span>
                             <span className="text-[10px] text-gray-500">({opt.modelId})</span>
                           </div>
-                          <div className="space-y-0.25 text-[10px] text-gray-600">
+                          <div className="space-y-1 text-[10px] text-gray-600 leading-tight">
                             {opt.modelId === 'gemini-3-pro-preview' ? (
                               <>
-                                <div>• <DollarSign className="w-3 h-3 inline text-gray-400 opacity-50 mr-1" /> <strong>Costo Muy Alto:</strong> Premium para avanzado</div>
-                                <div>• <strong>Análisis profundo:</strong> Ideal para tareas complejas y largas</div>
-                                <div>• <strong>Multimodal superior:</strong> Excelente con imágenes y datos mixtos</div>
-                                <div>• <strong>Modos avanzados:</strong> {opt.thinkingMode === 'low' ? 'Bajo (rápido)' : 'Alto (detallado)'}</div>
+                                <div className="flex items-start gap-1.5"><span className="text-amber-500 mt-0.5">•</span> <span><strong>Experimental:</strong> Potente pero puede ser inestable.</span></div>
+                                <div className="flex items-start gap-1.5"><span className="text-gray-300 mt-0.5">•</span> <span><strong>Razonamiento:</strong> Capacidad superior de análisis.</span></div>
                               </>
                             ) : opt.modelId === 'gemini-2.5-pro' ? (
                               <>
-                                <div>• <DollarSign className="w-3 h-3 inline text-gray-400 opacity-50 mr-1" /> <strong>Costo Alto:</strong> Inversión para calidad</div>
-                                <div>• <strong>Insights empresariales:</strong> Confiable para análisis de negocio</div>
-                                <div>• <strong>Calidad consistente:</strong> Rendimiento estable en producción</div>
-                                <div>• <strong>Versátil profesional:</strong> Maneja casos complejos con precisión</div>
+                                <div className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">•</span> <span><strong>Recomendado:</strong> Mejor balance costo/calidad.</span></div>
+                                <div className="flex items-start gap-1.5"><span className="text-gray-300 mt-0.5">•</span> <span><strong>Estable:</strong> Ideal para producción y uso diario.</span></div>
                               </>
                             ) : opt.modelId === 'gemini-2.5-flash' ? (
                               <>
-                                <div>• <DollarSign className="w-3 h-3 inline text-gray-400 opacity-50 mr-1" /> <strong>Costo Bajo:</strong> Asequible y eficiente</div>
-                                <div>• <strong>Respuestas rápidas:</strong> Perfecto para uso diario</div>
-                                <div>• <strong>Versátil equilibrado:</strong> Buena potencia para la mayoría de tareas</div>
-                                <div>• <strong>Eficiencia óptima:</strong> Velocidad sin sacrificar calidad</div>
+                                <div className="flex items-start gap-1.5"><span className="text-blue-500 mt-0.5">•</span> <span><strong>Rápido:</strong> Respuestas veloces y eficientes.</span></div>
+                                <div className="flex items-start gap-1.5"><span className="text-gray-300 mt-0.5">•</span> <span><strong>Económico:</strong> Bajo costo por token.</span></div>
                               </>
                             ) : (
                               <>
-                                <div>• <DollarSign className="w-3 h-3 inline text-gray-400 opacity-50 mr-1" /> <strong>Costo Muy Bajo:</strong> Opción económica</div>
-                                <div>• <strong>Respuestas instantáneas:</strong> Para consultas simples</div>
-                                <div>• <strong>Ultra-ligero:</strong> Bajo consumo, alta velocidad</div>
-                                <div>• <strong>Presupuesto amigable:</strong> Ideal para pruebas y básicos</div>
+                                <div className="flex items-start gap-1.5"><span className="text-gray-400 mt-0.5">•</span> <span><strong>Básico:</strong> Para tareas muy simples.</span></div>
+                                <div className="flex items-start gap-1.5"><span className="text-gray-300 mt-0.5">•</span> <span><strong>Ultra-rápido:</strong> Mínima latencia.</span></div>
                               </>
                             )}
                           </div>

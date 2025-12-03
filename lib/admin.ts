@@ -29,6 +29,12 @@ export async function isAdmin(): Promise<boolean> {
 
     return ADMIN_EMAILS.includes(user.email || '')
   } catch (error) {
+    // Check for Next.js DynamicServerError to avoid noisy logs during build
+    // @ts-expect-error - digest property exists on Next.js errors
+    if (error?.digest === 'DYNAMIC_SERVER_USAGE') {
+      return false
+    }
+    
     console.error('Error checking admin status:', error)
     return false
   }
