@@ -96,23 +96,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleManagePayment = async () => {
-    try {
-      const response = await fetch('/api/subscriptions/portal', {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        throw new Error('No se pudo crear la sesión del portal');
-      }
-
-      const { url } = await response.json();
-      window.location.href = url;
-    } catch (error) {
-      console.error('Error creating portal session:', error);
-      alert('No se pudo abrir el portal de facturación. Por favor, intenta de nuevo.');
-    }
-  };
 
   if (loading) {
     return (
@@ -385,12 +368,6 @@ export default function SettingsPage() {
                   </CardHeader>
                   <CardContent>
                     <PlanAndSubscriptionCard />
-                    <Button 
-                      onClick={handleManagePayment}
-                      className="w-full mt-4"
-                    >
-                      Gestionar Suscripción
-                    </Button>
                   </CardContent>
                 </Card>
               </div>

@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     const url = new URL(request.url);
     const daysParam = url.searchParams.get('days') || '7';
-    const days = Math.max(1, Math.min(30, parseInt(daysParam, 10) || 7));
+    const days = Math.max(1, Math.min(365, parseInt(daysParam, 10) || 7));
 
     const start = new Date();
     start.setUTCDate(start.getUTCDate() - (days - 1));

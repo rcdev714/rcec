@@ -117,15 +117,15 @@ export default function PlanAndSubscriptionCard() {
 
         <div className="space-y-3 mb-6">
           <div className="flex items-center gap-2 text-xs text-gray-600">
-            {isPro ? <Check className="w-3.5 h-3.5 text-indigo-600" /> : <Lock className="w-3.5 h-3.5 text-gray-400" />}
+            {isPro ? <Check className="w-3.5 h-3.5 text-indigo-600" /> : <Lock className="w-3.5 h-3.5 text-indigo-500" />}
             <span>Búsquedas ilimitadas</span>
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-600">
-            {isPro ? <Check className="w-3.5 h-3.5 text-indigo-600" /> : <Lock className="w-3.5 h-3.5 text-gray-400" />}
+            {isPro ? <Check className="w-3.5 h-3.5 text-indigo-600" /> : <Lock className="w-3.5 h-3.5 text-indigo-500" />}
             <span>Acceso a LinkedIn</span>
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-600">
-            {isPro ? <Check className="w-3.5 h-3.5 text-indigo-600" /> : <Lock className="w-3.5 h-3.5 text-gray-400" />}
+            {isPro ? <Check className="w-3.5 h-3.5 text-indigo-600" /> : <Lock className="w-3.5 h-3.5 text-indigo-500" />}
             <span>Analíticas avanzadas</span>
           </div>
         </div>
@@ -142,17 +142,23 @@ export default function PlanAndSubscriptionCard() {
           </div>
         )}
 
-        <Button
-          onClick={isPro ? handleManageSubscription : () => window.location.href = '/pricing'}
-          className={`w-full h-9 text-xs font-medium ${
-            isPro 
-              ? 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900' 
-              : 'bg-gray-900 text-white hover:bg-gray-800'
-          }`}
-          variant={isPro ? "outline" : "default"}
-        >
-          {isPro ? 'Gestionar Suscripción' : 'Actualizar Plan'}
-        </Button>
+        {isPro && (
+          <Button
+            onClick={handleManageSubscription}
+            className="w-full h-9 text-xs font-medium bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+            variant="outline"
+          >
+            Gestionar Suscripción
+          </Button>
+        )}
+        {!isPro && (
+          <Button
+            onClick={() => window.location.href = '/pricing'}
+            className="w-full h-9 text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700"
+          >
+            Actualizar Plan
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

@@ -5,16 +5,81 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { Menu, X } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { User } from "@supabase/supabase-js";
 import { motion } from "framer-motion";
+
+// Video component that autoplays when scrolled into view
+function AutoplayVideo({ 
+  src, 
+  poster, 
+  preload = "metadata",
+  className = "",
+  priority = false 
+}: { 
+  src: string; 
+  poster: string; 
+  preload?: "auto" | "metadata" | "none";
+  className?: string;
+  priority?: boolean;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hasPlayedRef = useRef(false);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !hasPlayedRef.current) {
+            video.play().catch((err) => {
+              // Silently handle autoplay errors (browser may block autoplay)
+              console.debug('Video autoplay prevented:', err);
+            });
+            hasPlayedRef.current = true;
+          } else if (!entry.isIntersecting && hasPlayedRef.current) {
+            // Pause when out of view to save resources
+            video.pause();
+            hasPlayedRef.current = false;
+          }
+        });
+      },
+      {
+        threshold: 0.5, // Trigger when 50% of video is visible
+      }
+    );
+
+    observer.observe(video);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  return (
+    <video
+      ref={videoRef}
+      className={className}
+      src={src}
+      poster={poster}
+      preload={preload}
+      autoPlay={priority}
+      loop
+      muted
+      playsInline
+      controls
+    />
+  );
+}
 
 // Feature data for the scrolling section
 const features = [
   {
     id: "analysis",
-    title: "Agente Empresarial",
-    description: "Tu agente empresarial te ayuda a buscar, analizar y conectar con mas de 300K empresas en segundos. Puedes preguntarle sobre las empresas, sus estados financieros, contactos y redes sociales.",
+    title: "Inteligencia Empresarial Instantánea",
+    description: "Busca, analiza y conecta con más de 300K empresas en segundos. Obtén información financiera, contactos directos y análisis profundo de cualquier empresa con solo preguntar.",
     videoSrc: "/landingpagedemos/DemoAgente1.mp4",
     poster: "/heroImage.jpg",
     tags: ["Busqueda de empresas", "Análisis financiero", "Procesamiento de lenguaje natural", "Conecta con decision makers"]
@@ -55,9 +120,22 @@ export default function HomeContent({ initialUser = null }: HomeContentProps) {
         return;
       }
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (isMounted) {
-        setUser(user ?? null);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (isMounted) {
+          setUser(user ?? null);
+        }
+      } catch (error: any) {
+        // Gracefully handle missing/invalid refresh tokens (expected for non-authenticated users)
+        if (error?.status === 400 && error?.code === 'refresh_token_not_found') {
+          // This is expected when user is not authenticated - silently handle it
+          if (isMounted) {
+            setUser(null);
+          }
+        } else {
+          // Log other errors
+          console.error('Error fetching user:', error);
+        }
       }
     };
 
@@ -76,6 +154,20 @@ export default function HomeContent({ initialUser = null }: HomeContentProps) {
       subscription.unsubscribe();
     };
   }, [initialUser]);
+
+  // Preload the first video for faster loading
+  useEffect(() => {
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'video';
+    link.href = '/landingpagedemos/DemoAgente1.mp4';
+    link.setAttribute('fetchpriority', 'high');
+    document.head.appendChild(link);
+
+    return () => {
+      document.head.removeChild(link);
+    };
+  }, []);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
@@ -173,22 +265,22 @@ export default function HomeContent({ initialUser = null }: HomeContentProps) {
         )}
       </nav>
 
-      <main className="pt-32 pb-16 sm:pt-40 sm:pb-24">
+      <main className="pt-24 pb-16 sm:pt-32 sm:pb-24">
         {/* Hero Section */}
-        <section className="max-w-5xl mx-auto px-6 lg:px-8 text-center mb-24 sm:mb-32">
+        <section className="max-w-5xl mx-auto px-6 lg:px-8 text-center mb-12 sm:mb-16">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-[9px] sm:text-[10px] md:text-xs font-medium text-gray-600 mb-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-[9px] sm:text-[10px] md:text-xs font-medium text-gray-600 mb-3">
               <span>USD $5 gratis en uso · Sin tarjeta requerida</span>
             </div>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-medium tracking-tight text-gray-900 mb-6 leading-[1.1]">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-medium tracking-tight text-gray-900 mb-3 leading-[1.1]">
               Agente Empresarial
             </h1>
             
-            <p className="max-w-xl mx-auto text-base sm:text-lg text-gray-500 mb-8 leading-relaxed font-light">
+            <p className="max-w-xl mx-auto text-base sm:text-lg text-gray-500 mb-4 leading-relaxed font-light">
               Busca, audita y conecta con empresas, sin terceros y a la velocidad de la luz.
               
             </p>
@@ -212,15 +304,15 @@ export default function HomeContent({ initialUser = null }: HomeContentProps) {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.5 }}
                 transition={{ duration: 0.4 }}
-                className="space-y-2"
+                className="space-y-3 text-center max-w-3xl mx-auto"
               >
-                <h3 className="text-xl sm:text-2xl font-medium text-gray-900">{feature.title}</h3>
-                <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                <h3 className="text-xl sm:text-2xl font-medium text-gray-900 tracking-tight">{feature.title}</h3>
+                <p className="text-xs sm:text-sm text-gray-600 leading-relaxed max-w-2xl mx-auto">
                   {feature.description}
                 </p>
-                <div className="flex flex-wrap gap-2 text-[11px] text-gray-500">
+                <div className="flex flex-wrap gap-2 justify-center text-[11px] text-gray-500 pt-1">
                   {feature.tags.map(tag => (
-                    <span key={tag} className="px-2 py-0.5 rounded-full border border-gray-200">
+                    <span key={tag} className="px-2 py-0.5 rounded-full border border-gray-200 bg-white">
                       {tag}
                     </span>
                   ))}
@@ -234,15 +326,12 @@ export default function HomeContent({ initialUser = null }: HomeContentProps) {
                 transition={{ duration: 0.4 }}
                 className={(feature.id === "search" || feature.id === "management") ? "max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-6xl mx-auto relative overflow-hidden rounded-xl border border-gray-200 bg-white" : "max-w-2xl mx-auto relative overflow-hidden rounded-xl border border-gray-200 bg-white"}
               >
-                <video
-                  className="w-full h-auto object-contain"
+                <AutoplayVideo
                   src={feature.videoSrc}
                   poster={feature.poster}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  controls
+                  preload={feature.id === "analysis" ? "auto" : "metadata"}
+                  priority={feature.id === "analysis"}
+                  className="w-full h-auto object-contain"
                 />
               </motion.div>
             </div>

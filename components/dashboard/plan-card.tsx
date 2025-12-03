@@ -38,6 +38,8 @@ export default function PlanCard() {
   const planLabel = (p: string) => (p === 'FREE' ? 'Gratuito' : p === 'PRO' ? 'Pro' : 'Empresarial');
 
 
+  const isFreeTier = summary?.plan === 'FREE';
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -45,7 +47,7 @@ export default function PlanCard() {
       </CardHeader>
       <CardContent>
         <div className="text-center mb-4">
-          <Badge variant="secondary">
+          <Badge variant="secondary" className={isFreeTier ? 'bg-indigo-100 text-indigo-700' : ''}>
             {summary ? planLabel(summary.plan) : '—'}
           </Badge>
         </div>
@@ -54,7 +56,7 @@ export default function PlanCard() {
             variant="outline"
             size="sm"
             onClick={() => router.push('/pricing')}
-            className="flex-1"
+            className={`flex-1 ${isFreeTier ? 'bg-indigo-600 text-white hover:bg-indigo-700 border-indigo-600' : ''}`}
           >
             Change Plan
           </Button>
