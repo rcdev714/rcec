@@ -3,9 +3,131 @@ import { z } from 'zod';
 import { SearchFilters, CompanySearchResult } from '@/types/chat';
 import { FilterTranslator } from './filter-translator';
 import { fetchCompanies } from '@/lib/data/companies';
-import { sortByRelevanceAndCompleteness, getCompletenessStats } from '@/lib/data-completeness-scorer';
+import { sortByRelevanceAndCompleteness, getCompletenessStats, calculateCompletenessScore } from '@/lib/data-completeness-scorer';
 import { agentCache } from '@/lib/agents/sales-agent/cache';
 import { createClient } from '@supabase/supabase-js';
+import { Company } from '@/types/company';
+
+// ============================================================================
+// DISPLAY CONFIG TYPES
+// ============================================================================
+
+export type DisplayMode = 'single' | 'comparison' | 'list' | 'featured';
+
+export interface CompanyDisplayConfig {
+  mode: DisplayMode;
+  featuredRUCs: string[];
+  query?: string;
+  totalCount?: number;
+  selectionReason?: string;
+}
+
+// ============================================================================
+// SMART DISPLAY CONFIG GENERATOR
+// ============================================================================
+
+/**
+ * Analyzes the query and results to determine optimal display configuration
+ */
+function generateDisplayConfig(
+  query: string,
+  companies: Company[],
+  totalCount: number
+): CompanyDisplayConfig {
+  const queryLower = query.toLowerCase();
+  
+  // 1. SINGLE COMPANY LOOKUP PATTERNS
+  const singleLookupPatterns = [
+    /\bRUC\s*:?\s*(\d{13})\b/i,                    // RUC lookup
+    /^(?:busca|encuentra|dame|muestra|investiga)\s+(?:a\s+)?(?:la\s+)?empresa\s+(\w+)/i,  // "busca la empresa X"
+    /^(?:qué|que)\s+(?:es|sabes)\s+(?:de|sobre)\s+(\w+)/i,  // "qué sabes de X"
+    /^(?:info|información|detalles?)\s+(?:de|sobre)\s+/i,    // "info de X"
+    /^(\w+)\s*-\s*(?:empresa|company)/i,            // "Pronaca - empresa"
+  ];
+  
+  const isSingleLookup = singleLookupPatterns.some(p => p.test(queryLower));
+  
+  if (isSingleLookup && companies.length >= 1) {
+    // Find the best matching company (highest completeness among first 3)
+    const topCompanies = companies.slice(0, 3).filter(c => c.ruc);
+    if (topCompanies.length === 0) {
+      // Fallback if no valid RUCs
+      return {
+        mode: 'featured',
+        featuredRUCs: [],
+        query,
+        totalCount,
+      };
+    }
+    
+    const bestMatch = topCompanies.reduce((best, curr) => {
+      const bestScore = calculateCompletenessScore(best);
+      const currScore = calculateCompletenessScore(curr);
+      return currScore > bestScore ? curr : best;
+    }, topCompanies[0]);
+    
+    return {
+      mode: 'single',
+      featuredRUCs: [bestMatch.ruc!],
+      query,
+      totalCount,
+      selectionReason: `Mostrando ${bestMatch.nombre_comercial || bestMatch.nombre} (mejor coincidencia con datos más completos)`,
+    };
+  }
+  
+  // 2. COMPARISON PATTERNS
+  const comparisonPatterns = [
+    /\bcompara(?:r|ndo)?\b/i,
+    /\bvs\.?\b/i,
+    /\bentre\s+(\w+)\s+y\s+(\w+)/i,
+    /\bdiferencia(?:s)?\s+entre\b/i,
+    /\btop\s*(\d+)\b/i,
+    /\bmejores?\s*(\d+)?\b/i,
+  ];
+  
+  const isComparison = comparisonPatterns.some(p => p.test(queryLower));
+  
+  if (isComparison || (totalCount >= 2 && totalCount <= 5)) {
+    // For comparison, pick top companies with best data quality
+    const rankedCompanies = [...companies]
+      .filter(c => c.ruc) // Filter out null RUCs
+      .map(c => ({ company: c, score: calculateCompletenessScore(c) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+    
+    return {
+      mode: 'comparison',
+      featuredRUCs: rankedCompanies.map(r => r.company.ruc!),
+      query,
+      totalCount,
+      selectionReason: `Comparando las ${rankedCompanies.length} empresas con información más completa`,
+    };
+  }
+  
+  // 3. EXPLORATION/SEARCH PATTERNS (default)
+  // For general searches, feature top 3-4 most relevant companies
+  const featuredCount = Math.min(4, companies.length);
+  const featured = companies.slice(0, featuredCount).filter(c => c.ruc);
+  
+  // Determine if this is a sector/category search
+  const sectorPatterns = [
+    /\b(?:empresas?|compañías?)\s+(?:de|del|en)\s+(?:el\s+)?(?:sector|rubro|industria)?\s*(\w+)/i,
+    /\b(?:busca|encuentra|muestra|lista)\s+(?:empresas?|compañías?)/i,
+    /\b(?:proveedores?|distribuidores?|fabricantes?)\s+(?:de\s+)?/i,
+  ];
+  
+  const isExploration = sectorPatterns.some(p => p.test(queryLower)) || totalCount > 10;
+  
+  return {
+    mode: isExploration ? 'featured' : 'featured',
+    featuredRUCs: featured.map(c => c.ruc!),
+    query,
+    totalCount,
+    selectionReason: totalCount > featuredCount 
+      ? `Mostrando ${featuredCount} de ${totalCount} resultados (ordenados por relevancia y completitud de datos)`
+      : undefined,
+  };
+}
 
 // Helper to get Supabase client for backend tasks (bypassing cookies)
 const getSupabaseClient = () => {
@@ -86,10 +208,15 @@ export const searchCompaniesTool = tool(
         query,
       };
       
+      // Generate smart display configuration
+      const displayConfig = generateDisplayConfig(query, sortedCompanies, totalCount);
+      
       // Return structured result for the agent
       const toolResult = {
         success: true,
         result,
+        // NEW: Display configuration for smart UI rendering
+        displayConfig,
         summary: `Encontré ${totalCount} empresas que coinciden con: ${filterSummary}.` + (!shouldPreserveServerOrder ? ' Los resultados se ordenan por relevancia, priorizando empresas con información de contacto completa y datos financieros recientes.' : ''),
         showingResults: `Mostrando ${sortedCompanies.length} de ${totalCount} resultados. Cargar más mostrará el siguiente grupo de empresas relevantes.`,
         appliedFilters: validatedFilters,
@@ -179,6 +306,12 @@ export const getCompanyDetailsTool = tool(
         const result = {
           success: true,
           company,
+          // NEW: Display config for single company view
+          displayConfig: {
+            mode: 'single' as DisplayMode,
+            featuredRUCs: [company.ruc],
+            totalCount: 1,
+          },
           summary: `Empresa encontrada: ${company.nombre || company.nombre_comercial}`,
           details: {
             ruc: company.ruc,
@@ -204,10 +337,19 @@ export const getCompanyDetailsTool = tool(
       }
       
       // Multiple matches - return list for user to choose
+      const topMatches = companies.slice(0, 5);
       return {
         success: true,
         multiple: true,
-        companies: companies.slice(0, 5),
+        companies: topMatches,
+        // NEW: Display config for multiple matches
+        displayConfig: {
+          mode: 'comparison' as DisplayMode,
+          featuredRUCs: topMatches.map(c => c.ruc),
+          query: identifier,
+          totalCount,
+          selectionReason: `Encontré ${totalCount} empresas que coinciden con "${identifier}"`,
+        },
         totalCount,
         summary: `Encontré ${totalCount} empresas que coinciden con "${identifier}". Mostrando los primeros 5 resultados.`,
         suggestion: 'Por favor especifica qué empresa quieres ver proporcionando el RUC exacto',

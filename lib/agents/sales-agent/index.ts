@@ -121,6 +121,7 @@ export async function chatWithSalesAgent(
         // Stream the graph execution
         let finalResponse = '';
         const searchResults: unknown[] = []; // Changed to array to accumulate ALL search results
+        let latestDisplayConfig: unknown = null; // NEW: Track display config from tool results
         let emailDraft: EmailDraft | null = null;
         let previousState: SalesAgentStateType | null = null;
         let currentNode: string | null = null;
@@ -336,12 +337,17 @@ export async function chatWithSalesAgent(
                 content = String(msgAsAny.content);
               }
               
-              // Filter out artifacts: [object Object], tool transcripts, and AGENT_PLAN snippets
+              // Filter out artifacts: [object Object], tool transcripts, internal JSON
               if (content) {
                 // Remove [object Object]
                 if (content.includes('[object Object]')) {
                   console.log('[stream] Filtering out [object Object] artifacts from response');
                   content = content.replace(/\[object Object\],?/g, '').trim();
+                }
+                // Remove Gemini internal JSON (functionCall, thoughtSignature)
+                if (content.includes('"functionCall"') || content.includes('"thoughtSignature"')) {
+                  console.log('[stream] Filtering out internal Gemini JSON');
+                  content = content.replace(/\[\s*\{[^]*?"(?:functionCall|thoughtSignature)"[^]*?\}\s*\]/g, '');
                 }
                 // Remove any tool transcript lines
                 content = content
@@ -378,9 +384,22 @@ export async function chatWithSalesAgent(
             const lastToolOutput = nodeOutput.toolOutputs[nodeOutput.toolOutputs.length - 1];
             
             if (lastToolOutput.toolName === 'search_companies' && lastToolOutput.success) {
-              const result = (lastToolOutput.output as { result?: unknown })?.result;
+              const toolOutput = lastToolOutput.output as { result?: unknown; displayConfig?: unknown };
+              const result = toolOutput?.result;
               if (result) {
                 searchResults.push(result); // Accumulate instead of overwrite
+              }
+              // NEW: Capture display config
+              if (toolOutput?.displayConfig) {
+                latestDisplayConfig = toolOutput.displayConfig;
+              }
+            }
+            
+            // Also capture displayConfig from get_company_details
+            if (lastToolOutput.toolName === 'get_company_details' && lastToolOutput.success) {
+              const toolOutput = lastToolOutput.output as { displayConfig?: unknown };
+              if (toolOutput?.displayConfig) {
+                latestDisplayConfig = toolOutput.displayConfig;
               }
             }
           }
@@ -456,6 +475,10 @@ export async function chatWithSalesAgent(
                   
                   // Apply same filtering
                   if (content) {
+                    // Remove Gemini internal JSON
+                    if (content.includes('"functionCall"') || content.includes('"thoughtSignature"')) {
+                      content = content.replace(/\[\s*\{[^]*?"(?:functionCall|thoughtSignature)"[^]*?\}\s*\]/g, '');
+                    }
                     content = content
                       .replace(/\[object Object\],?/g, '').trim()
                       .replace(/^Herramienta utilizada:[\s\S]*?(?=\n\n|$)/gmi, '')
@@ -515,6 +538,12 @@ export async function chatWithSalesAgent(
           const primaryResult = searchResults[searchResults.length - 1];
           const searchResultTag = `\n\n[SEARCH_RESULTS]${JSON.stringify(primaryResult)}[/SEARCH_RESULTS]`;
           controller.enqueue(sharedEncoder.encode(searchResultTag));
+          
+          // NEW: Include display config for smart rendering
+          if (latestDisplayConfig) {
+            const displayConfigTag = `\n\n[DISPLAY_CONFIG]${JSON.stringify(latestDisplayConfig)}[/DISPLAY_CONFIG]`;
+            controller.enqueue(sharedEncoder.encode(displayConfigTag));
+          }
         }
 
         // Append email draft if available

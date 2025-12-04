@@ -5,6 +5,20 @@ import { SALES_AGENT_SYSTEM_PROMPT } from "./prompt";
 import { extractTokenUsageFromMetadata } from "@/lib/token-counter";
 import { trackLLMUsageBackground } from "@/lib/usage";
 
+// Import middleware
+import {
+  executeWithRetry,
+  TOOL_RETRY_PRESETS,
+} from "./middleware/tool-retry";
+import {
+  invokeWithFallback,
+  getFallbackChainForModel,
+} from "./middleware/model-fallback";
+import {
+  PIIRedactionMiddleware,
+  LATAM_PII_RULES,
+} from "./middleware/pii-redaction";
+
 /**
  * Track LLM usage in background context
  * 
@@ -25,6 +39,44 @@ import { optimizeConversationHistory } from "./context-optimizer";
 
 // Initialize Gemini models (lazy, cached per model name)
 const geminiModels: Record<string, ChatGoogleGenerativeAI> = {};
+
+// PII Middleware instance (shared across the agent lifecycle)
+// Instantiated per-request in think() to ensure fresh state
+let piiMiddleware: PIIRedactionMiddleware | null = null;
+
+/**
+ * Get or create the PII middleware instance
+ */
+function getPIIMiddleware(): PIIRedactionMiddleware {
+  if (!piiMiddleware) {
+    piiMiddleware = new PIIRedactionMiddleware({
+      rules: LATAM_PII_RULES,
+      applyToInput: true,
+      applyToOutput: true,
+      restoreForTools: [
+        'search_companies',
+        'get_company_details',
+        'lookup_customer_by_ssn',
+        'enrich_company_contacts',
+      ],
+      enableAuditLog: true,
+      onAudit: (event) => {
+        console.log(`[PII] ${event.type}: ${event.piiType} in ${event.location}`);
+      },
+    });
+  }
+  return piiMiddleware;
+}
+
+/**
+ * Reset PII middleware (call between conversations)
+ */
+export function resetPIIMiddleware(): void {
+  if (piiMiddleware) {
+    piiMiddleware.reset();
+    piiMiddleware = null;
+  }
+}
 
 function getGeminiModel(modelName: string = "gemini-2.5-flash"): ChatGoogleGenerativeAI {
   // Always recreate in development to pick up config changes
@@ -124,7 +176,7 @@ export async function planTodos(state: SalesAgentStateType): Promise<Partial<Sal
   try {
     const lastMessage = state.messages[state.messages.length - 1];
     const userQuery = lastMessage?.content?.toString() || '';
-    const modelName = "gemini-2.5-flash"; // Use fast model for planning
+    const modelName = "gemini-2.5-pro"; // Upgraded to pro for better planning
     const model = getGeminiModel(modelName);
 
     const contextParts: string[] = [];
@@ -280,12 +332,13 @@ REGLAS:
 /**
  * Think node - LLM reasoning about next action
  * 
- * NOTE: Time-based tool skipping has been removed since we now run in
- * Trigger.dev background workers with no timeout constraints.
+ * SIMPLIFIED: Let the model work naturally. Don't force tool calls.
+ * Gemini doesn't respect tool_choice anyway.
  */
 export async function think(state: SalesAgentStateType): Promise<Partial<SalesAgentStateType>> {
   try {
-    // In async mode (Trigger.dev), we have unlimited time so no tool skipping needed
+    // SIMPLIFIED: No narration detection, no forced tool calls
+    // Just let the model do its job
     const shouldSkipTools = false;
     
     // Import tools dynamically to bind to model
@@ -303,14 +356,7 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
     ];
     
     // Bind tools to the model (use state.modelName for dynamic selection)
-    let modelName = state.modelName || "gemini-2.5-flash";
-    
-    // Override: If the user selected gemini-3-pro-preview, use gemini-2.5-pro instead for better reasoning
-    // Gemini 3 thinking mode has API compatibility issues with tools, and quality isn't better yet
-    if (modelName === 'gemini-3-pro-preview') {
-      console.log('[think] Upgrading gemini-3-pro-preview to gemini-2.5-pro for better tool selection quality');
-      modelName = 'gemini-2.5-pro';
-    }
+    const modelName = state.modelName || "gemini-3-pro-preview";
     
     // Gemini 3 models currently have issues with tool binding in some library versions or regions.
     // If we encounter issues with Gemini 3, we might need to fallback to a version without tools bound
@@ -351,7 +397,7 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
         // so we'll handle it by NOT passing it in the prompt construction if tools are bound.
     }
     
-    // Only bind tools if we have them (time-based skip may have emptied the array)
+    // Bind tools to model (simple, no forced tool choice - Gemini ignores it anyway)
     const model = allTools.length > 0 ? baseModel.bindTools(allTools) : baseModel;
     
     console.log('[think] Using model:', modelName);
@@ -421,19 +467,57 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
           try {
             const outputData = output.output as any;
             
-            // For search_companies, include full summary
+            // For search_companies, include full summary with sector relevance detection
             if (output.toolName === 'search_companies' && outputData.result) {
               const companies = outputData.result.companies || [];
+              const originalQuery = outputData.result?.query || output.input?.query || '';
               contextParts.push(`\n- search_companies: ${companies.length} empresas encontradas`);
+              contextParts.push(`  * Query original: "${originalQuery}"`);
               
-              // Include top 5 companies with key details
+              // SECTOR RELEVANCE DETECTION: Check if results match the query intent
               if (companies.length > 0) {
+                // Extract sector keywords from the original query
+                const queryLower = originalQuery.toLowerCase();
+                const sectorKeywords = [
+                  'alimentos', 'comida', 'food', 'agrícola', 'agricultura',
+                  'tecnología', 'software', 'tech', 'it', 'sistemas',
+                  'logística', 'transporte', 'cargo', 'envíos',
+                  'construcción', 'inmobiliaria', 'real estate',
+                  'salud', 'médico', 'farmacéutica', 'hospital',
+                  'financiero', 'banco', 'seguros', 'fintech',
+                  'retail', 'comercio', 'tienda', 'supermercado',
+                  'manufactura', 'industrial', 'fábrica',
+                  'turismo', 'hotel', 'restaurante', 'viajes',
+                  'educación', 'universidad', 'colegio', 'capacitación',
+                ];
+                
+                const querySector = sectorKeywords.find(kw => queryLower.includes(kw));
+                
+                if (querySector) {
+                  // Check if any company names or descriptions match the sector
+                  const companyTexts = companies.slice(0, 10).map((c: any) => 
+                    `${c.nombre || ''} ${c.nombre_comercial || ''} ${c.actividad_principal || ''} ${c.ciiu || ''}`.toLowerCase()
+                  );
+                  const sectorMatchCount = companyTexts.filter((text: string) => 
+                    sectorKeywords.some(kw => text.includes(kw) && queryLower.includes(kw))
+                  ).length;
+                  
+                  if (sectorMatchCount < 2) {
+                    // LOW SECTOR MATCH - prompt the model to use web_search
+                    contextParts.push(`\n  ⚠️ **ALERTA: BAJA COINCIDENCIA DE SECTOR**`);
+                    contextParts.push(`  * El usuario busca "${querySector}" pero los resultados parecen ser de otros sectores.`);
+                    contextParts.push(`  * **ACCIÓN REQUERIDA**: Usa \`web_search\` para encontrar empresas específicas del sector "${querySector}"`);
+                    contextParts.push(`  * Ejemplo query: "empresas de ${querySector} en Ecuador lista principales"`);
+                  }
+                }
+                
                 const topCompanies = companies.slice(0, 5).map((c: any) => {
                   const parts = [
                     c.nombre_comercial || c.nombre,
                     `RUC: ${c.ruc}`,
                     `Empleados: ${c.n_empleados || 'N/A'}`,
                     c.total_ingresos ? `Ingresos: $${c.total_ingresos.toLocaleString()}` : null,
+                    c.actividad_principal ? `Actividad: ${c.actividad_principal.substring(0, 50)}` : null,
                   ].filter(Boolean).join(', ');
                   return `  * ${parts}`;
                 }).join('\n');
@@ -536,8 +620,7 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
       contextParts.push('Intenta con una consulta más simple o una herramienta diferente');
     }
 
-    // Time-critical instruction removed - running in async background worker
-    
+    // Build context message (simplified - no narration warnings)
     const contextMessage = contextParts.length > 0 
       ? `\n\n[CONTEXTO INTERNO]\n${contextParts.join('\n')}\n[/CONTEXTO INTERNO]\n`
       : '';
@@ -628,7 +711,28 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
       console.log('[think] Thinking level: low (optimizing for speed)');
     }
 
-    const response = await model.invoke(messagesToSend);
+    // Apply PII redaction to messages before sending to LLM
+    const pii = getPIIMiddleware();
+    const redactedMessages = pii.redactMessages(messagesToSend);
+    console.log('[think] PII redaction applied to', redactedMessages.length, 'messages');
+
+    // Use model fallback chain for resilience
+    const fallbackResult = await invokeWithFallback(redactedMessages, {
+      preferredModel: modelName,
+      tools: allTools,
+      fallbackChain: getFallbackChainForModel(modelName),
+      onFallback: (from, to, error) => {
+        console.log(`[think] Model fallback: ${from} -> ${to} due to: ${error.message}`);
+      },
+    });
+
+    if (!fallbackResult.success || !fallbackResult.result) {
+      console.error('[think] All models failed:', fallbackResult.error?.message);
+      throw fallbackResult.error || new Error('All models failed');
+    }
+
+    const response = fallbackResult.result;
+    console.log('[think] Response from model:', fallbackResult.modelUsed, 'after', fallbackResult.attempts.length, 'attempt(s)');
     
     console.log('[think] Response type:', response._getType());
     console.log('[think] Has tool_calls property:', 'tool_calls' in response);
@@ -665,10 +769,20 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
       console.log('[think] ⚠️ No token usage found in metadata');
     }
 
-    // Return the full AI message (which may include tool calls) with token counts
+    // Check if response has tool calls
+    const hasToolCalls = 'tool_calls' in response && 
+      Array.isArray((response as any).tool_calls) && 
+      ((response as any).tool_calls).length > 0;
+
+    // Increment iteration count
+    const newIterationCount = (state.iterationCount || 0) + 1;
+    console.log(`[think] Iteration ${newIterationCount}, hasToolCalls: ${hasToolCalls}`);
+
+    // Return the AI message with token counts
     return {
       messages: [response],
       lastUpdateTime: new Date(),
+      iterationCount: newIterationCount,
       ...(tokenUsage && {
         totalInputTokens: tokenUsage.inputTokens,
         totalOutputTokens: tokenUsage.outputTokens,
@@ -679,6 +793,7 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
     console.error('Error in think node:', error);
     return {
       errorInfo: `Error al pensar: ${error instanceof Error ? error.message : 'Error desconocido'}`,
+      iterationCount: (state.iterationCount || 0) + 1,
     };
   }
 }
@@ -828,8 +943,8 @@ export function processToolResults(state: SalesAgentStateType): Partial<SalesAge
   const lastOutput = newOutputs[newOutputs.length - 1];
   const shouldRetry = !allSucceeded && state.retryCount < MAX_RETRIES;
 
-  // Increment iteration counter to track loop progress and enable MAX_ITERATIONS backstop
-  const newIterationCount = (state.iterationCount || 0) + 1;
+  // NOTE: iterationCount is now incremented in think() to handle think→think loops correctly
+  // Don't increment here to avoid double-counting
 
   return {
     toolOutputs: newOutputs,
@@ -837,7 +952,6 @@ export function processToolResults(state: SalesAgentStateType): Partial<SalesAge
     lastToolSuccess: allSucceeded,
     retryCount: shouldRetry ? state.retryCount + 1 : 0,
     errorInfo: allSucceeded ? null : lastOutput.errorMessage,
-    iterationCount: newIterationCount,
   };
 }
 
@@ -962,10 +1076,15 @@ export async function finalize(state: SalesAgentStateType): Promise<Partial<Sale
       .replace(/\[AGENT_PLAN\][\s\S]*?\[\/AGENT_PLAN\]/g, '')
       .trim();
 
+    // Check if content looks like raw JSON function calls
+    const isRawJson = (content.startsWith('[') || content.startsWith('{')) && 
+                      (content.includes('functionCall') || content.includes('"name":'));
+
     // Check if content is substantial (not just internal context markers or empty)
     const hasSubstantialContent = content.length > 50 && 
       !content.startsWith('[CONTEXTO INTERNO]') &&
-      !content.match(/^[,\s]*$/);
+      !content.match(/^[,\s]*$/) &&
+      !isRawJson; // Don't count raw JSON as substantial content
     
     if (hasSubstantialContent) {
       console.log('[finalize] Substantial AI response already exists, finalizing');
@@ -1116,7 +1235,7 @@ CONSULTA ORIGINAL DEL USUARIO:
 ${effectiveThinkingHint}
 Genera tu respuesta final ahora. DEBE ser completa, profesional y útil.`);
     
-    // Invoke model for final response
+    // Invoke model for final response with MODEL FALLBACK
     // Note: finalize does not bind tools, so this call is safe for Gemini 3 + Thinking
     // Use the selected model for synthesis (no time-based switching in async mode)
     let synthesisModelName = modelName;
@@ -1127,14 +1246,27 @@ Genera tu respuesta final ahora. DEBE ser completa, profesional y útil.`);
       synthesisModelName = 'gemini-2.5-pro';
     }
     
-    const model = getGeminiModel(synthesisModelName);
-    
-    console.log('[finalize] Generating final response with model:', synthesisModelName);
+    console.log('[finalize] Generating final response with model fallback chain starting at:', synthesisModelName);
     if (effectiveThinkingHint) {
       console.log('[finalize] Thinking level: low (optimizing for speed)');
     }
     
-    const response = await model.invoke([finalizationPrompt]);
+    // Use model fallback for resilience
+    const fallbackResult = await invokeWithFallback([finalizationPrompt], {
+      preferredModel: synthesisModelName,
+      fallbackChain: getFallbackChainForModel(synthesisModelName),
+      onFallback: (from, to, error) => {
+        console.log(`[finalize] Model fallback: ${from} -> ${to} due to: ${error.message}`);
+      },
+    });
+
+    if (!fallbackResult.success || !fallbackResult.result) {
+      console.error('[finalize] All models failed:', fallbackResult.error?.message);
+      throw fallbackResult.error || new Error('All models failed in finalize');
+    }
+
+    const response = fallbackResult.result;
+    console.log('[finalize] Response from model:', fallbackResult.modelUsed, 'after', fallbackResult.attempts.length, 'attempt(s)');
     
     console.log('[finalize] Final response generated, length:', response.content.toString().length);
     
@@ -1283,19 +1415,59 @@ export async function callTools(state: SalesAgentStateType): Promise<Partial<Sal
         console.log('[callTools] Executing tool:', toolCall.name);
         console.log('[callTools] Tool args:', JSON.stringify(toolArgs, null, 2));
 
-        // Execute the tool function directly (no timeout in async mode)
-        // The Trigger.dev worker handles overall execution time
-        const toolResult = await tool.func(toolArgs) as { success?: boolean; [key: string]: unknown };
+        // Restore PII in tool args for tools that need original values
+        const pii = getPIIMiddleware();
+        const processedArgs = pii.processToolInput(toolCall.name, toolArgs);
 
-        console.log('[callTools] Tool', toolCall.name, 'executed successfully');
-        console.log('[callTools] Tool result success:', toolResult?.success);
+        // Execute the tool function with RETRY MIDDLEWARE
+        // Uses exponential backoff for transient failures (network, rate limits)
+        const retryConfig = TOOL_RETRY_PRESETS[toolCall.name] || {};
+        const retryResult = await executeWithRetry(
+          // Cast to any to bypass strict typing - tools expect specific arg shapes
+          // but we're dynamically dispatching based on LLM output
+          () => (tool.func as (args: Record<string, unknown>) => Promise<unknown>)(processedArgs) as Promise<{ success?: boolean; [key: string]: unknown }>,
+          toolCall.name,
+          {
+            defaultConfig: {
+              maxRetries: retryConfig.maxRetries ?? 3,
+              initialDelayMs: retryConfig.initialDelayMs ?? 1000,
+              maxDelayMs: retryConfig.maxDelayMs ?? 15000,
+              backoffFactor: retryConfig.backoffFactor ?? 2.0,
+              jitter: true,
+            },
+            onRetry: (name, attempt, error, delayMs) => {
+              console.log(`[callTools] Tool ${name} retry ${attempt}: ${error.message} (waiting ${delayMs}ms)`);
+            },
+          }
+        );
 
-        // Create ToolMessage with the result
-        return new ToolMessage({
-          content: JSON.stringify(toolResult),
-          tool_call_id: toolCall.id,
-          name: tool.name,
-        });
+        if (retryResult.success && retryResult.result) {
+          const toolResult = retryResult.result;
+          console.log('[callTools] Tool', toolCall.name, 'executed successfully after', retryResult.attempts, 'attempt(s)');
+          console.log('[callTools] Tool result success:', toolResult?.success);
+
+          // Create ToolMessage with the result
+          return new ToolMessage({
+            content: JSON.stringify(toolResult),
+            tool_call_id: toolCall.id,
+            name: tool.name,
+          });
+        } else {
+          // All retries failed
+          console.error('[callTools] Tool', toolCall.name, 'failed after', retryResult.attempts, 'attempts');
+          console.error('[callTools] Retry history:', retryResult.retryHistory);
+          
+          return new ToolMessage({
+            content: JSON.stringify({
+              success: false,
+              error: retryResult.error?.message || 'Tool execution failed after retries',
+              retryAttempts: retryResult.attempts,
+              totalDelayMs: retryResult.totalDelayMs,
+            }),
+            tool_call_id: toolCall.id,
+            name: tool.name,
+          });
+        }
 
       } catch (error) {
         console.error('[callTools] Error executing tool:', toolCall.name);
@@ -1337,6 +1509,35 @@ export async function callTools(state: SalesAgentStateType): Promise<Partial<Sal
 }
 
 /**
+ * Correction node - injects feedback when model narrates action without calling tools
+ */
+export async function correction(state: SalesAgentStateType): Promise<Partial<SalesAgentStateType>> {
+  console.log('[correction] Detected narration without tool call or raw JSON output. Injecting correction message.');
+  
+  // Check if the last message looks like raw JSON
+  const lastMessage = state.messages[state.messages.length - 1];
+  const content = lastMessage.content.toString().trim();
+  const isRawJson = (content.startsWith('[') || content.startsWith('{')) && 
+                    (content.includes('functionCall') || content.includes('"name":'));
+  
+  let feedbackContent = "Has descrito una acción futura pero NO has ejecutado ninguna herramienta.\n\nPOR FAVOR: No narres lo que vas a hacer. EJECUTA la herramienta necesaria directamente ahora usando tool_call.";
+  
+  if (isRawJson) {
+    feedbackContent = "Has respondido con JSON crudo en el texto. NO hagas esto.\n\nPOR FAVOR: Usa el formato nativo de tool_calls para ejecutar herramientas.";
+  }
+  
+  // Create a message that prompts the model to execute the action it just described
+  const feedbackMessage = new HumanMessage({
+    content: feedbackContent
+  });
+  
+  return {
+    messages: [feedbackMessage],
+    // Increment iteration count to avoid infinite loops if it ignores correction repeatedly
+    iterationCount: (state.iterationCount || 0) + 1
+  };
+}
+/**
  * Routing functions for conditional edges
  * 
  * NOTE: Time-based circuit breakers have been removed since we now run in
@@ -1374,17 +1575,48 @@ export function shouldCallTools(state: SalesAgentStateType): string {
     hasToolCalls,
     toolCallsCount: hasToolCalls ? ((lastMessage as { tool_calls: unknown[] }).tool_calls).length : 0,
     iterationCount: state.iterationCount,
-    retryCount: state.retryCount,
-    hasError: !!state.errorInfo,
   });
   
-  // Check if this is an AIMessage with tool_calls
+  // SIMPLE: If model called tools, execute them. Otherwise, finalize.
   if (messageType === 'ai' && hasToolCalls) {
     console.log('[shouldCallTools] Routing to tools');
     return 'tools';
   }
   
-  // Otherwise, we're done thinking and should finalize
+  // NARRATION DETECTION: If no tools but model says it will do something
+  if (messageType === 'ai' && !hasToolCalls) {
+    const content = lastMessage.content.toString();
+    const contentLower = content.toLowerCase();
+    
+    // Check if content looks like raw JSON function calls
+    // This catches models (like Gemini 2.5 Pro) that sometimes output JSON as text instead of tool calls
+    const hasRawJsonFunctionCall = (content.includes('functionCall') || content.includes('"name":')) && 
+                                   (content.trim().startsWith('[') || content.trim().startsWith('{'));
+                                   
+    if (hasRawJsonFunctionCall) {
+      console.log('[shouldCallTools] Detected raw JSON function call in content. Routing to correction.');
+      return 'correction';
+    }
+    
+    // Keywords indicating future action
+    const narrationKeywords = [
+      'procederé', 'voy a', 'a continuación', 'ahora buscaré', 
+      'pasaré a', 'comenzaré a', 'iniciaré', 'continuaré con',
+      'utilizaré', 'usaré', 'buscaré ahora', 'siguientes pasos:'
+    ];
+    
+    const hasNarration = narrationKeywords.some(kw => contentLower.includes(kw));
+    
+    // Additional check: content should be relatively short (not a full report)
+    // If it's a huge report, it might use these words in a summary/advice context
+    const isShortMessage = content.length < 500;
+    
+    if (hasNarration && isShortMessage) {
+       console.log('[shouldCallTools] Detected narration without action. Routing to correction.');
+       return 'correction';
+    }
+  }  
+  // No tool calls = model is done, finalize
   console.log('[shouldCallTools] No tool calls, finalizing');
   return 'finalize';
 }
@@ -1421,4 +1653,5 @@ export function shouldRetry(state: SalesAgentStateType): string {
 
   return 'reflection';
 }
+
 

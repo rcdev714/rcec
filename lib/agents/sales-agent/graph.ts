@@ -8,6 +8,7 @@ import {
   processToolResults,
   finalize,
   shouldCallTools,
+  correction,
 } from "./nodes";
 import { SupabaseCheckpointSaver } from "./checkpointer";
 
@@ -37,6 +38,8 @@ export function buildSalesAgentGraph() {
   // Process tool results from ToolMessage and populate toolOutputs
   graph.addNode("process_tool_results", processToolResults);
   graph.addNode("finalize", finalize);
+  // Correction node for narration without action
+  graph.addNode("correction", correction);
 
   // Define edges
   // START → load_user_context → plan_todos → think
@@ -44,14 +47,15 @@ export function buildSalesAgentGraph() {
   graph.addEdge("load_user_context", "plan_todos");
   graph.addEdge("plan_todos", "think");
 
-  // think → conditional: tools (if tool calls) or finalize (if done)
-  // The ToolNode should only be invoked when the LLM returns tool calls
+  // think → tools (if tool calls) or finalize (if done) or correction (if narration)
+  // SIMPLIFIED: No narration detection, just check for tool calls
   graph.addConditionalEdges(
     "think",
     shouldCallTools,
     {
       tools: "tools",
       finalize: "finalize",
+      correction: "correction",
     }
   );
 
@@ -59,6 +63,9 @@ export function buildSalesAgentGraph() {
   // We need to process the ToolMessage and populate toolOutputs before going back to think
   graph.addEdge("tools", "process_tool_results");
   graph.addEdge("process_tool_results", "think");
+  
+  // correction → think (feedback loop)
+  graph.addEdge("correction", "think");
 
   // finalize → END
   graph.addEdge("finalize", END);
@@ -83,6 +90,7 @@ export function buildSalesAgentGraphWithCheckpointer() {
   graph.addNode("tools", callTools);
   graph.addNode("process_tool_results", processToolResults);
   graph.addNode("finalize", finalize);
+  graph.addNode("correction", correction);
 
   // Define edges
   graph.addEdge(START, "load_user_context");
@@ -95,11 +103,13 @@ export function buildSalesAgentGraphWithCheckpointer() {
     {
       tools: "tools",
       finalize: "finalize",
+      correction: "correction",
     }
   );
 
   graph.addEdge("tools", "process_tool_results");
   graph.addEdge("process_tool_results", "think");
+  graph.addEdge("correction", "think");
   graph.addEdge("finalize", END);
 
   // Compile WITH checkpointer for async mode
@@ -126,4 +136,3 @@ export function getSalesAgentGraph() {
   }
   return graphInstance;
 }
-

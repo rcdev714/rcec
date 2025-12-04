@@ -10,7 +10,7 @@ import remarkGfm from "remark-gfm";
 import UserAvatar from "./user-avatar";
 import ConversationSidebar from "./conversation-sidebar";
 import ConversationManager from "@/lib/conversation-manager";
-import { ChatCompanyResults } from "./chat-company-card";
+import { SmartCompanyDisplay } from "./chat-company-display";
 import { CompanySearchResult } from "@/types/chat";
 import { EmailDraftCard } from "./email-draft-card";
 import { AgentStateEvent, AgentStateDetail } from "./agent-state-indicator";
@@ -40,6 +40,8 @@ interface Message {
   emailDraft?: EmailDraft;
   agentStateEvents?: AgentStateEvent[];
   todos?: TodoItem[];
+  // Display configuration - which company RUCs to feature
+  displayConfig?: { featuredRUCs?: string[] };
   metadata?: {
     type?: 'text' | 'company_results' | 'export_link' | 'email_draft' | 'planning';
     showAgentDetails?: boolean;
@@ -74,15 +76,31 @@ const formatToolName = (toolName: string): string => {
   return toolNames[toolName] || toolName;
 };
 
-// Defensive render-time sanitization to prevent any bracketed tags
+// Defensive render-time sanitization to prevent any bracketed tags or raw JSON
 function sanitizeForRender(text: string): string {
   if (!text) return "";
-  return text
+  let clean = text
+    // Remove internal tags
     .replace(/\[AGENT_PLAN\][\s\S]*?\[\/AGENT_PLAN\]/g, '')
     .replace(/\[STATE_EVENT\][\s\S]*?\[\/STATE_EVENT\]/g, '')
     .replace(/\[SEARCH_RESULTS\][\s\S]*?\[\/SEARCH_RESULTS\]/g, '')
+    .replace(/\[DISPLAY_CONFIG\][\s\S]*?\[\/DISPLAY_CONFIG\]/g, '')
     .replace(/\[EMAIL_DRAFT\][\s\S]*?\[\/EMAIL_DRAFT\]/g, '')
-    .replace(/\[TOKEN_USAGE\][\s\S]*?\[\/TOKEN_USAGE\]/g, '');
+    .replace(/\[TOKEN_USAGE\][\s\S]*?\[\/TOKEN_USAGE\]/g, '')
+    // Remove any remaining [object Object] artifacts
+    .replace(/\[object Object\],?/g, '');
+  
+  // Remove Gemini internal JSON (functionCall, thoughtSignature) - can be very long
+  // Match JSON arrays containing these keys and remove them completely
+  if (clean.includes('"functionCall"') || clean.includes('"thoughtSignature"')) {
+    // Remove JSON that starts with [{ and contains these internal keys
+    clean = clean.replace(/\[\s*\{[^[\]]*"(?:functionCall|thoughtSignature)"[^]*?\}\s*\]/g, '');
+    // Also try to catch partial JSON fragments
+    clean = clean.replace(/"thoughtSignature"\s*:\s*"[^"]*"/g, '');
+    clean = clean.replace(/"functionCall"\s*:\s*\{[^}]*\}/g, '');
+  }
+  
+  return clean.trim();
 }
 
 // Code block component with copy button
@@ -488,6 +506,18 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
       return "";
     });
 
+    // Extract DISPLAY_CONFIG for company cards
+    let extractedDisplayConfig: { featuredRUCs?: string[] } | undefined;
+    clean = clean.replace(/\[DISPLAY_CONFIG\]([\s\S]*?)\[\/DISPLAY_CONFIG\]/g, (_m: string, p1: string) => {
+      try {
+        const parsed = JSON.parse(p1);
+        extractedDisplayConfig = parsed;
+      } catch {
+        // Ignore parse errors
+      }
+      return "";
+    });
+
     // Extract EMAIL_DRAFT
     let extractedEmailDraft: EmailDraft | undefined;
     clean = clean.replace(/\[EMAIL_DRAFT\]([\s\S]*?)\[\/EMAIL_DRAFT\]/g, (_m: string, p1: string) => {
@@ -532,7 +562,7 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
       metadata.type = 'email_draft';
     }
 
-    return { clean, extractedSearchResult, extractedEmailDraft, extractedTodos, metadata };
+    return { clean, extractedSearchResult, extractedEmailDraft, extractedTodos, extractedDisplayConfig, metadata };
   };
 
   // Cargar conversaciones guardadas al inicializar
@@ -545,7 +575,7 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
       for (const msg of initialMessages) {
         const role = msg.role as "user" | "assistant" | "system";
         if (role === 'assistant') {
-          const { clean, extractedSearchResult, extractedEmailDraft, extractedTodos, metadata } = parseAndSanitizeMessage(role, msg.content || '');
+          const { clean, extractedSearchResult, extractedEmailDraft, extractedTodos, extractedDisplayConfig, metadata } = parseAndSanitizeMessage(role, msg.content || '');
           if (extractedTodos && extractedTodos.length > 0) {
             hydrated.push({
               id: genId(),
@@ -561,6 +591,7 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
             content: clean,
             searchResult: (msg.metadata?.searchResult as CompanySearchResult) || extractedSearchResult,
             emailDraft: (msg.metadata?.emailDraft as EmailDraft) || extractedEmailDraft,
+            displayConfig: extractedDisplayConfig,
             agentStateEvents: msg.metadata?.agentStateEvents as AgentStateEvent[] || undefined, // Restore agent workflow
             metadata: { ...msg.metadata, ...metadata }
           });
@@ -942,6 +973,48 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
           }
         } while (searchResultBlockFound);
 
+        // Process DISPLAY_CONFIG blocks (smart company rendering)
+        const displayConfigStartTag = '[DISPLAY_CONFIG]';
+        const displayConfigEndTag = '[/DISPLAY_CONFIG]';
+
+        let displayConfigBlockFound;
+        do {
+          displayConfigBlockFound = false;
+          const startIndex = buffer.indexOf(displayConfigStartTag);
+          const endIndex = buffer.indexOf(displayConfigEndTag);
+
+          if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+            displayConfigBlockFound = true;
+            if (process.env.NODE_ENV === 'development') console.log("Found display config block in buffer.");
+
+            const textBefore = buffer.substring(0, startIndex);
+            const jsonStr = buffer.substring(startIndex + displayConfigStartTag.length, endIndex);
+
+            assistantResponseText += textBefore;
+            buffer = buffer.substring(endIndex + displayConfigEndTag.length);
+
+            try {
+              const displayConfig = JSON.parse(jsonStr);
+              if (process.env.NODE_ENV === 'development') console.log("Successfully parsed display config:", displayConfig);
+
+              // Update the assistant message with display config
+              setMessages((prev) => {
+                const next = [...prev];
+                const lastMessage = next[next.length - 1];
+                if (lastMessage?.role === "assistant") {
+                  next[next.length - 1] = {
+                    ...lastMessage,
+                    displayConfig,
+                  };
+                }
+                return next;
+              });
+            } catch (e) {
+              console.error("Failed to parse display config JSON:", e, "JSON string was:", jsonStr);
+            }
+          }
+        } while (displayConfigBlockFound);
+
         // Process AGENT_PLAN blocks (planning/todos)
         const planStartTag = '[AGENT_PLAN]';
         const planEndTag = '[/AGENT_PLAN]';
@@ -1105,6 +1178,7 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
         .replace(/\[AGENT_PLAN\][\s\S]*?\[\/AGENT_PLAN\]/g, '')
         .replace(/\[STATE_EVENT\][\s\S]*?\[\/STATE_EVENT\]/g, '')
         .replace(/\[SEARCH_RESULTS\][\s\S]*?\[\/SEARCH_RESULTS\]/g, '')
+        .replace(/\[DISPLAY_CONFIG\][\s\S]*?\[\/DISPLAY_CONFIG\]/g, '')
         .replace(/\[EMAIL_DRAFT\][\s\S]*?\[\/EMAIL_DRAFT\]/g, '')
         .replace(/\[TOKEN_USAGE\][\s\S]*?\[\/TOKEN_USAGE\]/g, '')
         .trim();
@@ -1668,14 +1742,13 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
                               </div>
                             )}
 
-                            {/* Render company search results */}
+                            {/* Render company search results - simple display */}
                             {msg.searchResult && msg.metadata?.type === 'company_results' && (
-                              <ChatCompanyResults
+                              <SmartCompanyDisplay
                                 companies={msg.searchResult.companies}
                                 totalCount={msg.searchResult.totalCount}
                                 query={msg.searchResult.query}
-                                hasMore={msg.searchResult.companies.length < msg.searchResult.totalCount}
-                                onLoadMore={() => handleLoadMoreResults(msg.searchResult!)}
+                                featuredRUCs={msg.displayConfig?.featuredRUCs || []}
                               />
                             )}
 

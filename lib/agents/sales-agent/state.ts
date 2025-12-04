@@ -230,6 +230,6 @@ export const SalesAgentState = Annotation.Root({
 export type SalesAgentStateType = typeof SalesAgentState.State;
 
 // Constants
-export const MAX_ITERATIONS = 30; // Increased for complex multi-tool workflows (time-based circuit breaker is primary backstop)
+export const MAX_ITERATIONS = 50; // Increased for complex multi-tool workflows (time-based circuit breaker is primary backstop)
 export const MAX_RETRIES = 3;
 

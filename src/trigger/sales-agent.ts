@@ -18,8 +18,8 @@ import { BaseMessage } from "@langchain/core/messages";
  */
 export const salesAgentTask = task({
   id: "sales-agent-run",
-  // Allow up to 10 minutes for complex research workflows
-  maxDuration: 600,
+  // Allow up to 30 minutes for complex research workflows
+  maxDuration: 1800,
   // Use a medium machine for better performance
   machine: { preset: "medium-1x" },
   
