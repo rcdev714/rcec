@@ -401,6 +401,9 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
     const model = allTools.length > 0 ? baseModel.bindTools(allTools) : baseModel;
     
     console.log('[think] Using model:', modelName);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[think] Model object created:', !!model);
+    }
     console.log('[think] Tools bound to model:', allTools.map(t => t.name));
 
     // Build context message

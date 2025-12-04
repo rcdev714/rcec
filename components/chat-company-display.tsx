@@ -109,7 +109,7 @@ export interface CompanyDisplayConfig {
 export function SmartCompanyDisplay({ 
   companies, 
   totalCount, 
-  query,
+  query: _query,
   featuredRUCs = [],
 }: { 
   companies: Company[]

@@ -667,6 +667,8 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
   };
 
 
+  /* 
+  // Disable loading more results for now as it conflicts with the new async workflow
   const handleLoadMoreResults = async (searchResult: CompanySearchResult) => {
     try {
       const response = await fetch('/api/chat/companies', {
@@ -721,6 +723,7 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
       }
     }
   };
+  */
 
   /**
    * Start a chat message - routes to sync or async mode based on useAsyncMode prop
