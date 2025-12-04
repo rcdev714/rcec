@@ -2,7 +2,7 @@ import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
 import { SearchFilters, CompanySearchResult } from '@/types/chat';
 import { FilterTranslator } from './filter-translator';
-import { fetchCompanies } from '@/lib/data/companies';
+import { fetchCompanies, searchCompaniesBySector } from '@/lib/data/companies';
 import { sortByRelevanceAndCompleteness, getCompletenessStats, calculateCompletenessScore } from '@/lib/data-completeness-scorer';
 import { agentCache } from '@/lib/agents/sales-agent/cache';
 import { createClient } from '@supabase/supabase-js';
@@ -160,12 +160,16 @@ const searchFiltersSchema = z.object({
 });
 
 /**
- * Tool for searching companies based on natural language queries
+ * Tool for searching companies based on filters (location, size, financials)
+ * 
+ * DESIGN PRINCIPLE: This tool does ONE thing - filtered search by company attributes.
+ * For sector/industry searches, use `search_companies_by_sector` instead.
+ * Let the MODEL decide which tool is appropriate for the query.
  */
 export const searchCompaniesTool = tool(
   async ({ query, limit = 10, page = 1 }: { query: string; limit?: number; page?: number }) => {
     try {
-      // Translate natural language query to filters
+      // Translate natural language query to filters (location, size, financials)
       const filters = FilterTranslator.translateQuery(query);
       const validatedFilters = FilterTranslator.validateFilters(filters);
       
@@ -181,17 +185,18 @@ export const searchCompaniesTool = tool(
         return cachedResult;
       }
       
-      // Fetch companies using existing API with service role client
+      const supabase = getSupabaseClient();
+      
+      // Standard search using filters
       const searchParams = {
         ...validatedFilters,
         page: actualPage.toString(),
         pageSize: actualLimit,
       } as SearchFilters & { page: string; pageSize: number };
       
-      const supabase = getSupabaseClient();
       const { companies, totalCount } = await fetchCompanies(searchParams, supabase);
       
-      // Respect explicit server-side sort when present; otherwise fall back to relevance/completeness
+      // Sort by relevance/completeness
       const shouldPreserveServerOrder = !!validatedFilters.sortBy && validatedFilters.sortBy !== 'completitud';
       const sortedCompanies = shouldPreserveServerOrder ? companies : sortByRelevanceAndCompleteness(companies);
       
@@ -211,16 +216,22 @@ export const searchCompaniesTool = tool(
       // Generate smart display configuration
       const displayConfig = generateDisplayConfig(query, sortedCompanies, totalCount);
       
+      // Simple summary for this filter-based tool
+      const summary = `Encontré ${totalCount} empresas que coinciden con: ${filterSummary}. Los resultados se ordenan por completitud de datos.`;
+      
       // Return structured result for the agent
       const toolResult = {
         success: true,
         result,
-        // NEW: Display configuration for smart UI rendering
         displayConfig,
-        summary: `Encontré ${totalCount} empresas que coinciden con: ${filterSummary}.` + (!shouldPreserveServerOrder ? ' Los resultados se ordenan por relevancia, priorizando empresas con información de contacto completa y datos financieros recientes.' : ''),
-        showingResults: `Mostrando ${sortedCompanies.length} de ${totalCount} resultados. Cargar más mostrará el siguiente grupo de empresas relevantes.`,
+        summary,
+        showingResults: `Mostrando ${sortedCompanies.length} de ${totalCount} resultados.`,
         appliedFilters: validatedFilters,
         dataQuality: stats,
+        // Hint to the model about when to use sector search
+        hint: validatedFilters.sector || validatedFilters.sectorText 
+          ? 'TIP: Para búsquedas por sector/industria específica, usa search_companies_by_sector para mejores resultados.'
+          : null,
       };
       
       // Cache successful results
@@ -240,25 +251,195 @@ export const searchCompaniesTool = tool(
   },
   {
     name: 'search_companies',
-    description: `Buscar empresas en Ecuador basado en varios criterios. Esta herramienta puede entender consultas en lenguaje natural y convertirlas a filtros apropiados.
+    description: `Buscar empresas en Ecuador por FILTROS ESTRUCTURADOS: ubicación, tamaño, métricas financieras.
 
-Ejemplos de consultas que puedes manejar:
-- "Muéstrame empresas rentables en Guayaquil con más de 50 empleados"
-- "Encuentra empresas tecnológicas con ingresos entre 1M y 5M"
-- "Empresas en Pichincha del 2023"
-- "Empresas manufactureras grandes"
-- "Empresas rentables en el sector turismo"
+**USA ESTA HERRAMIENTA CUANDO:**
+- Busques por ubicación: "empresas en Guayaquil", "compañías en Pichincha"
+- Busques por tamaño: "empresas con más de 100 empleados", "empresas grandes"
+- Busques por finanzas: "empresas con ingresos > 1M", "empresas rentables"
+- Busques empresa específica: "empresa con RUC 1790016919001", "Corporación Favorita"
 
-La herramienta automáticamente traducirá lenguaje natural a filtros apropiados para:
-- Ubicación (provincias/ciudades)
-- Tamaño de empresa (rangos de número de empleados)
-- Métricas financieras (ingresos, utilidad, activos)
-- Períodos de tiempo (años fiscales)
-- Nombres de empresa o números RUC`,
+**NO USES ESTA HERRAMIENTA CUANDO:**
+- Busques por sector/industria: "empresas de alimentos", "proveedores de tecnología"
+- Para sectores, USA \`search_companies_by_sector\` que tiene mejor relevancia
+
+Ejemplos válidos:
+- "Empresas en Guayaquil con más de 50 empleados"
+- "Empresas rentables en Pichincha con ingresos > 500k"
+- "Buscar empresa RUC 1790016919001"`,
     schema: z.object({
-      query: z.string().describe('Consulta en lenguaje natural describiendo las empresas a buscar'),
-      limit: z.number().optional().default(10).describe('Número máximo de resultados a retornar (por defecto: 10, máximo: 50)'),
-      page: z.number().optional().default(1).describe('Número de página para paginación'),
+      query: z.string().describe('Consulta con filtros de ubicación, tamaño o finanzas'),
+      limit: z.number().optional().default(10).describe('Máximo de resultados (default: 10, max: 50)'),
+      page: z.number().optional().default(1).describe('Página para paginación'),
+    }),
+  }
+);
+
+/**
+ * NEW: Dedicated tool for SECTOR/INDUSTRY searches
+ * Uses PostgreSQL RPC with pg_trgm for semantic matching and CIIU codes
+ * 
+ * DESIGN: The MODEL decides when to use this tool based on the query intent
+ */
+export const searchCompaniesBySectorTool = tool(
+  async ({ 
+    sector, 
+    keywords = [], 
+    province, 
+    minRevenue, 
+    minEmployees,
+    limit = 15 
+  }: { 
+    sector: string;
+    keywords?: string[];
+    province?: string;
+    minRevenue?: number;
+    minEmployees?: number;
+    limit?: number;
+  }) => {
+    try {
+      console.log('[searchCompaniesBySectorTool] Sector search:', { sector, keywords, province, minRevenue });
+      
+      // Import sector mappings
+      const { SECTOR_KEYWORD_MAPPING, CIIU_SECTOR_MAPPING } = await import('./filter-translator');
+      
+      // Build keywords list from sector + provided keywords
+      const sectorLower = sector.toLowerCase();
+      const sectorKeywords = SECTOR_KEYWORD_MAPPING[sectorLower] || [];
+      const allKeywords = [...new Set([...sectorKeywords, ...keywords, sectorLower])].filter(Boolean);
+      
+      // Get CIIU codes for the sector
+      const ciuuPrefixes = CIIU_SECTOR_MAPPING[sectorLower] || [];
+      
+      if (allKeywords.length === 0 && ciuuPrefixes.length === 0) {
+        return {
+          success: false,
+          error: `Sector "${sector}" no reconocido. Sectores válidos: alimentos, tecnologia, construccion, logistica, salud, financiero, comercio, manufactura, mineria, turismo, educacion, etc.`,
+          suggestion: 'Intenta con un nombre de sector más común o usa search_companies con filtros específicos.',
+        };
+      }
+      
+      const supabase = getSupabaseClient();
+      
+      // Call the specialized RPC function
+      const { companies } = await searchCompaniesBySector({
+        sectorKeywords: allKeywords,
+        ciuuPrefixes: ciuuPrefixes.length > 0 ? ciuuPrefixes : undefined,
+        province,
+        minRevenue,
+        minEmployees,
+        maxResults: Math.min(limit, 50),
+      }, supabase);
+      
+      if (companies.length === 0) {
+        return {
+          success: true,
+          result: { companies: [], totalCount: 0 },
+          summary: `No encontré empresas del sector "${sector}"${province ? ` en ${province}` : ''}.`,
+          suggestion: 'Intenta con criterios más amplios o usa web_search para encontrar empresas específicas del sector.',
+        };
+      }
+      
+      // Calculate match type statistics
+      const matchTypes: Record<string, number> = {};
+      let totalRelevance = 0;
+      for (const company of companies) {
+        matchTypes[company.sector_match_type] = (matchTypes[company.sector_match_type] || 0) + 1;
+        totalRelevance += company.sector_relevance;
+      }
+      
+      // Convert to Company-like format for UI compatibility
+      const formattedCompanies = companies.map(c => ({
+        id: c.id,
+        ruc: c.ruc,
+        nombre: c.nombre,
+        nombre_comercial: c.nombre_comercial,
+        provincia: c.provincia,
+        descripcion: c.descripcion,
+        ciiu: c.ciiu,
+        ciiu_n1: c.ciiu_n1,
+        segmento: c.segmento,
+        ingresos_ventas: c.ingresos_ventas,
+        n_empleados: c.n_empleados,
+        utilidad_neta: c.utilidad_neta,
+        anio: c.anio,
+        // Sector-specific fields
+        _sectorMatchType: c.sector_match_type,
+        _sectorRelevance: c.sector_relevance,
+      }));
+      
+      const displayConfig = generateDisplayConfig(sector, formattedCompanies as any, companies.length);
+      
+      return {
+        success: true,
+        result: {
+          companies: formattedCompanies,
+          totalCount: companies.length,
+          query: sector,
+        },
+        displayConfig,
+        summary: `Encontré ${companies.length} empresas del sector "${sector}"${province ? ` en ${province}` : ''}. Resultados ordenados por relevancia sectorial.`,
+        sectorAnalysis: {
+          sector,
+          matchTypes, // e.g., { ciiu_exact: 8, descripcion_keyword: 2 }
+          avgRelevance: totalRelevance / companies.length,
+          topMatches: companies.slice(0, 3).map(c => ({
+            nombre: c.nombre_comercial || c.nombre,
+            ciiu: c.ciiu,
+            matchType: c.sector_match_type,
+          })),
+          ciuuCodesUsed: ciuuPrefixes,
+          keywordsUsed: allKeywords.slice(0, 5),
+        },
+      };
+      
+    } catch (error) {
+      console.error('[searchCompaniesBySectorTool] Error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error en búsqueda por sector',
+        suggestion: 'Intenta con search_companies o web_search como alternativa.',
+      };
+    }
+  },
+  {
+    name: 'search_companies_by_sector',
+    description: `Buscar empresas por SECTOR o INDUSTRIA específica. Usa clasificación CIIU y búsqueda semántica.
+
+**USA ESTA HERRAMIENTA CUANDO:**
+- El usuario menciona un sector: "empresas de alimentos", "proveedores de tecnología"
+- Busca por industria: "sector inmobiliario", "industria farmacéutica"
+- Busca proveedores/fabricantes: "fabricantes de textiles", "proveedores de logística"
+
+**SECTORES SOPORTADOS:**
+- Alimentos, Agrícola, Restaurantes
+- Tecnología, Software, Telecomunicaciones
+- Construcción, Inmobiliaria
+- Logística, Transporte
+- Salud, Farmacéutica
+- Financiero, Seguros
+- Comercio, Retail
+- Manufactura, Textil, Químico
+- Energía, Minería
+- Consultoría, Educación, Turismo
+- Automotriz, Publicidad, Seguridad
+
+**VENTAJAS sobre search_companies:**
+- Usa códigos CIIU internacionales para clasificación precisa
+- Búsqueda semántica con pg_trgm similarity
+- Retorna sector_match_type y sector_relevance para cada empresa
+
+Ejemplos:
+- sector: "alimentos", province: "PICHINCHA", minRevenue: 100000
+- sector: "tecnologia", keywords: ["software", "SaaS"]
+- sector: "inmobiliaria", province: "GUAYAS"`,
+    schema: z.object({
+      sector: z.string().describe('Nombre del sector/industria a buscar (ej: "alimentos", "tecnologia", "construccion")'),
+      keywords: z.array(z.string()).optional().describe('Keywords adicionales para refinar la búsqueda'),
+      province: z.string().optional().describe('Filtrar por provincia (ej: "PICHINCHA", "GUAYAS")'),
+      minRevenue: z.number().optional().describe('Ingresos mínimos en USD'),
+      minEmployees: z.number().optional().describe('Número mínimo de empleados'),
+      limit: z.number().optional().default(15).describe('Máximo de resultados (default: 15)'),
     }),
   }
 );
@@ -448,6 +629,7 @@ Usa esto cuando los usuarios quieren:
 // Export all tools as an array for easy use in LangGraph
 export const companyTools = [
   searchCompaniesTool,
+  searchCompaniesBySectorTool, // NEW: Dedicated sector search - model decides when to use
   getCompanyDetailsTool,
   refineSearchTool,
 ];

@@ -73,12 +73,46 @@ Ayudar a ejecutivos, analistas y equipos comerciales a:
 ## Arsenal de Herramientas (Tool Invocation Guidelines)
 
 ### 1. search_companies
-**Propósito**: Motor de búsqueda semántico para empresas ecuatorianas.
-**Cuándo usar**: Mapeo de mercado, búsqueda de proveedores/competidores, identificación de leads.
+**Propósito**: Búsqueda de empresas por FILTROS ESTRUCTURADOS (ubicación, tamaño, finanzas).
+**Cuándo usar**: Cuando el usuario busca por criterios específicos SIN mencionar un sector/industria.
+
+**USA search_companies para:**
+- Ubicación: "empresas en Guayaquil", "compañías en Pichincha"
+- Tamaño: "empresas con más de 100 empleados", "empresas grandes"
+- Finanzas: "empresas con ingresos > 1M", "empresas rentables"
+- Empresa específica: "RUC 1790016919001", "Corporación Favorita"
+
 **Inputs**:
-- \`query\` (string): Consulta en lenguaje natural (ej: "empresas de logística en Guayas con ingresos > 1M").
-- \`limit\`: Máximo de resultados.
-**Nota**: Si la búsqueda es vaga, infiere criterios lógicos pero infórmalo.
+- \`query\` (string): Consulta con filtros de ubicación/tamaño/finanzas
+- \`limit\`: Máximo de resultados
+
+### 1b. search_companies_by_sector ⭐ NUEVO
+**Propósito**: Búsqueda especializada por SECTOR/INDUSTRIA usando códigos CIIU y búsqueda semántica.
+**Cuándo usar**: Cuando el usuario menciona un sector, industria, o tipo de proveedor.
+
+**USA search_companies_by_sector para:**
+- Sectores: "empresas de alimentos", "sector tecnológico"
+- Proveedores: "proveedores de logística", "fabricantes de textiles"
+- Industrias: "industria farmacéutica", "sector inmobiliario"
+
+**Inputs**:
+- \`sector\` (string): Nombre del sector (ej: "alimentos", "tecnologia", "construccion")
+- \`keywords\` (array): Keywords adicionales opcionales
+- \`province\` (string): Filtro de provincia opcional
+- \`minRevenue\` (number): Ingresos mínimos opcional
+- \`minEmployees\` (number): Empleados mínimos opcional
+
+**SECTORES SOPORTADOS**: alimentos, agricola, tecnologia, software, construccion, inmobiliaria, logistica, transporte, salud, farmaceutica, financiero, seguros, comercio, retail, manufactura, textil, quimico, energia, mineria, consultoria, educacion, turismo, automotriz, publicidad, seguridad.
+
+**VENTAJAS**: Usa códigos CIIU internacionales + pg_trgm similarity para mejor relevancia.
+
+**DECISION RÁPIDA:**
+| Query del usuario | Herramienta |
+|-------------------|-------------|
+| "empresas en Guayaquil grandes" | search_companies |
+| "proveedores de alimentos en Quito" | search_companies_by_sector |
+| "empresas con ingresos > 1M" | search_companies |
+| "sector tecnológico en Ecuador" | search_companies_by_sector |
 
 ### 2. get_company_details
 **Propósito**: Análisis profundo ("Due Diligence" ligero) de una empresa específica.

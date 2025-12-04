@@ -1,5 +1,141 @@
 import { SearchFilters, PROVINCE_MAPPING, COMPANY_SIZE_MAPPING, REVENUE_MAPPING } from '@/types/chat';
 
+// ============================================================================
+// SECTOR/INDUSTRY MAPPING - Maps user terms to database fields
+// ============================================================================
+
+/**
+ * Maps common sector/industry terms to their database equivalents
+ * The database has: actividad_principal, ciiu, segmento, descripcion
+ */
+export const SECTOR_KEYWORD_MAPPING: Record<string, string[]> = {
+  // Food & Agriculture
+  'alimentos': ['aliment', 'comida', 'food', 'bebida', 'lacteo', 'carnic', 'panaderi', 'conserva', 'azucar', 'aceite', 'granos', 'cereales', 'frutas', 'vegetales', 'procesadora', 'frigorific'],
+  'agricola': ['agricol', 'agroindustri', 'cultivo', 'cosecha', 'siembra', 'ganaderi', 'pecuari', 'avicol', 'porcin', 'bovina', 'floricultura', 'banano', 'cacao', 'cafe', 'palma'],
+  'restaurante': ['restaurant', 'comida', 'catering', 'cafeteria', 'hotel', 'hospedaje', 'alojamiento'],
+  
+  // Technology & Digital
+  'tecnologia': ['tecnolog', 'software', 'sistema', 'informatica', 'digital', 'computacion', 'programacion', 'desarrollo', 'app', 'aplicacion', 'web', 'internet', 'cloud', 'datos'],
+  'software': ['software', 'desarrollo', 'programacion', 'app', 'aplicacion', 'sistema informatico', 'SaaS'],
+  'telecomunicaciones': ['telecom', 'comunicacion', 'telefon', 'internet', 'redes', 'fibra optica', 'conectividad'],
+  
+  // Construction & Real Estate
+  'construccion': ['construcc', 'edificaci', 'obra', 'ingenieria civil', 'arquitectura', 'inmobiliari', 'vivienda', 'edificio', 'proyecto inmobiliario'],
+  'inmobiliaria': ['inmobiliari', 'bienes raices', 'real estate', 'corretaje', 'alquiler', 'arrendamiento', 'propiedad'],
+  
+  // Transportation & Logistics
+  'logistica': ['logistic', 'transporte', 'carga', 'envio', 'courier', 'distribucion', 'almacen', 'bodega', 'freight', 'naviera', 'portuari'],
+  'transporte': ['transport', 'carga', 'pasajero', 'taxi', 'bus', 'camion', 'flete', 'mudanza', 'naviera'],
+  
+  // Healthcare & Pharma
+  'salud': ['salud', 'medic', 'hospital', 'clinica', 'consultorio', 'laboratorio', 'diagnost', 'farmac', 'drogueria', 'farma'],
+  'farmaceutica': ['farmac', 'farmaceutic', 'medicament', 'droga', 'laboratorio farmac'],
+  
+  // Finance & Insurance
+  'financiero': ['financ', 'banco', 'credit', 'prestamo', 'inversion', 'bolsa', 'valores', 'fintech', 'cooperativa de ahorro'],
+  'seguros': ['segur', 'asegurador', 'poliza', 'cobertura', 'reaseguro'],
+  
+  // Retail & Commerce
+  'retail': ['retail', 'comercio', 'tienda', 'supermercado', 'almacen', 'minorista', 'mayorista', 'venta al por'],
+  'comercio': ['comerci', 'compra', 'venta', 'importa', 'exporta', 'distribuidor', 'mayorista', 'minorista'],
+  
+  // Manufacturing & Industry
+  'manufactura': ['manufactur', 'fabrica', 'industrial', 'produccion', 'ensambl', 'metalurg', 'maquinaria', 'textil', 'plastico'],
+  'textil': ['textil', 'confeccion', 'ropa', 'vestimenta', 'tela', 'hilado', 'tejido', 'moda'],
+  'quimico': ['quimic', 'petroquim', 'plastico', 'resina', 'polimero', 'farmoquimic', 'agroquimic'],
+  
+  // Energy & Mining
+  'energia': ['energ', 'electric', 'petroleo', 'gas', 'renovable', 'solar', 'eolic', 'hidroelectr', 'combustible'],
+  'mineria': ['miner', 'extraccion', 'canteras', 'oro', 'cobre', 'metalurg'],
+  
+  // Services
+  'consultoria': ['consultor', 'asesori', 'advisory', 'consulting', 'gestion empresarial'],
+  'educacion': ['educac', 'colegio', 'universidad', 'instituto', 'capacitacion', 'formacion', 'enseñanza', 'academico'],
+  'turismo': ['turism', 'agencia de viaje', 'tour', 'operador turistico', 'hospedaje', 'hotel'],
+  
+  // Other common sectors
+  'automotriz': ['automotriz', 'vehiculo', 'automovil', 'concesionario', 'autopart', 'mecanica', 'taller'],
+  'publicidad': ['publicidad', 'marketing', 'medios', 'comunicacion', 'agencia de publicidad', 'btl', 'digital marketing'],
+  'seguridad': ['seguridad', 'vigilancia', 'custodia', 'monitoreo', 'alarma', 'guardia'],
+};
+
+/**
+ * CIIU code prefixes for common sectors (International Standard Industrial Classification)
+ * These map to the ciiu_n1 (single letter) and ciiu (full code like C1010.XX) fields in the database
+ * 
+ * Database format examples:
+ * - ciiu_n1: "C" (manufacturing section)
+ * - ciiu: "C1010.11" (specific activity within section)
+ * 
+ * ISIC Sections:
+ * A = Agriculture, forestry, fishing
+ * B = Mining and quarrying
+ * C = Manufacturing
+ * D = Electricity, gas, steam
+ * E = Water supply, sewerage
+ * F = Construction
+ * G = Wholesale and retail trade
+ * H = Transportation and storage
+ * I = Accommodation and food service
+ * J = Information and communication
+ * K = Financial and insurance
+ * L = Real estate
+ * M = Professional, scientific, technical
+ * N = Administrative and support
+ * P = Education
+ * Q = Human health and social work
+ */
+export const CIIU_SECTOR_MAPPING: Record<string, string[]> = {
+  // Food & Agriculture
+  'alimentos': ['C10', 'C11', 'I56'], // C10=Food products, C11=Beverages, I56=Food service
+  'agricola': ['A'], // All agriculture (section A)
+  'restaurante': ['I56', 'I55'], // I56=Food service, I55=Accommodation
+  
+  // Technology & Digital
+  'tecnologia': ['J62', 'J63'], // J62=Computer programming, J63=Information services
+  'software': ['J62'], // Computer programming and consulting
+  'telecomunicaciones': ['J61'], // Telecommunications
+  
+  // Construction & Real Estate
+  'construccion': ['F'], // All construction (section F)
+  'inmobiliaria': ['L68'], // Real estate activities
+  
+  // Transportation & Logistics
+  'logistica': ['H52', 'H53'], // H52=Warehousing, H53=Postal/courier
+  'transporte': ['H49', 'H50', 'H51'], // H49=Land, H50=Water, H51=Air transport
+  
+  // Healthcare & Pharma
+  'salud': ['Q86', 'Q87'], // Q86=Human health, Q87=Residential care
+  'farmaceutica': ['C21'], // C21=Pharmaceutical manufacturing
+  
+  // Finance & Insurance
+  'financiero': ['K64', 'K66'], // K64=Financial services, K66=Auxiliary financial
+  'seguros': ['K65'], // Insurance and pension funding
+  
+  // Retail & Commerce
+  'retail': ['G47'], // Retail trade
+  'comercio': ['G45', 'G46', 'G47'], // All trade (wholesale and retail)
+  
+  // Manufacturing & Industry
+  'manufactura': ['C'], // All manufacturing (section C)
+  'textil': ['C13', 'C14'], // C13=Textiles, C14=Wearing apparel
+  'quimico': ['C20'], // Chemicals and chemical products
+  
+  // Energy & Mining
+  'energia': ['D35'], // Electricity, gas, steam supply
+  'mineria': ['B'], // All mining (section B)
+  
+  // Services
+  'consultoria': ['M70'], // Management consultancy
+  'educacion': ['P85'], // Education
+  'turismo': ['N79', 'I55'], // N79=Travel agency, I55=Accommodation
+  
+  // Other
+  'automotriz': ['C29', 'G45'], // C29=Motor vehicles mfg, G45=Motor vehicle trade
+  'publicidad': ['M73'], // Advertising and market research
+  'seguridad': ['N80'], // Security and investigation
+};
+
 export class FilterTranslator {
   /**
    * Translates natural language query into search filters
@@ -31,8 +167,72 @@ export class FilterTranslator {
 
     // Extract sort intent and gating flags
     this.extractSortIntent(lowerQuery, filters);
+    
+    // NEW: Extract sector/industry keywords
+    this.extractSector(lowerQuery, filters);
 
     return filters;
+  }
+
+  /**
+   * Extract sector/industry keywords from the query
+   * This enables searching by business activity
+   */
+  private static extractSector(query: string, filters: SearchFilters): void {
+    // Common sector trigger patterns
+    const sectorPatterns = [
+      /(?:empresas?|compañías?|proveedores?|fabricantes?|distribuidores?)\s+(?:de|del|en\s+el\s+sector)\s+(\w+(?:\s+\w+)?)/i,
+      /(?:sector|industria|rubro)\s+(?:de\s+)?(\w+(?:\s+\w+)?)/i,
+      /proveedores?\s+de\s+(\w+(?:\s+\w+)?)/i,
+      /distribuidores?\s+de\s+(\w+(?:\s+\w+)?)/i,
+      /fabricantes?\s+de\s+(\w+(?:\s+\w+)?)/i,
+    ];
+    
+    // Try to extract sector from patterns first
+    for (const pattern of sectorPatterns) {
+      const match = query.match(pattern);
+      if (match && match[1]) {
+        const extractedSector = match[1].toLowerCase().trim();
+        // Check if the extracted term maps to a known sector
+        for (const [sectorKey, keywords] of Object.entries(SECTOR_KEYWORD_MAPPING)) {
+          if (extractedSector.includes(sectorKey) || keywords.some(kw => extractedSector.includes(kw))) {
+            filters.sector = sectorKey;
+            filters.sectorKeywords = keywords;
+            if (CIIU_SECTOR_MAPPING[sectorKey]) {
+              filters.sectorCIIU = CIIU_SECTOR_MAPPING[sectorKey];
+            }
+            return;
+          }
+        }
+        // If no known sector match, use the extracted term as-is for text search
+        filters.sectorText = extractedSector;
+        return;
+      }
+    }
+    
+    // If no pattern match, check for any sector keywords in the query
+    for (const [sectorKey, keywords] of Object.entries(SECTOR_KEYWORD_MAPPING)) {
+      // Check if the sector name itself appears
+      if (query.includes(sectorKey)) {
+        filters.sector = sectorKey;
+        filters.sectorKeywords = keywords;
+        if (CIIU_SECTOR_MAPPING[sectorKey]) {
+          filters.sectorCIIU = CIIU_SECTOR_MAPPING[sectorKey];
+        }
+        return;
+      }
+      // Check if any keyword appears
+      for (const keyword of keywords) {
+        if (query.includes(keyword)) {
+          filters.sector = sectorKey;
+          filters.sectorKeywords = keywords;
+          if (CIIU_SECTOR_MAPPING[sectorKey]) {
+            filters.sectorCIIU = CIIU_SECTOR_MAPPING[sectorKey];
+          }
+          return;
+        }
+      }
+    }
   }
 
   private static extractProvince(query: string, filters: SearchFilters): void {
@@ -391,6 +591,13 @@ export class FilterTranslator {
    */
   static generateFilterSummary(filters: SearchFilters): string {
     const parts: string[] = [];
+    
+    // NEW: Add sector to summary
+    if (filters.sector) {
+      parts.push(`del sector ${filters.sector}`);
+    } else if (filters.sectorText) {
+      parts.push(`relacionadas con "${filters.sectorText}"`);
+    }
 
     if (filters.provincia) {
       parts.push(`en ${filters.provincia}`);
@@ -513,6 +720,26 @@ export class FilterTranslator {
     }
     if (filters.requireEmpleados === 'true') {
       validated.requireEmpleados = 'true';
+    }
+    
+    // NEW: Validate and pass through sector filters
+    if (filters.sector && typeof filters.sector === 'string' && filters.sector.length >= 2) {
+      validated.sector = filters.sector;
+    }
+    if (filters.sectorText && typeof filters.sectorText === 'string' && filters.sectorText.length >= 2) {
+      validated.sectorText = filters.sectorText;
+    }
+    if (filters.sectorKeywords && Array.isArray(filters.sectorKeywords) && filters.sectorKeywords.length > 0) {
+      // Validate each keyword is a non-empty string
+      validated.sectorKeywords = filters.sectorKeywords.filter(kw => 
+        typeof kw === 'string' && kw.length >= 2
+      );
+    }
+    if (filters.sectorCIIU && Array.isArray(filters.sectorCIIU) && filters.sectorCIIU.length > 0) {
+      // Validate CIIU codes (should be alphanumeric)
+      validated.sectorCIIU = filters.sectorCIIU.filter(code => 
+        typeof code === 'string' && /^[A-Z]\d{0,4}$/i.test(code)
+      );
     }
 
     return validated;

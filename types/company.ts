@@ -12,6 +12,17 @@ export interface EstadoDeResultado {
   utilidad_antes_impuestos: number | null;
 }
 
+/**
+ * Company entity from the Supabase `companies` table
+ * 
+ * Key sector/industry fields:
+ * - ciiu: Full CIIU code (e.g., "C1010.11") - 91% coverage
+ * - ciiu_n1: CIIU section letter (e.g., "C" for manufacturing) - 91% coverage
+ * - descripcion: Activity description text (e.g., "ELABORACIÓN DE ACEITES...") - 91% coverage
+ * - segmento: Company size (GRANDE, MEDIANA, PEQUEÑA, MICROEMPRESA) - 81% coverage
+ * 
+ * NOTE: actividad_principal exists in schema but is EMPTY (0 records) - use descripcion instead
+ */
 export interface Company {
   id: number;
   expediente: string | null;
@@ -23,6 +34,7 @@ export interface Company {
   provincia: string | null;
   canton: string | null;
   ciudad: string | null;
+  /** @deprecated This field is empty in the database. Use `descripcion` instead for activity info */
   actividad_principal: string | null;
   estado_empresa: string | null;
   tipo_empresa: string | null;

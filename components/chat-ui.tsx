@@ -88,7 +88,12 @@ function sanitizeForRender(text: string): string {
     .replace(/\[EMAIL_DRAFT\][\s\S]*?\[\/EMAIL_DRAFT\]/g, '')
     .replace(/\[TOKEN_USAGE\][\s\S]*?\[\/TOKEN_USAGE\]/g, '')
     // Remove any remaining [object Object] artifacts
-    .replace(/\[object Object\],?/g, '');
+    .replace(/\[object Object\],?/g, '')
+    // Remove Gemini 3 specific tags
+    .replace(/<const>[\s\S]*?<\/const>/g, '')
+    .replace(/<tool_code>[\s\S]*?<\/tool_code>/g, '')
+    // Replace HTML break tags with newlines
+    .replace(/<br\s*\/?>/gi, '\n');
   
   // Remove Gemini internal JSON (functionCall, thoughtSignature) - can be very long
   // Match JSON arrays containing these keys and remove them completely

@@ -79,26 +79,26 @@ const features = [
   {
     id: "analysis",
     title: "Inteligencia Empresarial Instantánea",
-    description: "Busca, analiza y conecta con más de 300K empresas en segundos. Obtén información financiera, contactos directos y análisis profundo de cualquier empresa con solo preguntar.",
+    description: "Busca, analiza y conecta con más de 300K empresas en segundos.",
     videoSrc: "/landingpagedemos/DemoAgente1.mp4",
     poster: "/heroImage.jpg",
-    tags: ["Busqueda de empresas", "Análisis financiero", "Procesamiento de lenguaje natural", "Conecta con decision makers"]
+    tags: ["Búsqueda", "Análisis financiero", "Contactos directos"]
   },
   {
     id: "search",
     title: "Base de datos de empresas",
-    description: "Encuentra prospectos ideales en segundos. Filtra por industria, ubicación y tamaño con nuestra base de datos de más de 300,000 empresas.",
+    description: "Encuentra prospectos ideales en segundos. Filtra por industria, ubicación y tamaño.",
     videoSrc: "/landingpagedemos/companiesDbDemo.mp4",
     poster: "/HeroImage.jpeg",
-    tags: ["Base de datos en tiempo real", "Filtros avanzados", "Análisis financiero", "Contactos directos reales"]
+    tags: ["300K+ empresas", "Filtros avanzados", "Tiempo real"]
   },
   {
     id: "management",
     title: "Catálogo de Servicios",
-    description: "Crea y comparte un catálogo de servicios público con un link para ofrecer a tus leads. La IA usa este contexto para mejorar el targeting de posibles clientes y personalizar recomendaciones.",
+    description: "Crea y comparte un catálogo público. La IA usa este contexto para mejorar el targeting.",
     videoSrc: "/landingpagedemos/CatalogoServiciosDemo.mp4",
     poster: "/HeroImage.jpeg",
-    tags: ["Catálogo público", "Compartir servicios", "Targeting IA", "Personalización leads"]
+    tags: ["Catálogo público", "Targeting IA", "Personalización"]
   }
 ];
 
@@ -267,7 +267,7 @@ export default function HomeContent({ initialUser = null }: HomeContentProps) {
 
       <main className="pt-24 pb-16 sm:pt-32 sm:pb-24">
         {/* Hero Section */}
-        <section className="max-w-5xl mx-auto px-6 lg:px-8 text-center mb-12 sm:mb-16">
+        <section className="max-w-5xl mx-auto px-6 lg:px-8 text-center mb-8 sm:mb-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -281,36 +281,56 @@ export default function HomeContent({ initialUser = null }: HomeContentProps) {
             </h1>
             
             <p className="max-w-xl mx-auto text-base sm:text-lg text-gray-500 mb-4 leading-relaxed font-light">
-              Busca, audita y conecta con empresas, sin terceros y a la velocidad de la luz.
-              
+              Conecta con empresas, rapido.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href={user ? "/dashboard" : "/auth/sign-up"}>
-                <Button className="h-10 px-6 rounded-full text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md">
-                  {user ? "Ir al Dashboard" : "Empezar Gratis"}
-                </Button>
-              </Link>
+            {/* Available Countries */}
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <span className="text-xs text-gray-400">Países disponibles</span>
+              <span className="text-lg opacity-50 grayscale">🇪🇨</span>
             </div>
+
+            {/* Coming Soon Countries */}
+            <div className="flex items-center justify-center gap-3 mb-6 flex-wrap">
+              <span className="text-xs text-gray-400">Próximamente:</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm opacity-40 grayscale" title="Canadá">🇨🇦</span>
+                <span className="text-sm opacity-40 grayscale" title="Brasil">🇧🇷</span>
+                <span className="text-sm opacity-40 grayscale" title="Argentina">🇦🇷</span>
+                <span className="text-sm opacity-40 grayscale" title="México">🇲🇽</span>
+                <span className="text-sm opacity-40 grayscale" title="Perú">🇵🇪</span>
+                <span className="text-sm opacity-40 grayscale" title="Estados Unidos">🇺🇸</span>
+              </div>
+            </div>
+
+            {!user && (
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <Link href="/auth/sign-up">
+                  <Button className="h-10 px-6 rounded-full text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md">
+                    Empezar Gratis
+                  </Button>
+                </Link>
+              </div>
+            )}
           </motion.div>
         </section>
 
         {/* Feature Story Section */}
-        <section className="max-w-7xl mx-auto px-6 lg:px-8 mb-24 space-y-16">
+        <section className="max-w-7xl mx-auto px-6 lg:px-8 mb-16 space-y-12">
           {features.map((feature) => (
-            <div key={feature.id} className="space-y-6">
+            <div key={feature.id} className="space-y-4">
               <motion.div
                 initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.5 }}
                 transition={{ duration: 0.4 }}
-                className="space-y-3 text-center max-w-3xl mx-auto"
+                className="space-y-2 text-center max-w-2xl mx-auto"
               >
-                <h3 className="text-xl sm:text-2xl font-medium text-gray-900 tracking-tight">{feature.title}</h3>
-                <p className="text-xs sm:text-sm text-gray-600 leading-relaxed max-w-2xl mx-auto">
+                <h3 className="text-lg sm:text-xl font-medium text-gray-900 tracking-tight">{feature.title}</h3>
+                <p className="text-xs sm:text-sm text-gray-600 leading-relaxed max-w-xl mx-auto">
                   {feature.description}
                 </p>
-                <div className="flex flex-wrap gap-2 justify-center text-[11px] text-gray-500 pt-1">
+                <div className="flex flex-wrap gap-1.5 justify-center text-[10px] text-gray-500 pt-0.5">
                   {feature.tags.map(tag => (
                     <span key={tag} className="px-2 py-0.5 rounded-full border border-gray-200 bg-white">
                       {tag}
@@ -339,32 +359,32 @@ export default function HomeContent({ initialUser = null }: HomeContentProps) {
         </section>
 
         {/* Promo CTA */}
-        <section className="max-w-4xl mx-auto px-6 lg:px-8 mb-24">
+        <section className="max-w-3xl mx-auto px-6 lg:px-8 mb-16">
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4 }}
-            className="rounded-2xl border border-gray-200 bg-white p-8 sm:p-10 text-center"
+            className="rounded-xl border border-gray-200 bg-white p-6 sm:p-8 text-center"
           >
-            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 mb-3">
+            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 mb-2">
               Promo de lanzamiento
             </p>
-            <h3 className="text-2xl sm:text-3xl font-medium text-gray-900 mb-4">
-              Recibe USD $5 para usar Gemini 3 Pro gratis
+            <h3 className="text-xl sm:text-2xl font-medium text-gray-900 mb-3">
+              USD $5 gratis · Sin tarjeta
             </h3>
-            <p className="text-sm sm:text-base text-gray-600 mb-6">
-              Activa tu cuenta y prueba las búsquedas y el agente sin costo. Los créditos se asignan de inmediato.
+            <p className="text-xs sm:text-sm text-gray-600 mb-5">
+              Prueba las búsquedas y el agente sin costo.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link href={user ? "/dashboard" : "/auth/sign-up"} className="w-full sm:w-auto">
-                <Button className="w-full sm:w-auto h-11 px-8 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-full">
-                  {user ? "Ir al Dashboard" : "Reclamar crédito"}
+                <Button className="w-full sm:w-auto h-10 px-6 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-full">
+                  {user ? "Ir al Dashboard" : "Empezar Gratis"}
                 </Button>
               </Link>
               {!user && (
                 <Link href="/auth/login" className="text-xs text-gray-500 hover:text-gray-900">
-                  Ya tienes cuenta? Inicia sesión
+                  Ya tienes cuenta?
                 </Link>
               )}
             </div>

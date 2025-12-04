@@ -474,12 +474,37 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
             if (output.toolName === 'search_companies' && outputData.result) {
               const companies = outputData.result.companies || [];
               const originalQuery = outputData.result?.query || output.input?.query || '';
+              const sectorInfo = outputData.sectorInfo as {
+                matchingCount?: number;
+                matchPercentage?: number;
+                topMatches?: string[];
+                detectedSector?: string;
+                lowCoverageWarning?: boolean;
+              } | undefined;
+              
               contextParts.push(`\n- search_companies: ${companies.length} empresas encontradas`);
               contextParts.push(`  * Query original: "${originalQuery}"`);
               
-              // SECTOR RELEVANCE DETECTION: Check if results match the query intent
-              if (companies.length > 0) {
-                // Extract sector keywords from the original query
+              // NEW: Use the tool's built-in sector relevance info
+              if (sectorInfo) {
+                contextParts.push(`  * Sector detectado: ${sectorInfo.detectedSector || 'ninguno'}`);
+                contextParts.push(`  * Coincidencia sectorial: ${sectorInfo.matchingCount || 0} empresas (${sectorInfo.matchPercentage || 0}%)`);
+                
+                if (sectorInfo.topMatches && sectorInfo.topMatches.length > 0) {
+                  contextParts.push(`  * Top matches del sector: ${sectorInfo.topMatches.join(', ')}`);
+                }
+                
+                // CRITICAL: If low sector coverage, prompt web_search
+                if (sectorInfo.lowCoverageWarning) {
+                  contextParts.push(`\n  ⚠️ **ALERTA: BAJA COBERTURA DE SECTOR (${sectorInfo.matchPercentage}%)**`);
+                  contextParts.push(`  * La base de datos tiene poca información del sector "${sectorInfo.detectedSector}".`);
+                  contextParts.push(`  * **ACCIÓN OBLIGATORIA**: Ejecuta \`web_search\` AHORA con:`);
+                  contextParts.push(`    - Query: "empresas de ${sectorInfo.detectedSector} en Ecuador lista principales"`);
+                  contextParts.push(`    - O: "mejores ${sectorInfo.detectedSector} Ecuador directorio empresas"`);
+                  contextParts.push(`  * Luego busca los nombres encontrados en la BD para datos financieros.`);
+                }
+              } else if (companies.length > 0) {
+                // Fallback: Manual sector relevance detection for older tool versions
                 const queryLower = originalQuery.toLowerCase();
                 const sectorKeywords = [
                   'alimentos', 'comida', 'food', 'agrícola', 'agricultura',
@@ -506,21 +531,24 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
                   ).length;
                   
                   if (sectorMatchCount < 2) {
-                    // LOW SECTOR MATCH - prompt the model to use web_search
                     contextParts.push(`\n  ⚠️ **ALERTA: BAJA COINCIDENCIA DE SECTOR**`);
                     contextParts.push(`  * El usuario busca "${querySector}" pero los resultados parecen ser de otros sectores.`);
                     contextParts.push(`  * **ACCIÓN REQUERIDA**: Usa \`web_search\` para encontrar empresas específicas del sector "${querySector}"`);
-                    contextParts.push(`  * Ejemplo query: "empresas de ${querySector} en Ecuador lista principales"`);
                   }
                 }
-                
+              }
+              
+              // Always show top companies for context
+              if (companies.length > 0) {
                 const topCompanies = companies.slice(0, 5).map((c: any) => {
                   const parts = [
                     c.nombre_comercial || c.nombre,
                     `RUC: ${c.ruc}`,
                     `Empleados: ${c.n_empleados || 'N/A'}`,
-                    c.total_ingresos ? `Ingresos: $${c.total_ingresos.toLocaleString()}` : null,
-                    c.actividad_principal ? `Actividad: ${c.actividad_principal.substring(0, 50)}` : null,
+                    c.ingresos_ventas ? `Ingresos: $${c.ingresos_ventas.toLocaleString()}` : null,
+                    // Use descripcion (not actividad_principal which is empty in DB)
+                    c.descripcion ? `Actividad: ${c.descripcion.substring(0, 60)}` : null,
+                    c.ciiu ? `CIIU: ${c.ciiu}` : null,
                   ].filter(Boolean).join(', ');
                   return `  * ${parts}`;
                 }).join('\n');

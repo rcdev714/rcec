@@ -24,6 +24,11 @@ export interface SearchFilters {
   // Flags encoded as strings for URL compatibility: 'true' | ''
   requireIngresos?: string;
   requireEmpleados?: string;
+  // NEW: Sector/Industry filters for semantic search
+  sector?: string;           // Normalized sector key (e.g., 'alimentos', 'tecnologia')
+  sectorKeywords?: string[]; // Keywords to search in actividad_principal, descripcion
+  sectorCIIU?: string[];     // CIIU codes to filter (e.g., ['C10', 'C11'])
+  sectorText?: string;       // Free-text sector search when no mapping found
 }
 
 export interface CompanySearchResult {
