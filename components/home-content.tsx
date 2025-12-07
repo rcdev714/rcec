@@ -186,7 +186,7 @@ export default function HomeContent({ initialUser = null }: HomeContentProps) {
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-8">
-              {["Precios", "Inversores", "Carreras", "Documentación"].map((item) => (
+              {["Inversores", "Carreras", "Documentación"].map((item) => (
                 <Link 
                   key={item}
                   href={`/${item.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}`}
