@@ -91,7 +91,9 @@ export default function CompanyProfile({ history, ruc, returnUrl }: CompanyProfi
   }
 
   // Get the most recent data for header and overview
-  const latestCompany = [...history].sort((a, b) => (b.anio || 0) - (a.anio || 0))[0];
+  const sortedHistory = [...history].sort((a, b) => (b.anio || 0) - (a.anio || 0));
+  const latestCompany = sortedHistory[0];
+  const latestDescription = sortedHistory.find(c => (c.descripcion || '').trim().length > 0)?.descripcion?.trim() || null;
   
   // Calculate growth rates
   const previousYear = history.find(c => c.anio === (latestCompany.anio! - 1));
@@ -392,13 +394,21 @@ export default function CompanyProfile({ history, ruc, returnUrl }: CompanyProfi
               </div>
 
               {/* Additional Details */}
-              {(latestCompany.actividad_principal || latestCompany.segmento_empresa) && (
+              {(latestDescription || latestCompany.actividad_principal || latestCompany.segmento_empresa) && (
                 <div className="bg-white border border-gray-100 rounded-lg p-8">
                   <div className="flex items-center gap-2 mb-8">
                     <Building2 className="h-4 w-4 text-gray-400" />
                     <h3 className="text-sm font-medium text-gray-900">Detalles</h3>
                   </div>
                   <div className="space-y-6">
+                    {latestDescription && (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Descripción</p>
+                        <p className="text-sm font-light text-gray-900 whitespace-pre-line">
+                          {latestDescription}
+                        </p>
+                      </div>
+                    )}
                     {latestCompany.actividad_principal && (
                       <div>
                         <p className="text-xs text-gray-500 mb-1">Actividad Principal</p>
@@ -489,13 +499,21 @@ export default function CompanyProfile({ history, ruc, returnUrl }: CompanyProfi
             </div>
 
             {/* Additional Company Info */}
-            {(latestCompany.actividad_principal || latestCompany.segmento_empresa) && (
+            {(latestDescription || latestCompany.actividad_principal || latestCompany.segmento_empresa) && (
               <div className="bg-white border border-gray-100 rounded-lg p-8">
                 <div className="flex items-center gap-2 mb-8">
                   <Building2 className="h-4 w-4 text-gray-400" />
                   <h3 className="text-sm font-medium text-gray-900">Detalles Adicionales</h3>
                 </div>
                 <div className="space-y-6">
+                  {latestDescription && (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Descripción</p>
+                      <p className="text-sm font-light text-gray-900 whitespace-pre-line">
+                        {latestDescription}
+                      </p>
+                    </div>
+                  )}
                   {latestCompany.actividad_principal && (
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Actividad Principal</p>

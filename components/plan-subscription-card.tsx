@@ -116,6 +116,10 @@ export default function PlanAndSubscriptionCard() {
         </div>
 
         <div className="space-y-3 mb-6">
+        <div className="flex items-center gap-2 text-xs text-gray-600">
+            {isPro ? <Check className="w-3.5 h-3.5 text-indigo-600" /> : <Lock className="w-3.5 h-3.5 text-indigo-500" />}
+            <span>Uso expandido del agente</span>
+          </div>
           <div className="flex items-center gap-2 text-xs text-gray-600">
             {isPro ? <Check className="w-3.5 h-3.5 text-indigo-600" /> : <Lock className="w-3.5 h-3.5 text-indigo-500" />}
             <span>Búsquedas ilimitadas</span>
@@ -127,6 +131,15 @@ export default function PlanAndSubscriptionCard() {
           <div className="flex items-center gap-2 text-xs text-gray-600">
             {isPro ? <Check className="w-3.5 h-3.5 text-indigo-600" /> : <Lock className="w-3.5 h-3.5 text-indigo-500" />}
             <span>Analíticas avanzadas</span>
+          </div>
+          
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            {isPro ? <Check className="w-3.5 h-3.5 text-indigo-600" /> : <Lock className="w-3.5 h-3.5 text-indigo-500" />}
+            <span>Acceso prioritario a nuevas funciones</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            {isPro ? <Check className="w-3.5 h-3.5 text-indigo-600" /> : <Lock className="w-3.5 h-3.5 text-indigo-500" />}
+            <span>Soporte prioritario</span>
           </div>
         </div>
 

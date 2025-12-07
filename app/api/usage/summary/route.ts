@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getUserSubscription } from '@/lib/subscription';
 import { getMonthlyPeriodForAnchor, resolveUsageAnchorIso, dollarsFromTokens } from '@/lib/usage';
+import { isAdmin } from '@/lib/admin';
 
 export async function GET() {
   try {
@@ -13,6 +14,39 @@ export async function GET() {
 
     const subscription = await getUserSubscription(user.id);
     const plan = (subscription?.plan ?? 'FREE') as 'FREE' | 'PRO' | 'ENTERPRISE';
+
+    // Admins are unlimited for agent usage and searches/exports
+    const admin = await isAdmin();
+    if (admin) {
+      const now = new Date();
+      const periodStart = new Date(Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        0, 0, 0, 0
+      ));
+      const periodEnd = new Date(periodStart);
+      periodEnd.setUTCMonth(periodEnd.getUTCMonth() + 1);
+
+      return NextResponse.json({
+        plan: 'ADMIN',
+        limits: {
+          searches: -1,
+          exports: -1,
+          prompt_dollars: -1,
+          prompts: -1,
+        },
+        usage: {
+          searches: 0,
+          exports: 0,
+          prompts: 0,
+          input_tokens: 0,
+          output_tokens: 0,
+          cost_dollars: 0,
+        },
+        period: { start: periodStart.toISOString(), end: periodEnd.toISOString() },
+      });
+    }
 
     // Determine plan limits (dollar-based for prompts)
     const limits = {

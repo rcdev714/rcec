@@ -281,13 +281,13 @@ export default function HomeContent({ initialUser = null }: HomeContentProps) {
             </h1>
             
             <p className="max-w-xl mx-auto text-base sm:text-lg text-gray-500 mb-4 leading-relaxed font-light">
-              Conecta con empresas, rapido.
+              Encuentra empresas y personas clave, rápido.
             </p>
 
             {/* Available Countries */}
             <div className="flex items-center justify-center gap-2 mb-3">
               <span className="text-xs text-gray-400">Países disponibles</span>
-              <span className="text-lg opacity-50 grayscale">🇪🇨</span>
+              <span className="text-lg">🇪🇨</span>
             </div>
 
             {/* Coming Soon Countries */}
@@ -384,7 +384,7 @@ export default function HomeContent({ initialUser = null }: HomeContentProps) {
               </Link>
               {!user && (
                 <Link href="/auth/login" className="text-xs text-gray-500 hover:text-gray-900">
-                  Ya tienes cuenta?
+                  ¿Ya tienes cuenta?
                 </Link>
               )}
             </div>

@@ -157,6 +157,7 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true);
   const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
@@ -1373,26 +1374,38 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isSubmitting || isSending) return;
 
-    // Check usage before sending request
-    const shouldContinue = await checkUsageAndWarn();
-    if (!shouldContinue) {
-      return;
+    setIsSubmitting(true);
+    try {
+      // Check usage before sending request
+      const shouldContinue = await checkUsageAndWarn();
+      if (!shouldContinue) {
+        return;
+      }
+
+      await startChat(input);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    startChat(input);
   };
 
   const handleSuggestionClick = async (suggestion: string) => {
+    if (isSubmitting || isSending) return;
     setInput(suggestion);
 
-    // Check usage before sending request
-    const shouldContinue = await checkUsageAndWarn();
-    if (!shouldContinue) {
-      return;
-    }
+    setIsSubmitting(true);
+    try {
+      // Check usage before sending request
+      const shouldContinue = await checkUsageAndWarn();
+      if (!shouldContinue) {
+        return;
+      }
 
-    startChat(suggestion);
+      await startChat(suggestion);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const formLayout = (
@@ -1417,7 +1430,7 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
             />
             <button
               type="submit"
-              disabled={isSending || !input.trim()}
+              disabled={isSubmitting || isSending || !input.trim()}
               className="w-9 h-9 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center text-sm transition-colors"
               title="Enviar mensaje"
             >
@@ -1492,7 +1505,8 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.25 + i * 0.05, duration: 0.3 }}
                         onClick={() => handleSuggestionClick(s)}
-                        className="text-left p-3 rounded-xl border border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 text-xs md:text-sm text-gray-600 transition-colors"
+                        disabled={isSubmitting || isSending}
+                        className="text-left p-3 rounded-xl border border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 text-xs md:text-sm text-gray-600 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
                       >
                         {s}
                       </motion.button>
