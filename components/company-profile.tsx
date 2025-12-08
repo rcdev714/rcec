@@ -5,8 +5,10 @@ import { Company } from "@/types/company";
 import { CompanyProfileHeader } from "./company-profile-header";
 import { CompanyFinancialTimeline } from "./company-financial-timeline";
 import dynamic from "next/dynamic";
-import { Building2, DollarSign, TrendingUp, Users, Calendar, Phone, BarChart3, FileText } from "lucide-react";
+import { Building2, DollarSign, TrendingUp, Users, Calendar, Phone, BarChart3, FileText, LinkedinIcon, Lock } from "lucide-react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // Client-side feature access function (avoiding server imports)
 function canAccessFeature(plan: 'FREE' | 'PRO' | 'ENTERPRISE', feature: string): boolean {
@@ -45,6 +47,7 @@ interface CompanyProfileProps {
 export default function CompanyProfile({ history, ruc, returnUrl }: CompanyProfileProps) {
   const [activeSection, setActiveSection] = useState<'metrics' | 'history' | 'analytics' | 'contacts'>('metrics');
   const [canAccessLinkedInFeature, setCanAccessLinkedInFeature] = useState(false);
+  const [showLinkedInModal, setShowLinkedInModal] = useState(false);
 
   useEffect(() => {
     async function fetchSubscription() {
@@ -121,6 +124,40 @@ export default function CompanyProfile({ history, ruc, returnUrl }: CompanyProfi
     return `$${num.toFixed(0)}`;
   };
 
+  const renderLinkedInButton = (contactName: string) => {
+    if (!contactName) return null;
+
+    const searchUrl = `https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(contactName)}`;
+
+    return canAccessLinkedInFeature ? (
+      <a
+        href={searchUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex"
+      >
+        <Button
+          size="sm"
+          type="button"
+          className="h-7 px-2 text-xs bg-gray-900 hover:bg-gray-800 text-white"
+        >
+          <LinkedinIcon className="h-3.5 w-3.5 mr-1" />
+         Buscar en LinkedIn
+        </Button>
+      </a>
+    ) : (
+      <Button
+        size="sm"
+        type="button"
+        onClick={() => setShowLinkedInModal(true)}
+        className="h-7 px-2 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200"
+      >
+        <Lock className="h-3.5 w-3.5 mr-1" />
+        LinkedIn
+      </Button>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Profile Header */}
@@ -128,7 +165,6 @@ export default function CompanyProfile({ history, ruc, returnUrl }: CompanyProfi
         company={latestCompany}
         ruc={ruc}
         totalYears={history.length}
-        canAccessLinkedIn={canAccessLinkedInFeature}
         returnUrl={returnUrl}
       />
 
@@ -361,9 +397,12 @@ export default function CompanyProfile({ history, ruc, returnUrl }: CompanyProfi
                   {latestCompany.director_representante && (
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Representante Legal</p>
-                      <p className="text-sm font-light text-gray-900">
-                        {latestCompany.director_representante}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-light text-gray-900">
+                          {latestCompany.director_representante}
+                        </p>
+                        {renderLinkedInButton(latestCompany.director_representante)}
+                      </div>
                     </div>
                   )}
                   {latestCompany.director_cargo && (
@@ -466,9 +505,12 @@ export default function CompanyProfile({ history, ruc, returnUrl }: CompanyProfi
                 {latestCompany.director_representante && (
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Representante Legal</p>
-                    <p className="text-sm font-light text-gray-900">
-                      {latestCompany.director_representante}
-                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-light text-gray-900">
+                        {latestCompany.director_representante}
+                      </p>
+                      {renderLinkedInButton(latestCompany.director_representante)}
+                    </div>
                   </div>
                 )}
                 {latestCompany.director_cargo && (
@@ -536,6 +578,49 @@ export default function CompanyProfile({ history, ruc, returnUrl }: CompanyProfi
           </div>
         )}
       </div>
+      
+      {/* LinkedIn access modal for gated users */}
+      <Dialog open={showLinkedInModal} onOpenChange={setShowLinkedInModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-blue-600" />
+              Búsqueda LinkedIn - Función Pro
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600 mb-4">
+            La búsqueda de contactos en LinkedIn está disponible exclusivamente para usuarios con plan Pro o Enterprise.
+          </p>
+          <div className="space-y-4 py-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="text-xs font-medium text-gray-700 mb-2 uppercase tracking-wider">
+                ¿Qué obtienes con Pro?
+              </h4>
+              <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                <li>Búsqueda ilimitada en LinkedIn</li>
+                <li>Búsquedas de empresas ilimitadas</li>
+                <li>100 prompts del agente por mes</li>
+                <li>Acceso a modelos avanzados de razonamiento</li>
+              </ul>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => (window.location.href = '/pricing')}
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+              >
+                Ver Planes
+              </Button>
+              <Button
+                onClick={() => setShowLinkedInModal(false)}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

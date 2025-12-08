@@ -5,6 +5,7 @@ import PlanAndSubscriptionCard from "@/components/plan-subscription-card";
 import AnalyticsCard from "@/components/dashboard/analytics-card";
 import AnalyticsChartsCard from "@/components/dashboard/analytics-charts-card";
 import AgentLogsCard from "@/components/dashboard/agent-logs-card";
+import PricingUpsell from "@/components/dashboard/pricing-upsell";
 import Link from "next/link";
 import { FileText, Infinity, Building, Package, CreditCard, Settings, TrendingUp, Activity } from "lucide-react";
 import { motion } from "framer-motion";
@@ -24,46 +25,48 @@ export default function DashboardPage() {
               Vista general de tu actividad y consumo.
             </p>
           </div>
-          
-          {/* Modern Tab Switcher */}
-          <div className="bg-white border border-gray-200 rounded-lg p-1 flex items-center shadow-sm">
-            <button
-              onClick={() => setActiveTab('analytics')}
-              className={`relative px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                activeTab === 'analytics' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {activeTab === 'analytics' && (
-                <motion.div
-                  layoutId="activeTab"
-                  className="absolute inset-0 bg-gray-100 rounded-md -z-10"
-                  transition={{ type: "spring", duration: 0.5 }}
-                />
-              )}
-              <span className="flex items-center gap-2">
-                <TrendingUp className="w-3.5 h-3.5" />
-                Analíticas
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveTab('logs')}
-              className={`relative px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                activeTab === 'logs' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {activeTab === 'logs' && (
-                <motion.div
-                  layoutId="activeTab"
-                  className="absolute inset-0 bg-gray-100 rounded-md -z-10"
-                  transition={{ type: "spring", duration: 0.5 }}
-                />
-              )}
-              <span className="flex items-center gap-2">
-                <Activity className="w-3.5 h-3.5" />
-                Registros
-              </span>
-            </button>
-          </div>
+        </div>
+
+        <PricingUpsell />
+
+        {/* Modern Tab Switcher */}
+        <div className="bg-white border border-gray-200 rounded-lg p-1 flex items-center shadow-sm w-fit mx-auto">
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`relative px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              activeTab === 'analytics' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {activeTab === 'analytics' && (
+              <motion.div
+                layoutId="activeTab"
+                className="absolute inset-0 bg-gray-100 rounded-md -z-10"
+                transition={{ type: "spring", duration: 0.5 }}
+              />
+            )}
+            <span className="flex items-center gap-2">
+              <TrendingUp className="w-3.5 h-3.5" />
+              Analíticas
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('logs')}
+            className={`relative px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              activeTab === 'logs' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {activeTab === 'logs' && (
+              <motion.div
+                layoutId="activeTab"
+                className="absolute inset-0 bg-gray-100 rounded-md -z-10"
+                transition={{ type: "spring", duration: 0.5 }}
+              />
+            )}
+            <span className="flex items-center gap-2">
+              <Activity className="w-3.5 h-3.5" />
+              Registros
+            </span>
+          </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">

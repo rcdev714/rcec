@@ -48,11 +48,55 @@ interface Message {
   };
 }
 
-const LoadingSpinner = () => (
-  <div className="flex items-center justify-center">
-    <LoaderCircle className="w-5 h-5 text-gray-500 animate-spin" />
-  </div>
-);
+// Dynamic skeleton placeholder for assistant loading state
+const LoadingSpinner = () => {
+  const statuses = ['Pensando...', 'Accediendo base de datos...', 'Buscando en la web...'];
+  const [statusIndex, setStatusIndex] = useState(0);
+  const bars = ['100%', '96%', '88%'];
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setStatusIndex((idx) => (idx + 1) % statuses.length);
+    }, 3400);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div className="w-full space-y-3" aria-busy="true" aria-label="Cargando respuesta">
+      {bars.map((width, idx) => (
+        <motion.div
+          key={width}
+          className="h-4 min-w-[320px] rounded-xl bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+          style={{ width, backgroundSize: '200% 100%', maxWidth: width }}
+          animate={{
+            backgroundPosition: ['0% 0%', '120% 0%', '0% 0%'],
+            opacity: [0.55, 1, 0.55],
+          }}
+          transition={{
+            duration: 1.6,
+            repeat: Number.POSITIVE_INFINITY,
+            ease: 'easeInOut',
+            delay: idx * 0.12,
+          }}
+        />
+      ))}
+      <div className="flex items-center gap-2 text-[11px] text-gray-600 min-h-[16px]">
+        <LoaderCircle className="w-3.5 h-3.5 animate-spin text-gray-300" />
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={statusIndex}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+          >
+            {statuses[statusIndex]}
+          </motion.span>
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+};
 
 // Helper to format tool names for display
 const formatToolName = (toolName: string): string => {

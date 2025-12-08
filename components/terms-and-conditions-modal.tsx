@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,9 +28,7 @@ export default function TermsAndConditionsModal() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isChecked, setIsChecked] = useState(false);
-  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const contentRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -90,27 +88,7 @@ export default function TermsAndConditionsModal() {
   useEffect(() => {
     if (hasAccepted === false) {
       setIsChecked(false);
-      setHasScrolledToBottom(false);
     }
-  }, [hasAccepted]);
-
-  useEffect(() => {
-    if (hasAccepted !== false) return;
-    const scrollable = contentRef.current;
-    if (!scrollable) return;
-
-    const handleScroll = () => {
-      const reachedBottom =
-        scrollable.scrollTop + scrollable.clientHeight >= scrollable.scrollHeight - 16;
-      setHasScrolledToBottom(reachedBottom);
-    };
-
-    handleScroll();
-    scrollable.addEventListener("scroll", handleScroll);
-
-    return () => {
-      scrollable.removeEventListener("scroll", handleScroll);
-    };
   }, [hasAccepted]);
 
   const handleAccept = async () => {
@@ -158,7 +136,7 @@ export default function TermsAndConditionsModal() {
   };
 
   const modalOpen = shouldGate && !isLoading && hasAccepted === false;
-  const acceptDisabled = isSubmitting || !isChecked || !hasScrolledToBottom;
+  const acceptDisabled = isSubmitting || !isChecked;
 
   if (!modalOpen) {
     return null;
@@ -166,50 +144,46 @@ export default function TermsAndConditionsModal() {
 
   return (
     <Dialog open={modalOpen} onOpenChange={() => {}}>
-      <DialogContent className="max-w-4xl w-[95vw] h-[90vh] md:h-auto md:max-h-[85vh] p-0 gap-0 overflow-hidden border-none shadow-2xl bg-white sm:rounded-2xl flex flex-col">
-        <DialogHeader className="flex-none px-6 py-5 md:px-8 md:py-6 border-b border-gray-100 bg-white/80 backdrop-blur-sm z-10">
+      <DialogContent className="w-[92vw] max-w-xl md:max-w-2xl max-h-[85vh] p-0 gap-0 overflow-hidden border border-gray-200/60 shadow-sm bg-white sm:rounded-xl flex flex-col font-sans">
+        <DialogHeader className="flex-none px-4 py-3 md:px-5 md:py-3 border-b border-gray-100/80 bg-white z-10">
           <div className="flex items-center justify-between">
             <div>
-              <DialogTitle className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 font-kalice">
+              <DialogTitle className="text-base md:text-lg font-medium tracking-tight text-gray-900">
                 Términos y Condiciones
               </DialogTitle>
-              <p className="text-sm text-gray-500 mt-1.5 font-medium">
+              <p className="text-[11px] md:text-xs text-gray-500 mt-1 font-medium">
                 Versión {CURRENT_TERMS_VERSION} — Última actualización
               </p>
             </div>
-            <div className="hidden md:block px-3 py-1 bg-gray-100 rounded-full text-xs font-semibold text-gray-600">
-              Documento Legal
-            </div>
+            <span className="hidden md:inline-flex px-2.5 py-1 bg-gray-100 rounded-full text-[11px] font-semibold text-gray-600">
+              Documento legal
+            </span>
           </div>
         </DialogHeader>
 
         <div
-          ref={contentRef}
-          className="flex-1 overflow-y-auto min-h-0 bg-gray-50/50 p-6 md:p-10 text-sm leading-relaxed text-gray-600 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-track]:bg-transparent"
+          className="flex-1 overflow-y-auto min-h-0 bg-white p-4 md:p-5 text-[13px] leading-relaxed text-gray-700 font-sans [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-track]:bg-transparent"
         >
-          <div className="max-w-3xl mx-auto space-y-8">
+          <div className="max-w-2xl mx-auto space-y-5">
             <div className="prose prose-sm prose-gray max-w-none">
-              <p className="text-gray-500 mb-8 italic">
-                Por favor, lee detenidamente este documento. Contiene información importante sobre tus derechos,
+              <p className="text-gray-500 mb-4 italic text-[12px]">
+                Por favor lee detenidamente este documento. Contiene información importante sobre tus derechos,
                 obligaciones y el uso de los servicios de Camella.
               </p>
               
-              {TERMS_SECTIONS.map((section, index) => (
+              {TERMS_SECTIONS.map((section) => (
                 <section key={section.title} className="group">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-3">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-[10px] font-bold text-white shadow-sm">
-                      {index + 1}
-                    </span>
+                  <h3 className="text-sm md:text-base font-medium text-gray-900 mb-2">
                     {section.title}
                   </h3>
-                  <div className="pl-9 space-y-4">
+                  <div className="space-y-3">
                     {section.paragraphs.map((paragraph, pIndex) => (
-                      <p key={pIndex} className="text-justify text-gray-600 leading-7">
+                      <p key={pIndex} className="text-justify text-gray-700 leading-6 text-[13px] font-normal">
                         {paragraph}
                       </p>
                     ))}
                     {section.bullets && (
-                      <ul className="list-disc pl-5 space-y-2 text-gray-600">
+                      <ul className="list-disc pl-4 space-y-1.5 text-gray-700 text-[13px] font-normal">
                         {section.bullets.map((item, bIndex) => (
                           <li key={bIndex} className="pl-1 marker:text-gray-400">
                             {item}
@@ -222,62 +196,50 @@ export default function TermsAndConditionsModal() {
               ))}
             </div>
             
-            <div className="pt-8 border-t border-gray-200/60">
-               <p className="text-center text-xs text-gray-400">Fin del documento</p>
+            <div className="pt-6 border-t border-gray-200/60">
+               <p className="text-center text-[11px] text-gray-400">Fin del documento</p>
             </div>
           </div>
         </div>
 
-        <div className="flex-none bg-white border-t border-gray-100 p-6 md:px-8 md:py-6 shadow-[0_-4px_20px_-1px_rgba(0,0,0,0.03)] z-20">
-          <div className="max-w-3xl mx-auto w-full">
-            <div className="mb-6">
-              {!hasScrolledToBottom && (
-                <div className="mb-4 flex items-center justify-center gap-2 rounded-lg bg-amber-50 px-4 py-2.5 text-xs font-medium text-amber-700 border border-amber-100/50 animate-in fade-in slide-in-from-bottom-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  Por favor lee todo el documento para habilitar la aceptación
-                </div>
-              )}
-              
+        <div className="flex-none bg-white border-t border-gray-100 p-3 md:px-5 md:py-4 z-20">
+          <div className="max-w-2xl mx-auto w-full">
+            <div className="mb-3">
               <div 
                 className={`
-                  group relative flex items-start gap-4 rounded-xl border p-4 transition-all duration-200
-                  ${isChecked 
-                    ? "border-gray-900 bg-gray-900/5 shadow-sm" 
-                    : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
-                  }
-                  ${!hasScrolledToBottom ? "opacity-50 pointer-events-none grayscale" : "opacity-100"}
+                  group relative flex items-start gap-3 rounded-lg border p-4
+                  ${isChecked ? "border-gray-900 bg-gray-900/5" : "border-gray-200 bg-white"}
                 `}
               >
                 <Checkbox
                   id="terms-acceptance"
                   checked={isChecked}
                   onCheckedChange={(checked) => setIsChecked(checked === true)}
-                  disabled={!hasScrolledToBottom}
                   className="mt-1 data-[state=checked]:bg-gray-900 data-[state=checked]:border-gray-900 border-gray-300"
                 />
                 <label
                   htmlFor="terms-acceptance"
-                  className="text-sm text-gray-600 leading-relaxed cursor-pointer select-none group-hover:text-gray-900 transition-colors"
+                  className="text-[13px] text-gray-600 leading-relaxed cursor-pointer select-none group-hover:text-gray-900 transition-colors font-sans"
                 >
-                  <span className="font-medium text-gray-900 block mb-0.5">Aceptación legal</span>
+                  <span className="font-medium text-gray-900 block mb-0.5 text-sm">Aceptación legal</span>
                   He leído, comprendido y acepto íntegramente los Términos y Condiciones de Camella, 
                   incluyendo las políticas de privacidad y tratamiento de datos.
                 </label>
               </div>
 
               {error && (
-                <div className="mt-3 flex items-center gap-2 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-md">
+                <div className="mt-2 flex items-center gap-2 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-md">
                    <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
                    {error}
                 </div>
               )}
             </div>
 
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:items-center sm:justify-between">
               <Button
                 type="button"
                 variant="ghost"
-                className="text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+                className="w-full sm:w-auto text-gray-600 hover:text-gray-900 hover:bg-gray-50 text-sm"
                 onClick={handleSignOut}
                 disabled={isSubmitting}
               >
@@ -285,8 +247,8 @@ export default function TermsAndConditionsModal() {
               </Button>
               <Button
                 type="button"
-                size="lg"
-                className="bg-gray-900 hover:bg-gray-800 text-white shadow-lg shadow-gray-900/20 px-8 transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0"
+                size="sm"
+                className="w-full sm:w-auto bg-gray-900 hover:bg-gray-800 text-white px-5 py-2 text-sm disabled:opacity-50"
                 onClick={handleAccept}
                 disabled={acceptDisabled}
               >

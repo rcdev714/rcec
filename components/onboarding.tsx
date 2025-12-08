@@ -182,16 +182,16 @@ export default function Onboarding() {
 
     return (
       <Dialog open={showPageOnboarding} onOpenChange={() => {}}>
-        <DialogContent className="max-w-[95vw] md:max-w-[1400px] w-full p-0 overflow-hidden border border-gray-200">
+        <DialogContent className="w-[96vw] max-w-4xl md:max-w-5xl p-0 overflow-hidden border border-gray-200/80 bg-white shadow-md sm:rounded-2xl">
           {/* Video */}
           {pageContent.videoSrc && (
-            <div className="bg-black">
+            <div className="bg-black w-full">
               <video
-                className="w-full h-auto object-contain"
+                className="w-full h-auto max-h-[75vh] object-contain"
                 controls
                 autoPlay
                 muted
-                style={{ maxHeight: '80vh' }}
+                playsInline
               >
                 <source src={pageContent.videoSrc} type="video/mp4" />
                 Tu navegador no soporta el elemento de video.
@@ -200,21 +200,21 @@ export default function Onboarding() {
           )}
 
           {/* Content */}
-          <div className="p-8 md:p-10">
-            <DialogHeader>
-              <div className="flex items-center justify-between gap-4 mb-6">
-                <div className="flex items-center gap-4">
+          <div className="p-5 md:p-6 space-y-5">
+            <DialogHeader className="p-0">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2.5">
                   {Icon && (
-                    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                      <Icon className="h-6 w-6 text-gray-900" />
+                    <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                      <Icon className="h-5 w-5 text-gray-900" />
                     </div>
                   )}
-                  <DialogTitle className="text-2xl font-semibold text-gray-900">
+                  <DialogTitle className="text-lg md:text-xl font-semibold text-gray-900">
                     {pageContent.title}
                   </DialogTitle>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2">
                     <Checkbox
                       id="dont-show"
                       checked={dontShowAgain}
@@ -228,6 +228,7 @@ export default function Onboarding() {
                     onClick={markPageComplete}
                     variant="outline"
                     size="sm"
+                    className="w-full sm:w-auto"
                   >
                     Entendido
                   </Button>
@@ -236,18 +237,18 @@ export default function Onboarding() {
             </DialogHeader>
 
             {/* Description */}
-            <div className="mb-6">
-              <p className="text-gray-700 text-base leading-relaxed">
+            <div className="text-gray-700 text-sm md:text-base leading-relaxed">
+              <p>
                 {pageContent.description}
               </p>
             </div>
 
             {/* Features */}
             {pageContent.features && pageContent.features.length > 0 && (
-              <div className="mb-6 space-y-2">
+              <div className="space-y-2">
                 {pageContent.features.map((feature, idx) => (
-                  <div key={idx} className="flex items-start gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-gray-900 mt-2 flex-shrink-0" />
+                  <div key={idx} className="flex items-start gap-2">
+                    <div className="mt-2 h-1.5 w-1.5 rounded-full bg-gray-800 flex-shrink-0" />
                     <span className="text-gray-700 text-sm leading-relaxed">{feature}</span>
                   </div>
                 ))}
@@ -256,7 +257,7 @@ export default function Onboarding() {
 
             {/* Plan Info */}
             {pageContent.planInfo && (
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="p-3 rounded-md border border-gray-200 bg-gray-50">
                 <p className="text-gray-700 text-sm leading-relaxed">
                   {pageContent.planInfo}
                 </p>
