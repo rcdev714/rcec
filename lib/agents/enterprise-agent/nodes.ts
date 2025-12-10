@@ -1,6 +1,6 @@
 import { AIMessage, SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { EnterpriseAgentStateType, TodoItem, MAX_ITERATIONS, MAX_RETRIES, ToolOutput } from "./state";
+import { EnterpriseAgentStateType, TodoItem, MAX_CORRECTIONS, MAX_ITERATIONS, MAX_RETRIES, ToolOutput } from "./state";
 import { ENTERPRISE_AGENT_SYSTEM_PROMPT } from "./prompt";
 import { extractTokenUsageFromMetadata } from "@/lib/token-counter";
 import { trackLLMUsageBackground } from "@/lib/usage";
@@ -498,10 +498,10 @@ export async function think(state: EnterpriseAgentStateType): Promise<Partial<En
                 if (sectorInfo.lowCoverageWarning) {
                   contextParts.push(`\n  ⚠️ **ALERTA: BAJA COBERTURA DE SECTOR (${sectorInfo.matchPercentage}%)**`);
                   contextParts.push(`  * La base de datos tiene poca información del sector "${sectorInfo.detectedSector}".`);
-                  contextParts.push(`  * **ACCIÓN OBLIGATORIA**: Ejecuta \`web_search\` AHORA con:`);
-                  contextParts.push(`    - Query: "empresas de ${sectorInfo.detectedSector} en Ecuador lista principales"`);
-                  contextParts.push(`    - O: "mejores ${sectorInfo.detectedSector} Ecuador directorio empresas"`);
-                  contextParts.push(`  * Luego busca los nombres encontrados en la BD para datos financieros.`);
+                contextParts.push(`  * **ACCIÓN OBLIGATORIA**: Ejecuta \`tavily_web_search\` AHORA con:`);
+                contextParts.push(`    - Query: "empresas de ${sectorInfo.detectedSector} en Ecuador lista principales"`);
+                contextParts.push(`    - O: "mejores ${sectorInfo.detectedSector} Ecuador directorio empresas"`);
+                contextParts.push(`  * Luego busca los nombres encontrados en la BD para datos financieros.`);
                 }
               } else if (companies.length > 0) {
                 // Fallback: Manual sector relevance detection for older tool versions
@@ -533,8 +533,8 @@ export async function think(state: EnterpriseAgentStateType): Promise<Partial<En
                   if (sectorMatchCount < 2) {
                     contextParts.push(`\n  ⚠️ **ALERTA: BAJA COINCIDENCIA DE SECTOR**`);
                     contextParts.push(`  * El usuario busca "${querySector}" pero los resultados parecen ser de otros sectores.`);
-                    contextParts.push(`  * **ACCIÓN REQUERIDA**: Usa \`web_search\` para encontrar empresas específicas del sector "${querySector}"`);
-                  }
+                  contextParts.push(`  * **ACCIÓN REQUERIDA**: Usa \`tavily_web_search\` para encontrar empresas específicas del sector "${querySector}"`);
+                }
                 }
               }
               
@@ -568,10 +568,10 @@ export async function think(state: EnterpriseAgentStateType): Promise<Partial<En
               if (company.representante_legal) contextParts.push(`  * Rep. Legal: ${company.representante_legal}`);
             }
             
-            // For web_search, include key findings
-            if (output.toolName === 'web_search' && outputData.results) {
+            // For tavily_web_search, include key findings
+            if (output.toolName === 'tavily_web_search' && outputData.results) {
               const results = outputData.results;
-              contextParts.push(`\n- web_search: ${results.length} resultados encontrados`);
+              contextParts.push(`\n- tavily_web_search: ${results.length} resultados encontrados`);
               if (results.length > 0 && results[0].title) {
                 contextParts.push(`  * Top result: ${results[0].title}`);
               }
@@ -1100,6 +1100,20 @@ export function iterationControl(state: EnterpriseAgentStateType): Partial<Enter
  * If the AI hasn't generated a substantial final response, create one here
  */
 export async function finalize(state: EnterpriseAgentStateType): Promise<Partial<EnterpriseAgentStateType>> {
+  const hasPendingTodos = state.todo.some(t => t.status === 'pending' || t.status === 'in_progress');
+  const hasUsefulResults = state.toolOutputs.some(o => o.success && o.output);
+  
+  // Safety guard: Do not finalize without executing tools if there are pending tasks
+  if (hasPendingTodos && !hasUsefulResults) {
+    console.log('[finalize] Pending todos without useful results. Returning failure message.');
+    const failMessage = new AIMessage("No logré completar las tareas pendientes porque no se ejecutaron herramientas. Reformula o dame más detalle para intentar de nuevo.");
+    return {
+      messages: [failMessage],
+      lastUpdateTime: new Date(),
+      errorInfo: 'Finalizado sin resultados de herramientas para TODOs pendientes',
+    };
+  }
+
   // Check if we have a substantial final response from the AI
   const messages = state.messages;
   const lastMessage = messages[messages.length - 1];
@@ -1201,7 +1215,7 @@ export async function finalize(state: EnterpriseAgentStateType): Promise<Partial
             if (company.n_empleados) contextParts.push(`   - Empleados: ${company.n_empleados}`);
             if (company.total_ingresos) contextParts.push(`   - Ingresos: $${company.total_ingresos.toLocaleString()}`);
             if (company.utilidad_neta) contextParts.push(`   - Utilidad: $${company.utilidad_neta.toLocaleString()}`);
-          } else if (output.toolName === 'web_search' && outputData.results) {
+          } else if (output.toolName === 'tavily_web_search' && outputData.results) {
             const results = outputData.results;
             contextParts.push(`   - Resultados de búsqueda: ${results.length} páginas encontradas`);
             results.slice(0, 3).forEach((r: any) => {
@@ -1563,11 +1577,25 @@ export async function correction(state: EnterpriseAgentStateType): Promise<Parti
   const content = lastMessage.content.toString().trim();
   const isRawJson = (content.startsWith('[') || content.startsWith('{')) && 
                     (content.includes('functionCall') || content.includes('"name":'));
-  
-  let feedbackContent = "Has descrito una acción futura pero NO has ejecutado ninguna herramienta.\n\nPOR FAVOR: No narres lo que vas a hacer. EJECUTA la herramienta necesaria directamente ahora usando tool_call.";
+
+  const pendingTodos = state.todo.filter(t => t.status === 'pending' || t.status === 'in_progress');
+  const nextTodo = pendingTodos[0];
+  const correctionAttempt = (state.correctionCount || 0) + 1;
+  const attemptNote = `Intento de corrección ${correctionAttempt}/${MAX_CORRECTIONS}.`;
+
+  let feedbackContent = [
+    "Has descrito lo que harás pero NO ejecutaste ninguna herramienta.",
+    nextTodo ? `Tarea pendiente: "${nextTodo.description}". Ejecútala ahora con tool_calls (ej. search_companies/search_companies_by_sector/get_company_details según corresponda).` : "Ejecútala con tool_calls (ej. search_companies/search_companies_by_sector/get_company_details según corresponda).",
+    "No respondas con planes ni JSON en texto. Llama la herramienta directamente.",
+    attemptNote,
+  ].join("\n\n");
   
   if (isRawJson) {
-    feedbackContent = "Has respondido con JSON crudo en el texto. NO hagas esto.\n\nPOR FAVOR: Usa el formato nativo de tool_calls para ejecutar herramientas.";
+    feedbackContent = [
+      "Has respondido con JSON crudo en el texto. NO hagas esto.",
+      "Usa el formato nativo de tool_calls para ejecutar la herramienta necesaria de inmediato.",
+      attemptNote,
+    ].join("\n\n");
   }
   
   // Create a message that prompts the model to execute the action it just described
@@ -1578,7 +1606,8 @@ export async function correction(state: EnterpriseAgentStateType): Promise<Parti
   return {
     messages: [feedbackMessage],
     // Increment iteration count to avoid infinite loops if it ignores correction repeatedly
-    iterationCount: (state.iterationCount || 0) + 1
+    iterationCount: (state.iterationCount || 0) + 1,
+    correctionCount: correctionAttempt,
   };
 }
 /**
@@ -1589,6 +1618,10 @@ export async function correction(state: EnterpriseAgentStateType): Promise<Parti
  */
 
 export function shouldCallTools(state: EnterpriseAgentStateType): string {
+  const hasPendingTodos = state.todo.some(t => t.status === 'pending' || t.status === 'in_progress');
+  const hasUsefulResults = state.toolOutputs.some(o => o.success && o.output);
+  const exceededCorrections = (state.correctionCount || 0) >= MAX_CORRECTIONS;
+  
   // Check iteration limit (safety against infinite loops)
   if (state.iterationCount >= MAX_ITERATIONS) {
     console.log('[shouldCallTools] Max iterations reached, finalizing');
@@ -1613,12 +1646,17 @@ export function shouldCallTools(state: EnterpriseAgentStateType): string {
   const hasToolCalls = 'tool_calls' in lastMessage && 
     Array.isArray((lastMessage as { tool_calls?: unknown[] }).tool_calls) && 
     ((lastMessage as { tool_calls: unknown[] }).tool_calls).length > 0;
+  const toolCallsCount = hasToolCalls ? ((lastMessage as { tool_calls: unknown[] }).tool_calls).length : 0;
   
   console.log('[shouldCallTools]', {
     messageType,
     hasToolCalls,
-    toolCallsCount: hasToolCalls ? ((lastMessage as { tool_calls: unknown[] }).tool_calls).length : 0,
+    toolCallsCount,
     iterationCount: state.iterationCount,
+    hasPendingTodos,
+    hasUsefulResults,
+    correctionCount: state.correctionCount || 0,
+    exceededCorrections,
   });
   
   // SIMPLE: If model called tools, execute them. Otherwise, finalize.
@@ -1639,7 +1677,10 @@ export function shouldCallTools(state: EnterpriseAgentStateType): string {
                                    
     if (hasRawJsonFunctionCall) {
       console.log('[shouldCallTools] Detected raw JSON function call in content. Routing to correction.');
-      return 'correction';
+      if (hasPendingTodos && !hasUsefulResults && !exceededCorrections) {
+        return 'correction';
+      }
+      return exceededCorrections ? 'finalize' : 'correction';
     }
     
     // Keywords indicating future action
@@ -1650,18 +1691,25 @@ export function shouldCallTools(state: EnterpriseAgentStateType): string {
     ];
     
     const hasNarration = narrationKeywords.some(kw => contentLower.includes(kw));
-    
-    // Additional check: content should be relatively short (not a full report)
-    // If it's a huge report, it might use these words in a summary/advice context
-    const isShortMessage = content.length < 500;
-    
-    if (hasNarration && isShortMessage) {
-       console.log('[shouldCallTools] Detected narration without action. Routing to correction.');
-       return 'correction';
+
+    if (hasNarration) {
+       console.log('[shouldCallTools] Detected narration without action. Routing to correction if needed.');
+       if (hasPendingTodos && !hasUsefulResults && !exceededCorrections) {
+         return 'correction';
+       }
+       // If no pending todos or already have results, allow finalize
+       return exceededCorrections ? 'finalize' : (hasPendingTodos && !hasUsefulResults ? 'correction' : 'finalize');
     }
-  }  
-  // No tool calls = model is done, finalize
-  console.log('[shouldCallTools] No tool calls, finalizing');
+  }
+
+  // If there are pending tasks and no useful results, force correction unless we've exhausted corrections
+  if (hasPendingTodos && !hasUsefulResults) {
+    console.log('[shouldCallTools] Pending todos without useful results. Routing to correction.');
+    return exceededCorrections ? 'finalize' : 'correction';
+  }
+
+  // No tool calls or we already have useful results: finalize
+  console.log('[shouldCallTools] No tool calls or tasks already satisfied, finalizing');
   return 'finalize';
 }
 

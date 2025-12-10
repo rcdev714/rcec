@@ -72,7 +72,7 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
  */
 export const TOOL_RETRY_PRESETS: Record<string, Partial<RetryConfig>> = {
   // External API calls (Tavily, etc.) - more aggressive retries
-  web_search: {
+  tavily_web_search: {
     maxRetries: 3,
     initialDelayMs: 1500,
     maxDelayMs: 15000,

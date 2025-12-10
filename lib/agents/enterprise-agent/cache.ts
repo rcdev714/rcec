@@ -175,7 +175,7 @@ class AgentCache {
    * Cache web search results
    */
   cacheWebSearch(query: string, results: unknown): void {
-    const key = `web_search:${query.toLowerCase().trim()}`;
+    const key = `tavily_web_search:${query.toLowerCase().trim()}`;
     this.set(key, results);
   }
 
@@ -183,7 +183,7 @@ class AgentCache {
    * Get cached web search results
    */
   getWebSearch(query: string): unknown | null {
-    const key = `web_search:${query.toLowerCase().trim()}`;
+    const key = `tavily_web_search:${query.toLowerCase().trim()}`;
     return this.get(key, 15 * 60 * 1000); // 15 min TTL for web searches
   }
 }

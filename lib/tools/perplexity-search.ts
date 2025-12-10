@@ -2,6 +2,77 @@ import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
 
 // ============================================================================
+// FALLBACK CONFIGURATION
+// ============================================================================
+
+/**
+ * When Perplexity fails (no credits, rate limit, etc.), fallback to Tavily
+ * This ensures the agent doesn't get stuck when Perplexity is unavailable
+ */
+async function fallbackToTavily(query: string): Promise<{
+  success: boolean;
+  answer?: string;
+  citations?: Array<{ index: number; url: string }>;
+  citationsCount?: number;
+  source: string;
+  error?: string;
+}> {
+  console.log('[perplexitySearch] Falling back to Tavily web_search');
+  
+  const tavilyApiKey = process.env.TAVILY_API_KEY;
+  if (!tavilyApiKey) {
+    return {
+      success: false,
+      error: 'No fallback available: TAVILY_API_KEY not configured',
+      source: 'none',
+    };
+  }
+
+  try {
+    const response = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: tavilyApiKey,
+        query,
+        max_results: 10,
+        search_depth: 'advanced', // Use advanced for better research results
+        include_answer: true,
+        include_raw_content: false,
+        include_images: false,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Tavily fallback failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    // Format results similar to Perplexity output
+    const citations = (data.results || []).map((r: { url: string }, i: number) => ({
+      index: i + 1,
+      url: r.url,
+    }));
+
+    return {
+      success: true,
+      answer: data.answer || data.results?.map((r: { content: string }) => r.content).join('\n\n') || 'No results found',
+      citations,
+      citationsCount: citations.length,
+      source: 'tavily_fallback',
+    };
+  } catch (error) {
+    console.error('[perplexitySearch] Tavily fallback also failed:', error);
+    return {
+      success: false,
+      error: `Fallback failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      source: 'tavily_fallback',
+    };
+  }
+}
+
+// ============================================================================
 // TYPE DEFINITIONS
 // ============================================================================
 
@@ -66,11 +137,13 @@ export const perplexitySearchTool = tool(
     try {
       const apiKey = process.env.PERPLEXITY_API_KEY;
       
+      // If no API key, immediately fallback to Tavily
       if (!apiKey) {
+        console.log('[perplexitySearch] No PERPLEXITY_API_KEY, using Tavily fallback');
+        const fallbackResult = await fallbackToTavily(query);
         return {
-          success: false,
-          error: 'Perplexity API is not configured. Please add PERPLEXITY_API_KEY to environment variables.',
-          fallbackSuggestion: 'Use web_search as an alternative for web research.',
+          ...fallbackResult,
+          note: 'Perplexity not configured - used Tavily as fallback',
         };
       }
 
@@ -147,17 +220,34 @@ Respond in the same language as the user's query.`,
       const response = await makeRequest();
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const _errorData = await response.json().catch(() => ({}));
         
-        // Handle specific error cases
+        // Handle specific error cases - fallback to Tavily for recoverable errors
         if (response.status === 401) {
-          throw new Error('Invalid Perplexity API key. Please check your PERPLEXITY_API_KEY.');
+          console.log('[perplexitySearch] Invalid API key, falling back to Tavily');
+          const fallbackResult = await fallbackToTavily(query);
+          return {
+            ...fallbackResult,
+            note: 'Perplexity API key invalid - used Tavily as fallback',
+          };
         }
-        if (response.status === 429) {
-          throw new Error('Perplexity rate limit exceeded. Please try again later.');
+        if (response.status === 429 || response.status === 402) {
+          // 429 = rate limit, 402 = payment required (no credits)
+          console.log('[perplexitySearch] Rate limit or no credits, falling back to Tavily');
+          const fallbackResult = await fallbackToTavily(query);
+          return {
+            ...fallbackResult,
+            note: 'Perplexity rate limit/credits exhausted - used Tavily as fallback',
+          };
         }
         
-        throw new Error(`Perplexity API error: ${response.statusText} - ${JSON.stringify(errorData)}`);
+        // For other errors, also fallback
+        console.log('[perplexitySearch] API error, falling back to Tavily:', response.status);
+        const fallbackResult = await fallbackToTavily(query);
+        return {
+          ...fallbackResult,
+          note: `Perplexity error (${response.status}) - used Tavily as fallback`,
+        };
       }
 
       const data: PerplexityResponse = await response.json();
@@ -185,38 +275,49 @@ Respond in the same language as the user's query.`,
         searchFocus,
       };
     } catch (error) {
-      console.error('Perplexity search error:', error);
+      console.error('[perplexitySearch] Error, attempting Tavily fallback:', error);
+      
+      // Always try fallback on error
+      const fallbackResult = await fallbackToTavily(query);
+      if (fallbackResult.success) {
+        return {
+          ...fallbackResult,
+          note: `Perplexity failed (${error instanceof Error ? error.message : 'unknown'}) - used Tavily as fallback`,
+        };
+      }
+      
+      // Both failed
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error during Perplexity search',
-        fallbackSuggestion: 'Use web_search as an alternative for web research.',
+        fallbackError: fallbackResult.error,
+        suggestion: 'Both Perplexity and Tavily failed. Try tavily_web_search directly or simplify your query.',
       };
     }
   },
   {
     name: 'perplexity_search',
-    description: `Investigación profunda usando Perplexity AI - ideal para consultas complejas que requieren síntesis de múltiples fuentes.
+    description: `⚠️ HERRAMIENTA COSTOSA - USAR SOLO COMO ÚLTIMO RECURSO ⚠️
 
-**CUÁNDO USAR:**
-- Análisis de mercado y tendencias de industria
-- Preguntas complejas que requieren razonamiento + datos web
-- Cuando necesitas una respuesta sintetizada con fuentes citadas
-- Investigación que va más allá de búsqueda simple
+Investigación profunda con síntesis multi-fuente. SOLO usar cuando tavily_web_search NO sea suficiente.
 
-**CUÁNDO NO USAR:**
-- Búsquedas simples de empresas (usa search_companies)
-- Búsqueda de URLs específicas (usa web_search)
-- Extracción de datos de páginas (usa web_extract)
+**PRIORIDAD DE BÚSQUEDA WEB (SIEMPRE seguir este orden):**
+1. 🥇 tavily_web_search - PRIMERA opción para cualquier búsqueda web
+2. 🥈 web_extract - Para extraer datos de URLs específicas
+3. 🥉 perplexity_search - SOLO si las anteriores no resuelven la consulta
 
-**EJEMPLOS:**
-- "¿Cuáles son las tendencias del sector fintech en Latinoamérica 2024?"
-- "Análisis del mercado de delivery en Ecuador"
-- "¿Cómo está evolucionando la industria de energías renovables en la región?"
+**CUÁNDO USAR perplexity_search:**
+- SOLO después de que tavily_web_search no haya dado resultados útiles
+- Preguntas académicas complejas que requieren papers/estudios
+- Síntesis de temas muy específicos con múltiples perspectivas
 
-**FOCUS OPTIONS:**
-- internet: Búsqueda general (default)
-- news: Enfocado en noticias recientes
-- academic: Fuentes académicas y papers`,
+**⛔ NO USAR para:**
+- Búsquedas generales de mercado → usa tavily_web_search
+- Noticias de empresas → usa tavily_web_search
+- Encontrar sitios web/contactos → usa tavily_web_search
+- Cualquier búsqueda que tavily_web_search pueda resolver
+
+**FALLBACK:** Si Perplexity falla (sin créditos), automáticamente usa Tavily.`,
     schema: z.object({
       query: z.string().describe('La pregunta o tema de investigación. Sé específico para mejores resultados.'),
       searchFocus: z.enum(['internet', 'academic', 'news', 'youtube', 'reddit'])

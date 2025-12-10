@@ -215,7 +215,7 @@ function formatToolName(toolName: string): string {
     'search_companies': 'Búsqueda de empresas',
     'get_company_details': 'Detalles de empresa',
     'refine_search': 'Refinamiento de búsqueda',
-    'web_search': 'Búsqueda web',
+    'tavily_web_search': 'Búsqueda web (Tavily)',
     'web_extract': 'Extracción de contenido web',
     'enrich_company_contacts': 'Enriquecimiento de contactos',
     'list_user_offerings': 'Listado de servicios',
@@ -269,7 +269,7 @@ function summarizeToolOutput(toolName: string, output: unknown): string | null {
 `;
     }
     
-    if (toolName === 'web_search' && data.results) {
+    if (toolName === 'tavily_web_search' && data.results) {
       if (data.results.length === 0) {
         return '**Búsqueda web:** No se encontraron resultados.\n';
       }

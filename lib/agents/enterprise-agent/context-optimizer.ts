@@ -65,7 +65,7 @@ export function compressToolOutput(output: unknown, toolName: string, maxLength:
     }
     
     // Handle web search - extract titles and snippets
-    if (toolName === 'web_search' && data.results) {
+    if (toolName === 'tavily_web_search' && data.results) {
       const results = data.results.slice(0, 3).map((r: Record<string, unknown>) => ({
         title: r.title,
         snippet: typeof r.snippet === 'string' ? r.snippet.substring(0, 150) : '',

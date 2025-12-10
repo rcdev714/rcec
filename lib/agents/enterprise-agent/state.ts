@@ -226,6 +226,12 @@ export const EnterpriseAgentState = Annotation.Root({
     reducer: (current, update) => current + update,
     default: () => 0,
   }),
+
+  // Correction attempts to avoid infinite narration loops
+  correctionCount: Annotation<number>({
+    reducer: (_, update) => update,
+    default: () => 0,
+  }),
 });
 
 // Type for the state
@@ -238,4 +244,5 @@ export type SalesAgentStateType = EnterpriseAgentStateType;
 // Constants
 export const MAX_ITERATIONS = 50; // Increased for complex multi-tool workflows (time-based circuit breaker is primary backstop)
 export const MAX_RETRIES = 3;
+export const MAX_CORRECTIONS = 3;
 

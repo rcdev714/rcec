@@ -420,7 +420,7 @@ export const webSearchTool = tool(
   async ({ 
     query, 
     site, 
-    maxResults = 5,
+    maxResults = 8,
     searchDepth = 'basic',
     includeAnswer = true 
   }: { 
@@ -525,34 +525,35 @@ export const webSearchTool = tool(
     }
   },
   {
-    name: 'web_search',
-    description: `Buscar información actualizada en internet usando Tavily Search API. 
+    name: 'tavily_web_search',
+    description: `🥇 HERRAMIENTA PRINCIPAL DE BÚSQUEDA WEB - USAR PRIMERO 🥇
 
-Esta herramienta es ideal para:
-- 🔍 Encontrar información de contacto de empresas (emails, teléfonos, direcciones)
-- 📰 Buscar noticias recientes sobre empresas
-- ✅ Validar información de empresas
-- 🌐 Encontrar sitios web corporativos oficiales
-- 👔 Buscar perfiles de LinkedIn de ejecutivos y tomadores de decisión
-- 📱 Encontrar perfiles en redes sociales corporativas
+Búsqueda web rápida y económica usando Tavily. SIEMPRE usar esta herramienta ANTES de perplexity_search.
 
-Estrategia de uso:
-1. Usa queries específicas: "contacto email gerente general Empresa XYZ Ecuador"
-2. Para LinkedIn: Usa site="linkedin.com" con nombre de persona o empresa
-3. Para noticias: Incluye términos temporales "noticias últimos 6 meses"
-4. Para contacto: Combina "contacto" + nombre empresa + ubicación
+**PRIORIDAD DE BÚSQUEDA WEB:**
+1. 🥇 tavily_web_search (ESTA) - Primera opción para CUALQUIER búsqueda web
+2. 🥈 web_extract - Extraer datos de URLs encontradas
+3. 🥉 perplexity_search - SOLO si esta herramienta no resuelve la consulta
 
-Limitaciones éticas:
-- ❌ NO buscar información personal no pública
-- ❌ NO hacer scraping agresivo de datos
-- ✅ SIEMPRE validar confiabilidad de las fuentes
-- ✅ SIEMPRE advertir al usuario sobre validación de contactos
+**USAR PARA:**
+- 🔍 Búsquedas de mercado y tendencias
+- 📰 Noticias de empresas e industrias
+- 🏢 Encontrar sitios web corporativos
+- 👔 Buscar perfiles de LinkedIn
+- 📧 Encontrar información de contacto
+- 🌐 Cualquier búsqueda web general
 
-Ejemplos efectivos:
-- "contacto email ventas Corporación Favorita Ecuador"
-- "site:linkedin.com CEO OTECEL Movistar Ecuador"
-- "noticias empresas tecnología Quito 2024"
-- "dirección oficinas Banco Pichincha Guayaquil"`,
+**EJEMPLOS:**
+- "empresas inmobiliarias Quito crecimiento 2024"
+- "principales constructoras Ecuador ranking"
+- "tendencias sector inmobiliario Ecuador"
+- "site:linkedin.com CEO constructora Ecuador"
+- "contacto gerente ventas Mutualista Pichincha"
+
+**TIPS:**
+- Usa site="linkedin.com" para perfiles
+- Incluye año para datos recientes: "2024"
+- Sé específico: ubicación + sector + tipo de info`,
     schema: z.object({
       query: z.string().describe('Consulta de búsqueda en lenguaje natural. Sé específico: incluye nombre de empresa, ubicación, y tipo de información buscada.'),
       site: z.string().optional().describe('Opcional: Limitar búsqueda a un dominio específico (ej: "linkedin.com", "empresa.com")'),
@@ -700,33 +701,28 @@ export const webExtractTool = tool(
   },
   {
     name: 'web_extract',
-    description: `Extraer contenido estructurado de páginas web específicas usando Tavily Extract API.
+    description: `🥈 EXTRACCIÓN DE DATOS DE URLs - Usar después de tavily_web_search
 
-Esta herramienta es IDEAL para:
-- 📧 Extraer información de contacto detallada (emails, teléfonos, direcciones)
-- 🏢 Parsear páginas de "Contacto" o "About Us" de empresas
-- 👥 Encontrar información de ejecutivos y tomadores de decisión
-- 🌐 Obtener perfiles en redes sociales
-- 📍 Extraer direcciones físicas de oficinas
+Extrae contenido estructurado de páginas web específicas (emails, teléfonos, direcciones).
 
-Flujo recomendado:
-1. Primero usa web_search para encontrar la URL de la página de contacto
-2. Luego usa web_extract con esas URLs para obtener información detallada
-3. La herramienta automáticamente parsea y estructura la información
+**FLUJO RECOMENDADO:**
+1. 🥇 Usa tavily_web_search para encontrar URLs relevantes
+2. 🥈 Usa web_extract (ESTA) para extraer datos de esas URLs
+3. 🥉 perplexity_search SOLO si necesitas síntesis adicional
 
-Guía de extracción XML:
-${CONTACT_EXTRACTION_PROMPTS}
+**USAR PARA:**
+- 📧 Extraer emails y teléfonos de páginas de contacto
+- 🏢 Parsear páginas "About Us" o "Contacto"
+- 👥 Obtener info de ejecutivos de páginas corporativas
+- 📍 Extraer direcciones físicas
 
-Limitaciones:
-- Máximo 5 URLs por llamada (para mantener performance)
-- Solo extrae información PÚBLICA visible en la página
-- No puede acceder a contenido protegido por login
-- Respeta robots.txt y términos de servicio
-
-Ejemplos de uso:
+**EJEMPLOS:**
 - urls: ["https://empresa.com/contacto"]
 - urls: ["https://empresa.com/contact-us", "https://empresa.com/about"]
-- extractDepth: "advanced" para páginas complejas con JavaScript`,
+
+**LIMITACIONES:**
+- Máximo 5 URLs por llamada
+- Solo contenido público (no login)`,
     schema: z.object({
       urls: z.union([
         z.string().url().describe('URL única a extraer'),
