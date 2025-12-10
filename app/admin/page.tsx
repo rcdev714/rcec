@@ -1,14 +1,19 @@
 import { redirect } from 'next/navigation'
-import { isAdmin } from '@/lib/admin'
+import { isAdmin, isAdminPasswordVerified } from '@/lib/admin'
 import AdminDashboard from '@/components/admin/admin-dashboard'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminPage() {
   const adminStatus = await isAdmin()
+  const passwordVerified = await isAdminPasswordVerified()
 
   if (!adminStatus) {
     redirect('/auth/login?message=Admin access required')
+  }
+
+  if (!passwordVerified) {
+    redirect('/dashboard?message=Se requiere contraseña de administrador')
   }
 
   return (

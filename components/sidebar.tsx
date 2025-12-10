@@ -20,6 +20,7 @@ import UserAvatar from "./user-avatar";
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { SubscriptionStatus as SubscriptionStatusType } from '@/types/subscription';
+import AdminPasswordModal from "./admin-password-modal";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -27,9 +28,10 @@ interface SidebarProps {
   isAdmin?: boolean;
 }
 
-const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin = false }: SidebarProps) => {
+const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin: _isAdmin = false }: SidebarProps) => {
   const pathname = usePathname();
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatusType | null>(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   useEffect(() => {
     async function fetchSubscription() {
@@ -60,7 +62,37 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin = false }: SidebarProps) 
     }
   };
 
-  const navItems = [
+  const handleAdminClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // Check if password was verified in this session (within 1 hour)
+    const verified = sessionStorage.getItem("admin_password_verified");
+    const timestamp = sessionStorage.getItem("admin_password_timestamp");
+    
+    if (verified === "true" && timestamp) {
+      const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
+      const isExpired = Date.now() - parseInt(timestamp) > oneHour;
+      
+      if (!isExpired) {
+        window.location.href = "/admin";
+        return;
+      } else {
+        // Clear expired verification
+        sessionStorage.removeItem("admin_password_verified");
+        sessionStorage.removeItem("admin_password_timestamp");
+      }
+    }
+    
+    setShowPasswordModal(true);
+  };
+
+  type NavItem = {
+    href: string;
+    icon: LucideIcon;
+    label: string;
+    onClick?: (e: React.MouseEvent) => void;
+  };
+
+  const navItems: NavItem[] = [
     { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/chat", icon: Infinity, label: "Agente" },
     { href: "/offerings", icon: Package, label: "Servicios" },
@@ -68,8 +100,8 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin = false }: SidebarProps) 
     { href: "/pricing", icon: CreditCard, label: "Suscripción" },
   ];
 
-  if (isAdmin) {
-    navItems.push({ href: "/admin", icon: Settings, label: "Admin" });
+  if (_isAdmin) {
+    navItems.push({ href: "/admin", icon: Settings, label: "Admin", onClick: handleAdminClick });
   }
 
   return (
@@ -122,17 +154,59 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin = false }: SidebarProps) 
           {navItems.map((item) => {
             const isActive = pathname.startsWith(item.href);
             const Icon = item.icon as LucideIcon;
+            const hasOnClick = 'onClick' in item && item.onClick;
+            
             return (
               <li key={item.label}>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    "group relative flex items-center justify-start px-3 py-2.5 rounded-xl transition-all duration-200",
-                    "text-gray-500 hover:bg-gray-50",
-                    isActive && "bg-indigo-50/80 text-indigo-600 shadow-sm shadow-indigo-100"
-                  )}
-                  title={isCollapsed ? item.label : undefined}
-                >
+                {hasOnClick ? (
+                  <button
+                    onClick={item.onClick}
+                    className={cn(
+                      "group relative flex items-center justify-start px-3 py-2.5 rounded-xl transition-all duration-200 w-full",
+                      "text-gray-500 hover:bg-gray-50",
+                      isActive && "bg-indigo-50/80 text-indigo-600 shadow-sm shadow-indigo-100"
+                    )}
+                    title={isCollapsed ? item.label : undefined}
+                  >
+                    <div className={cn("flex items-center justify-center min-w-[20px]")}>
+                      <Icon
+                        size={20}
+                        strokeWidth={isActive ? 2.5 : 2}
+                        className={cn(
+                          "transition-all duration-200",
+                          isActive
+                            ? "text-indigo-600 scale-100"
+                            : "text-gray-400 group-hover:text-gray-600 group-hover:scale-105"
+                        )}
+                      />
+                    </div>
+                    <span
+                      className={cn(
+                        "overflow-hidden transition-all duration-300 whitespace-nowrap text-sm font-medium ml-3",
+                        isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100",
+                        isActive
+                          ? "text-indigo-900"
+                          : "text-gray-600 group-hover:text-gray-900"
+                      )}
+                    >
+                      {item.label}
+                    </span>
+                    
+                    {/* Active Indicator Dot for Collapsed State */}
+                    {isCollapsed && isActive && (
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                    )}
+                  </button>
+                ) : (
+                  <Link
+                    href={item.href}
+                    className={cn(
+                      "group relative flex items-center justify-start px-3 py-2.5 rounded-xl transition-all duration-200",
+                      "text-gray-500 hover:bg-gray-50",
+                      isActive && "bg-indigo-50/80 text-indigo-600 shadow-sm shadow-indigo-100"
+                    )}
+                    title={isCollapsed ? item.label : undefined}
+                  >
                   <div className={cn("flex items-center justify-center min-w-[20px]")}>
                     <Icon
                       size={20}
@@ -162,6 +236,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin = false }: SidebarProps) 
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-indigo-500" />
                   )}
                 </Link>
+                )}
               </li>
             );
           })}
@@ -243,6 +318,8 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin = false }: SidebarProps) 
           <UserAvatar showName={!isCollapsed} />
         </div>
       </div>
+      
+      <AdminPasswordModal open={showPasswordModal} onOpenChange={setShowPasswordModal} />
     </aside>
   );
 };

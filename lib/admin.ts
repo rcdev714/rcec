@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 
 /**
  * Admin access control utilities
@@ -61,4 +62,25 @@ export async function getAdminUser() {
   }
 
   return user
+}
+
+/**
+ * Check if admin password has been verified via cookie
+ * This is an additional security layer on top of email-based admin access
+ */
+export async function isAdminPasswordVerified(): Promise<boolean> {
+  try {
+    const cookieStore = await cookies()
+    const passwordVerified = cookieStore.get('admin_password_verified')
+    return passwordVerified?.value === 'true'
+  } catch (error) {
+    // Check for Next.js DynamicServerError to avoid noisy logs during build
+    // @ts-expect-error - digest property exists on Next.js errors
+    if (error?.digest === 'DYNAMIC_SERVER_USAGE') {
+      return false
+    }
+    
+    console.error('Error checking admin password verification:', error)
+    return false
+  }
 }
