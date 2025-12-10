@@ -4,7 +4,7 @@ import { SearchFilters, CompanySearchResult } from '@/types/chat';
 import { FilterTranslator } from './filter-translator';
 import { fetchCompanies, searchCompaniesBySector } from '@/lib/data/companies';
 import { sortByRelevanceAndCompleteness, getCompletenessStats, calculateCompletenessScore } from '@/lib/data-completeness-scorer';
-import { agentCache } from '@/lib/agents/sales-agent/cache';
+import { agentCache } from '@/lib/agents/enterprise-agent/cache';
 import { createClient } from '@supabase/supabase-js';
 import { Company } from '@/types/company';
 

@@ -1,6 +1,6 @@
 import { chatWithMemory, getConversationStats } from "@/lib/chat-agent";
 import { chatWithLangGraph } from "@/lib/chat-agent-langgraph";
-import { chatWithSalesAgent } from "@/lib/agents/sales-agent";
+import { chatWithEnterpriseAgent } from "@/lib/agents/enterprise-agent";
 import { createClient } from "@/lib/supabase/server";
 import { HumanMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
 import { validateEnvironment } from "@/lib/env-validation";
@@ -146,12 +146,12 @@ export async function POST(req: Request) {
     let stream: ReadableStream;
 
     if (useSalesAgent) {
-      // Use new Sales Agent with StateGraph and checkpointing
-      stream = await chatWithSalesAgent(message, conversationHistory, {
+      // Use new Enterprise Agent with StateGraph and checkpointing
+      stream = await chatWithEnterpriseAgent(message, conversationHistory, {
         userId: user.id,
         conversationId: effectiveConversationId,
         ...langsmithConfig,
-        runName: "Sales Agent Chat",
+        runName: "Enterprise Agent Chat",
         modelName: selectedModel,
         thinkingLevel: thinkingLevel as 'high' | 'low',
       });

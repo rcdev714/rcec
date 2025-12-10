@@ -5,7 +5,7 @@ import { BaseMessage } from "@langchain/core/messages";
 // Note: We import dynamically to avoid bundling issues
 
 /**
- * Sales Agent Background Task
+ * Enterprise Agent Background Task
  * 
  * This task runs the LangGraph agent in a background worker without
  * timeout constraints. It saves state to Supabase for real-time updates.
@@ -16,8 +16,8 @@ import { BaseMessage } from "@langchain/core/messages";
  * - Real-time updates via Supabase Realtime
  * - Crash recovery via checkpointing
  */
-export const salesAgentTask = task({
-  id: "sales-agent-run",
+export const enterpriseAgentTask = task({
+  id: "enterprise-agent-run",
   // Allow up to 30 minutes for complex research workflows
   maxDuration: 1800,
   // Use a medium machine for better performance
@@ -51,7 +51,7 @@ export const salesAgentTask = task({
       conversationHistory = []
     } = payload;
 
-    logger.info("Starting sales agent task", { 
+    logger.info("Starting enterprise agent task", { 
       runId, 
       threadId, 
       conversationId,
@@ -109,11 +109,11 @@ export const salesAgentTask = task({
       messages.push(new HumanMessage(message));
 
       // Import and build the graph
-      const { buildSalesAgentGraph } = await import("@/lib/agents/sales-agent/graph");
-      // const { SupabaseCheckpointSaver } = await import("@/lib/agents/sales-agent/checkpointer");
+      const { buildEnterpriseAgentGraph } = await import("@/lib/agents/enterprise-agent/graph");
+      // const { SupabaseCheckpointSaver } = await import("@/lib/agents/enterprise-agent/checkpointer");
       
       // Build graph with checkpointing enabled
-      const graph = buildSalesAgentGraph();
+      const graph = buildEnterpriseAgentGraph();
 
       logger.info("Graph built, starting execution", { threadId });
 
@@ -126,6 +126,18 @@ export const salesAgentTask = task({
       let totalOutputTokens = 0;
       let totalTokens = 0;
       let currentNode = "";
+      
+      // Track ALL tool invocations and results for visibility
+      const toolOutputsHistory: Array<{
+        toolName: string;
+        toolCallId?: string;
+        input: Record<string, unknown>;
+        output: unknown;
+        success: boolean;
+        timestamp: string;
+        errorMessage?: string;
+      }> = [];
+      const processedToolCallIds = new Set<string>();
 
       // Helper to update run status in Supabase
       const updateRunStatus = async (updates: Record<string, unknown>) => {
@@ -191,6 +203,26 @@ export const salesAgentTask = task({
           metadata.set("currentNode", nodeName);
         }
 
+        // Track tool calls when AI decides to call tools (before execution)
+        if (nodeName === "think" && nodeOutput.messages && Array.isArray(nodeOutput.messages)) {
+          const lastMsg = nodeOutput.messages[nodeOutput.messages.length - 1];
+          if (lastMsg && typeof lastMsg === "object" && "_getType" in lastMsg) {
+            const msgType = typeof lastMsg._getType === "function" ? lastMsg._getType() : null;
+            if (msgType === "ai" && "tool_calls" in lastMsg) {
+              const toolCalls = (lastMsg as { tool_calls?: Array<{ name: string; id: string; args: Record<string, unknown> }> }).tool_calls;
+              if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+                logger.info("AI decided to call tools", {
+                  tools: toolCalls.map(tc => ({
+                    name: tc.name,
+                    id: tc.id,
+                    argsKeys: Object.keys(tc.args || {}),
+                  })),
+                });
+              }
+            }
+          }
+        }
+
         // Track todos
         if ((nodeName === "plan_todos" || nodeName === "update_todos") && nodeOutput.todo) {
           todos = nodeOutput.todo as unknown[];
@@ -198,9 +230,44 @@ export const salesAgentTask = task({
           metadata.set("todos", JSON.stringify(todos));
         }
 
-        // Track search results
+        // Track ALL tool outputs for visibility
         if (nodeOutput.toolOutputs && Array.isArray(nodeOutput.toolOutputs)) {
-          for (const output of nodeOutput.toolOutputs as Array<{ toolName: string; success: boolean; output: unknown }>) {
+          for (const output of nodeOutput.toolOutputs as Array<{ 
+            toolName: string; 
+            toolCallId?: string;
+            input?: Record<string, unknown>;
+            success: boolean; 
+            output: unknown;
+            errorMessage?: string;
+          }>) {
+            // Only process each tool call once (avoid duplicates)
+            const toolCallId = output.toolCallId || `${output.toolName}-${Date.now()}`;
+            if (!processedToolCallIds.has(toolCallId)) {
+              processedToolCallIds.add(toolCallId);
+              
+              // Add to history
+              toolOutputsHistory.push({
+                toolName: output.toolName,
+                toolCallId,
+                input: output.input || {},
+                output: output.output,
+                success: output.success,
+                timestamp: new Date().toISOString(),
+                errorMessage: output.errorMessage,
+              });
+              
+              logger.info("Tool execution tracked", {
+                toolName: output.toolName,
+                toolCallId,
+                success: output.success,
+                errorMessage: output.errorMessage,
+              });
+              
+              // Update tool_outputs in real-time
+              await updateRunStatus({ tool_outputs: toolOutputsHistory });
+            }
+            
+            // Track search results specifically (for backwards compatibility)
             if (output.toolName === "search_companies" && output.success) {
               const result = (output.output as { result?: unknown })?.result;
               if (result) {
@@ -273,10 +340,18 @@ export const salesAgentTask = task({
         search_results: searchResults,
         email_draft: emailDraft,
         todos,
+        tool_outputs: toolOutputsHistory,
         input_tokens: totalInputTokens,
         output_tokens: totalOutputTokens,
         total_tokens: totalTokens,
         current_node: "completed",
+      });
+
+      logger.info("Tool outputs summary", {
+        totalToolCalls: toolOutputsHistory.length,
+        successfulCalls: toolOutputsHistory.filter(t => t.success).length,
+        failedCalls: toolOutputsHistory.filter(t => !t.success).length,
+        toolsUsed: [...new Set(toolOutputsHistory.map(t => t.toolName))],
       });
 
       // Also save the message to conversation_messages for persistence
@@ -336,7 +411,7 @@ export const salesAgentTask = task({
       };
 
     } catch (error) {
-      logger.error("Sales agent task failed", { 
+      logger.error("Enterprise agent task failed", { 
         error: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined,
       });
@@ -372,5 +447,9 @@ export const salesAgentTask = task({
 });
 
 // Export type for use in other files
-export type SalesAgentTaskPayload = Parameters<typeof salesAgentTask.trigger>[0];
+export type EnterpriseAgentTaskPayload = Parameters<typeof enterpriseAgentTask.trigger>[0];
+
+// Backwards compatibility alias
+export const salesAgentTask = enterpriseAgentTask;
+export type SalesAgentTaskPayload = EnterpriseAgentTaskPayload;
 

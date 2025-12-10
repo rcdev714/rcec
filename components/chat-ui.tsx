@@ -1334,7 +1334,7 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
         window.dispatchEvent(new Event('conversation-updated'));
 
         // Track token usage in user_usage table for analytics
-        // Note: Tracking is now handled server-side in the agent nodes (lib/agents/sales-agent/nodes.ts)
+        // Note: Tracking is now handled server-side in the agent nodes (lib/agents/enterprise-agent/nodes.ts)
         // or chat route. We no longer need to call the deprecated /api/chat/track-tokens endpoint here.
       }
 

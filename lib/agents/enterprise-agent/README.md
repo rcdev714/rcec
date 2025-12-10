@@ -135,7 +135,7 @@ Comprehensive Spanish-language prompt covering:
 
 ## API Integration (`index.ts`)
 
-- `chatWithSalesAgent()`: Main entry point
+- `chatWithEnterpriseAgent()`: Main entry point
 - Streams graph execution
 - Parses tool outputs
 - Injects `[SEARCH_RESULTS]` and `[EMAIL_DRAFT]` tags for UI
@@ -181,9 +181,9 @@ Both tables have RLS policies to ensure users only access their own data.
 ### Basic Chat
 
 ```typescript
-import { chatWithSalesAgent } from '@/lib/agents/sales-agent';
+import { chatWithEnterpriseAgent } from '@/lib/agents/enterprise-agent';
 
-const stream = await chatWithSalesAgent(
+const stream = await chatWithEnterpriseAgent(
   "Busca empresas tecnológicas en Quito con más de 100 empleados",
   [], // conversation history
   {
@@ -201,10 +201,11 @@ return new Response(stream);
 The agent is integrated into `/app/api/chat/route.ts`:
 
 ```typescript
+// Note: useSalesAgent param kept for backwards compatibility
 const { message, conversationId, useSalesAgent = true } = await req.json();
 
 if (useSalesAgent) {
-  stream = await chatWithSalesAgent(message, conversationHistory, {
+  stream = await chatWithEnterpriseAgent(message, conversationHistory, {
     userId: user.id,
     conversationId: effectiveConversationId,
   });
@@ -291,7 +292,7 @@ Agent:
 
 Run tests with:
 ```bash
-npm test lib/agents/sales-agent
+npm test lib/agents/enterprise-agent
 ```
 
 Test coverage:

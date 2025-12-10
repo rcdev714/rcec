@@ -1,7 +1,7 @@
 import { AIMessage, SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { SalesAgentStateType, TodoItem, MAX_ITERATIONS, MAX_RETRIES, ToolOutput } from "./state";
-import { SALES_AGENT_SYSTEM_PROMPT } from "./prompt";
+import { EnterpriseAgentStateType, TodoItem, MAX_ITERATIONS, MAX_RETRIES, ToolOutput } from "./state";
+import { ENTERPRISE_AGENT_SYSTEM_PROMPT } from "./prompt";
 import { extractTokenUsageFromMetadata } from "@/lib/token-counter";
 import { trackLLMUsageBackground } from "@/lib/usage";
 
@@ -119,7 +119,7 @@ function getGeminiModel(modelName: string = "gemini-2.5-flash"): ChatGoogleGener
 /**
  * Load user context from Supabase (with caching for B2C performance)
  */
-export async function loadUserContext(_state: SalesAgentStateType): Promise<Partial<SalesAgentStateType>> {
+export async function loadUserContext(_state: EnterpriseAgentStateType): Promise<Partial<EnterpriseAgentStateType>> {
   try {
     // Dynamic imports for Node.js runtime compatibility
     // Use require for Supabase as import() might return a module object in some environments
@@ -138,27 +138,27 @@ export async function loadUserContext(_state: SalesAgentStateType): Promise<Part
     }
     
     // Use user ID passed from trigger payload if available in state
-    // Note: We need to update SalesAgentState to include userId if not already present
+    // Note: We need to update EnterpriseAgentState to include userId if not already present
     // For now, we'll try to get it from context or fallback
     
     // Since we can't access cookies/auth.getUser() in background task, 
     // we rely on the userId being passed in the userContext or we need to fetch it
     // However, loadUserContext is the FIRST step to populate userContext.
-    // The fix is to pass userId into the graph state when initializing in src/trigger/sales-agent.ts
+    // The fix is to pass userId into the graph state when initializing in src/trigger/enterprise-agent.ts
     
     // TEMPORARY FIX: Check if we can extract user ID from thread_id config if available
-    // or rely on the caller to pass it. The caller (sales-agent.ts) DOES pass userId
+    // or rely on the caller to pass it. The caller (enterprise-agent.ts) DOES pass userId
     // but we need to read it from the state passed in.
     
     // Assuming userId is part of userContext if partially initialized, 
     // or we need to modify how this node works.
     
     // Actually, let's look at how the graph is initialized. 
-    // The sales-agent.ts passes a message but maybe not the user context initially.
-    // We should update sales-agent.ts to pass initial userContext with userId.
+    // The enterprise-agent.ts passes a message but maybe not the user context initially.
+    // We should update enterprise-agent.ts to pass initial userContext with userId.
     
     // For now, return empty context if we can't get user. 
-    // The real fix is in sales-agent.ts to pass userId in the initial state.
+    // The real fix is in enterprise-agent.ts to pass userId in the initial state.
     return {}; 
 
   } catch (error) {
@@ -172,7 +172,7 @@ export async function loadUserContext(_state: SalesAgentStateType): Promise<Part
 /**
  * Plan todos based on user query using Gemini AI
  */
-export async function planTodos(state: SalesAgentStateType): Promise<Partial<SalesAgentStateType>> {
+export async function planTodos(state: EnterpriseAgentStateType): Promise<Partial<EnterpriseAgentStateType>> {
   try {
     const lastMessage = state.messages[state.messages.length - 1];
     const userQuery = lastMessage?.content?.toString() || '';
@@ -311,7 +311,7 @@ REGLAS:
     }
   
     // Determine goal
-    let goal: SalesAgentStateType['goal'] = 'general_query';
+    let goal: EnterpriseAgentStateType['goal'] = 'general_query';
     if (lowerQuery.includes('lead') || lowerQuery.includes('prospecto') || lowerQuery.includes('busca empresas')) {
       goal = 'lead_generation';
     } else if (lowerQuery.includes('contacto') || lowerQuery.includes('enriquec')) {
@@ -335,7 +335,7 @@ REGLAS:
  * SIMPLIFIED: Let the model work naturally. Don't force tool calls.
  * Gemini doesn't respect tool_choice anyway.
  */
-export async function think(state: SalesAgentStateType): Promise<Partial<SalesAgentStateType>> {
+export async function think(state: EnterpriseAgentStateType): Promise<Partial<EnterpriseAgentStateType>> {
   try {
     // SIMPLIFIED: No narration detection, no forced tool calls
     // Just let the model do its job
@@ -346,6 +346,7 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
     const { webSearchTool, webExtractTool } = await import("@/lib/tools/web-search");
     const { enrichCompanyContactsTool } = await import("@/lib/tools/contact-tools");
     const { offeringTools } = await import("@/lib/tools/offerings-tools");
+    const { perplexitySearchTool } = await import("@/lib/tools/perplexity-search");
     
     const allTools = shouldSkipTools ? [] : [
       ...companyTools,
@@ -353,6 +354,7 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
       webExtractTool,
       enrichCompanyContactsTool,
       ...offeringTools,
+      perplexitySearchTool,
     ];
     
     // Bind tools to the model (use state.modelName for dynamic selection)
@@ -601,6 +603,17 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
               });
             }
             
+            // For perplexity_search, include synthesized answer and citations
+            if (output.toolName === 'perplexity_search' && outputData.answer) {
+              contextParts.push(`\n- perplexity_search: Investigación profunda completada`);
+              // Include a preview of the answer (first 500 chars)
+              const answerPreview = outputData.answer.substring(0, 500);
+              contextParts.push(`  * Resumen: ${answerPreview}${outputData.answer.length > 500 ? '...' : ''}`);
+              if (outputData.citations && outputData.citations.length > 0) {
+                contextParts.push(`  * Fuentes: ${outputData.citationsCount} citaciones`);
+              }
+            }
+            
             // For list_user_offerings, include offerings summary
             if (output.toolName === 'list_user_offerings' && outputData.offerings) {
               contextParts.push(`\n- list_user_offerings: ${outputData.count} servicios encontrados`);
@@ -690,7 +703,7 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
     // Logic to disable thinking hint if we are binding tools for Gemini 3 to avoid API conflict
     const effectiveThinkingHint = (isGemini3Thinking) ? '' : aiThinkingHint;
     
-    let messagesToSend = [new SystemMessage(SALES_AGENT_SYSTEM_PROMPT + contextMessage + effectiveThinkingHint)];
+    let messagesToSend = [new SystemMessage(ENTERPRISE_AGENT_SYSTEM_PROMPT + contextMessage + effectiveThinkingHint)];
     
     // Secondary trimming only if optimizer output is still too large
     // Aligned with optimizer's maxMessages: 20 setting
@@ -833,7 +846,7 @@ export async function think(state: SalesAgentStateType): Promise<Partial<SalesAg
  * Process tool results from ToolMessage and populate toolOutputs
  * This bridges the gap between ToolNode (which creates ToolMessages) and our custom state tracking
  */
-export function processToolResults(state: SalesAgentStateType): Partial<SalesAgentStateType> {
+export function processToolResults(state: EnterpriseAgentStateType): Partial<EnterpriseAgentStateType> {
   // Process ALL ToolMessages that haven't been converted into ToolOutputs yet.
   // This fixes the case where multiple tools run in parallel and only the last
   // ToolMessage was previously processed, leaving others without a result event.
@@ -989,7 +1002,7 @@ export function processToolResults(state: SalesAgentStateType): Partial<SalesAge
 /**
  * Evaluate result of tool call
  */
-export function evaluateResult(state: SalesAgentStateType): Partial<SalesAgentStateType> {
+export function evaluateResult(state: EnterpriseAgentStateType): Partial<EnterpriseAgentStateType> {
   if (state.toolOutputs.length === 0) {
     return { lastToolSuccess: true };
   }
@@ -1002,7 +1015,7 @@ export function evaluateResult(state: SalesAgentStateType): Partial<SalesAgentSt
 /**
  * Reflection node - analyze failures and adjust
  */
-export async function reflection(state: SalesAgentStateType): Promise<Partial<SalesAgentStateType>> {
+export async function reflection(state: EnterpriseAgentStateType): Promise<Partial<EnterpriseAgentStateType>> {
   const lastOutput = state.toolOutputs[state.toolOutputs.length - 1];
   const retryCount = state.retryCount + 1;
 
@@ -1029,7 +1042,7 @@ export async function reflection(state: SalesAgentStateType): Promise<Partial<Sa
 /**
  * Update todos based on progress
  */
-export function updateTodos(state: SalesAgentStateType): Partial<SalesAgentStateType> {
+export function updateTodos(state: EnterpriseAgentStateType): Partial<EnterpriseAgentStateType> {
   let hasCompletedCurrent = false;
 
   const updatedTodos = state.todo.map(todo => {
@@ -1075,7 +1088,7 @@ export function updateTodos(state: SalesAgentStateType): Partial<SalesAgentState
 /**
  * Iteration control - decide whether to continue or finalize
  */
-export function iterationControl(state: SalesAgentStateType): Partial<SalesAgentStateType> {
+export function iterationControl(state: EnterpriseAgentStateType): Partial<EnterpriseAgentStateType> {
   const newIterationCount = state.iterationCount + 1;
   
   return {
@@ -1088,7 +1101,7 @@ export function iterationControl(state: SalesAgentStateType): Partial<SalesAgent
  * Finalize - prepare final response
  * If the AI hasn't generated a substantial final response, create one here
  */
-export async function finalize(state: SalesAgentStateType): Promise<Partial<SalesAgentStateType>> {
+export async function finalize(state: EnterpriseAgentStateType): Promise<Partial<EnterpriseAgentStateType>> {
   // Check if we have a substantial final response from the AI
   const messages = state.messages;
   const lastMessage = messages[messages.length - 1];
@@ -1372,7 +1385,7 @@ Genera tu respuesta final ahora. DEBE ser completa, profesional y útil.`);
  * NOTE: Time-based cutoffs have been removed since we now run in
  * Trigger.dev background workers with no timeout constraints.
  */
-export async function callTools(state: SalesAgentStateType): Promise<Partial<SalesAgentStateType>> {
+export async function callTools(state: EnterpriseAgentStateType): Promise<Partial<EnterpriseAgentStateType>> {
   try {
     const messages = state.messages;
     const lastMessage = messages[messages.length - 1];
@@ -1400,6 +1413,7 @@ export async function callTools(state: SalesAgentStateType): Promise<Partial<Sal
     const { webSearchTool, webExtractTool } = await import("@/lib/tools/web-search");
     const { enrichCompanyContactsTool } = await import("@/lib/tools/contact-tools");
     const { offeringTools } = await import("@/lib/tools/offerings-tools");
+    const { perplexitySearchTool } = await import("@/lib/tools/perplexity-search");
     
     const allTools = [
       ...companyTools,
@@ -1407,6 +1421,7 @@ export async function callTools(state: SalesAgentStateType): Promise<Partial<Sal
       webExtractTool,
       enrichCompanyContactsTool,
       ...offeringTools,
+      perplexitySearchTool,
     ];
     
     // Create a map of tool names to tool functions
@@ -1542,7 +1557,7 @@ export async function callTools(state: SalesAgentStateType): Promise<Partial<Sal
 /**
  * Correction node - injects feedback when model narrates action without calling tools
  */
-export async function correction(state: SalesAgentStateType): Promise<Partial<SalesAgentStateType>> {
+export async function correction(state: EnterpriseAgentStateType): Promise<Partial<EnterpriseAgentStateType>> {
   console.log('[correction] Detected narration without tool call or raw JSON output. Injecting correction message.');
   
   // Check if the last message looks like raw JSON
@@ -1575,7 +1590,7 @@ export async function correction(state: SalesAgentStateType): Promise<Partial<Sa
  * Trigger.dev background workers with no timeout constraints.
  */
 
-export function shouldCallTools(state: SalesAgentStateType): string {
+export function shouldCallTools(state: EnterpriseAgentStateType): string {
   // Check iteration limit (safety against infinite loops)
   if (state.iterationCount >= MAX_ITERATIONS) {
     console.log('[shouldCallTools] Max iterations reached, finalizing');
@@ -1652,7 +1667,7 @@ export function shouldCallTools(state: SalesAgentStateType): string {
   return 'finalize';
 }
 
-export function shouldContinue(state: SalesAgentStateType): string {
+export function shouldContinue(state: EnterpriseAgentStateType): string {
   // Check if max iterations reached
   if (state.iterationCount >= MAX_ITERATIONS) {
     return 'finalize';
@@ -1673,7 +1688,7 @@ export function shouldContinue(state: SalesAgentStateType): string {
   return 'think';
 }
 
-export function shouldRetry(state: SalesAgentStateType): string {
+export function shouldRetry(state: EnterpriseAgentStateType): string {
   if (state.lastToolSuccess) {
     return 'update_todos';
   }

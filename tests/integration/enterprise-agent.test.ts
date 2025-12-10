@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { chatWithSalesAgent, getSalesAgentGraph } from '@/lib/agents/sales-agent'
+import { chatWithEnterpriseAgent, getEnterpriseAgentGraph } from '@/lib/agents/enterprise-agent'
 import { HumanMessage, AIMessage } from '@langchain/core/messages'
 
 // Mock Google Gemini API
@@ -53,14 +53,18 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(() => mockSupabase)
 }))
 
-vi.mock('@/lib/agents/sales-agent/checkpointer', () => ({
+vi.mock('@/lib/tools/perplexity-search', () => ({
+  perplexitySearchTool: {},
+}))
+
+vi.mock('@/lib/agents/enterprise-agent/checkpointer', () => ({
   SupabaseCheckpointSaver: vi.fn().mockImplementation(() => ({
     getTuple: vi.fn().mockResolvedValue(undefined),
     putWrites: vi.fn().mockResolvedValue(undefined),
   })),
 }))
 
-describe('Sales Agent Integration Tests', () => {
+describe('Enterprise Agent Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGeminiInvoke.mockResolvedValue(
@@ -69,8 +73,8 @@ describe('Sales Agent Integration Tests', () => {
   })
 
   describe('Graph Construction', () => {
-    it('should build the sales agent graph successfully', () => {
-      const graph = getSalesAgentGraph()
+    it('should build the enterprise agent graph successfully', () => {
+      const graph = getEnterpriseAgentGraph()
       
       expect(graph).toBeDefined()
       expect(graph.invoke).toBeDefined()
@@ -84,7 +88,7 @@ describe('Sales Agent Integration Tests', () => {
         new AIMessage('Hola, ¿en qué puedo ayudarte hoy?')
       )
 
-      const stream = await chatWithSalesAgent(
+      const stream = await chatWithEnterpriseAgent(
         'Hola',
         [],
         { userId: 'test-user-123', conversationId: 'test-1' }
@@ -112,7 +116,7 @@ describe('Sales Agent Integration Tests', () => {
         new AIMessage('Claro, puedo ayudarte con eso.')
       )
 
-      const stream = await chatWithSalesAgent(
+      const stream = await chatWithEnterpriseAgent(
         'Busca empresas en Guayaquil',
         history,
         { userId: 'test-user-123', conversationId: 'test-2' }
@@ -134,7 +138,7 @@ describe('Sales Agent Integration Tests', () => {
         new AIMessage('Esta es una respuesta de prueba.')
       )
 
-      const stream = await chatWithSalesAgent(
+      const stream = await chatWithEnterpriseAgent(
         'Test query',
         [],
         { userId: 'test-user-123', conversationId: 'test-stream' }
@@ -163,7 +167,7 @@ describe('Sales Agent Integration Tests', () => {
         new AIMessage('Test response')
       )
 
-      const stream = await chatWithSalesAgent(
+      const stream = await chatWithEnterpriseAgent(
         'Test',
         [],
         {

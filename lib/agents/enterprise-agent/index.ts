@@ -1,6 +1,6 @@
 import { HumanMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
-import { getSalesAgentGraph } from "./graph";
-import { SalesAgentStateType, AgentStateEvent, EmailDraft, MAX_RETRIES } from "./state";
+import { getEnterpriseAgentGraph } from "./graph";
+import { EnterpriseAgentStateType, AgentStateEvent, EmailDraft, MAX_RETRIES } from "./state";
 import { getLangChainTracer, flushLangsmith, langsmithEnabled } from "@/lib/langsmith";
 import { optimizeConversationHistory } from "./context-optimizer";
 import { AgentRecoveryManager } from "./recovery";
@@ -49,7 +49,7 @@ function streamContent(controller: ReadableStreamDefaultController, content: str
 }
 
 /**
- * Chat with the Sales Agent using LangGraph
+ * Chat with the Enterprise Agent using LangGraph
  * 
  * This function:
  * 1. Initializes the agent graph with checkpointing
@@ -61,7 +61,7 @@ function streamContent(controller: ReadableStreamDefaultController, content: str
  * @param options - Configuration options (userId, conversationId, etc.)
  * @returns ReadableStream of agent responses and state events
  */
-export async function chatWithSalesAgent(
+export async function chatWithEnterpriseAgent(
   message: string,
   conversationHistory: BaseMessage[] = [],
   options?: {
@@ -79,12 +79,12 @@ export async function chatWithSalesAgent(
   // This is critical for B2C production where conversations can be lengthy
   let optimizedHistory = conversationHistory;
   if (conversationHistory.length > 8) {
-    console.log(`[chatWithSalesAgent] Optimizing conversation history: ${conversationHistory.length} messages`);
+    console.log(`[chatWithEnterpriseAgent] Optimizing conversation history: ${conversationHistory.length} messages`);
     optimizedHistory = optimizeConversationHistory(conversationHistory, {
       maxMessages: 10,
       preserveRecentMessages: 4,
     });
-    console.log(`[chatWithSalesAgent] Optimized to: ${optimizedHistory.length} messages`);
+    console.log(`[chatWithEnterpriseAgent] Optimized to: ${optimizedHistory.length} messages`);
   }
 
   // Prepare initial state
@@ -100,7 +100,7 @@ export async function chatWithSalesAgent(
       const recovery = new AgentRecoveryManager(userQuery);
       
       try {
-        const graph = getSalesAgentGraph();
+        const graph = getEnterpriseAgentGraph();
 
         // Configure with thread_id for checkpointing and LangSmith tracing
         const tracer = langsmithEnabled ? getLangChainTracer(options?.projectName) : undefined;
@@ -110,7 +110,7 @@ export async function chatWithSalesAgent(
             checkpoint_ns: '',
           },
           callbacks: tracer ? [tracer] : undefined,
-          tags: ["sales-agent", "langgraph"],
+          tags: ["enterprise-agent", "langgraph"],
           metadata: {
             userId: options?.userId,
             conversationId: options?.conversationId,
@@ -123,7 +123,7 @@ export async function chatWithSalesAgent(
         const searchResults: unknown[] = []; // Changed to array to accumulate ALL search results
         let latestDisplayConfig: unknown = null; // NEW: Track display config from tool results
         let emailDraft: EmailDraft | null = null;
-        let previousState: SalesAgentStateType | null = null;
+        let previousState: EnterpriseAgentStateType | null = null;
         let currentNode: string | null = null;
         let totalInputTokens = 0;
         let totalOutputTokens = 0;
@@ -158,7 +158,7 @@ export async function chatWithSalesAgent(
         for await (const update of streamResult) {
           // update is a dict with node name as key
           const nodeName = Object.keys(update)[0];
-          const nodeOutput = update[nodeName] as Partial<SalesAgentStateType>;
+          const nodeOutput = update[nodeName] as Partial<EnterpriseAgentStateType>;
           
           // Emit thinking event when entering a new node
           if (nodeName && nodeName !== currentNode) {
@@ -420,7 +420,7 @@ export async function chatWithSalesAgent(
             totalTokens += nodeOutput.totalTokens;
           }
 
-          previousState = { ...previousState, ...nodeOutput } as SalesAgentStateType;
+          previousState = { ...previousState, ...nodeOutput } as EnterpriseAgentStateType;
         }
 
         // End-of-stream fallback: Ensure some assistant text was emitted
@@ -634,7 +634,10 @@ export async function chatWithSalesAgent(
 }
 
 // Export the graph for direct access if needed
-export { getSalesAgentGraph } from "./graph";
-export { SalesAgentState } from "./state";
-export type { SalesAgentStateType } from "./state";
+export { getEnterpriseAgentGraph, getSalesAgentGraph } from "./graph";
+export { EnterpriseAgentState, SalesAgentState } from "./state";
+export type { EnterpriseAgentStateType, SalesAgentStateType } from "./state";
+
+// Backwards compatibility alias
+export const chatWithSalesAgent = chatWithEnterpriseAgent;
 

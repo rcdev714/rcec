@@ -102,7 +102,9 @@ export type AgentGoal =
   | 'general_query';
 
 // Define the agent state using LangGraph Annotation
-export const SalesAgentState = Annotation.Root({
+// Primary export: EnterpriseAgentState (new name for clarity)
+// Also exported as SalesAgentState for backwards compatibility
+export const EnterpriseAgentState = Annotation.Root({
   // Core conversation
   messages: Annotation<BaseMessage[]>({
     reducer: (current, update) => current.concat(update),
@@ -227,7 +229,11 @@ export const SalesAgentState = Annotation.Root({
 });
 
 // Type for the state
-export type SalesAgentStateType = typeof SalesAgentState.State;
+export type EnterpriseAgentStateType = typeof EnterpriseAgentState.State;
+
+// Backwards compatibility aliases
+export const SalesAgentState = EnterpriseAgentState;
+export type SalesAgentStateType = EnterpriseAgentStateType;
 
 // Constants
 export const MAX_ITERATIONS = 50; // Increased for complex multi-tool workflows (time-based circuit breaker is primary backstop)

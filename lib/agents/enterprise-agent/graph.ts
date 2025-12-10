@@ -1,5 +1,5 @@
 import { StateGraph, START, END } from "@langchain/langgraph";
-import { SalesAgentState } from "./state";
+import { EnterpriseAgentState } from "./state";
 import {
   loadUserContext,
   planTodos,
@@ -13,7 +13,7 @@ import {
 import { SupabaseCheckpointSaver } from "./checkpointer";
 
 /**
- * Build the Sales Agent StateGraph
+ * Build the Enterprise Agent StateGraph
  * This creates a sophisticated workflow with:
  * - User context loading
  * - Todo planning
@@ -22,12 +22,12 @@ import { SupabaseCheckpointSaver } from "./checkpointer";
  * - Reflection and retry logic
  * - State persistence via Supabase
  */
-export function buildSalesAgentGraph() {
+export function buildEnterpriseAgentGraph() {
   // Create the graph
   // Note: Using 'as any' for graph to work around TypeScript limitations with LangGraph's Annotation API
   // The graph will still be type-safe at runtime
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const graph = new StateGraph(SalesAgentState) as any;
+  const graph = new StateGraph(EnterpriseAgentState) as any;
 
   // Add nodes
   graph.addNode("load_user_context", loadUserContext);
@@ -77,11 +77,11 @@ export function buildSalesAgentGraph() {
 }
 
 /**
- * Build the Sales Agent StateGraph with checkpointing enabled
+ * Build the Enterprise Agent StateGraph with checkpointing enabled
  * Use this for async Trigger.dev execution where state persistence is critical
  */
-export function buildSalesAgentGraphWithCheckpointer() {
-  const graph = new StateGraph(SalesAgentState) as any;
+export function buildEnterpriseAgentGraphWithCheckpointer() {
+  const graph = new StateGraph(EnterpriseAgentState) as any;
 
   // Add nodes
   graph.addNode("load_user_context", loadUserContext);
@@ -123,16 +123,21 @@ export function buildSalesAgentGraphWithCheckpointer() {
 }
 
 // Export a singleton instance (with cache invalidation in development)
-let graphInstance: ReturnType<typeof buildSalesAgentGraph> | null = null;
+let graphInstance: ReturnType<typeof buildEnterpriseAgentGraph> | null = null;
 
-export function getSalesAgentGraph() {
+export function getEnterpriseAgentGraph() {
   // In development, rebuild the graph each time to pick up changes
   if (process.env.NODE_ENV === 'development') {
     graphInstance = null;
   }
   
   if (!graphInstance) {
-    graphInstance = buildSalesAgentGraph();
+    graphInstance = buildEnterpriseAgentGraph();
   }
   return graphInstance;
 }
+
+// Backwards compatibility aliases
+export const buildSalesAgentGraph = buildEnterpriseAgentGraph;
+export const buildSalesAgentGraphWithCheckpointer = buildEnterpriseAgentGraphWithCheckpointer;
+export const getSalesAgentGraph = getEnterpriseAgentGraph;

@@ -358,8 +358,8 @@ If results aren't what you expected:
 ## Support
 
 ### Documentation
-- Full docs: `lib/agents/sales-agent/README.md`
-- Implementation: `SALES_AGENT_IMPLEMENTATION.md`
+- Full docs: `lib/agents/enterprise-agent/README.md`
+- Implementation: `ENTERPRISE_AGENT_IMPLEMENTATION.md`
 
 ### Common Issues
 - Check console logs (F12)

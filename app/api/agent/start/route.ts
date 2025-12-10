@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { validateEnvironment } from "@/lib/env-validation";
 import { ensurePromptAllowedAndTrack, estimateTokensFromTextLength } from "@/lib/usage";
-import type { salesAgentTask } from "@/src/trigger/sales-agent";
+import type { enterpriseAgentTask } from "@/src/trigger/enterprise-agent";
 
 
 export const runtime = "nodejs";
@@ -153,7 +153,7 @@ export async function POST(req: Request) {
 
     // Trigger the background task
     try {
-      const handle = await tasks.trigger<typeof salesAgentTask>("sales-agent-run", {
+      const handle = await tasks.trigger<typeof enterpriseAgentTask>("enterprise-agent-run", {
         runId: agentRun.id,
         threadId,
         conversationId: effectiveConversationId,
