@@ -35,7 +35,7 @@ export default function ClientLayout({
       )}
       <main
         className={`flex-1 transition-all duration-300 ease-in-out ${shouldRenderSidebar
-          ? (isSidebarCollapsed ? "ml-16" : "ml-16 md:ml-48")
+          ? (isSidebarCollapsed ? "ml-16" : "ml-16 md:ml-56")
           : "ml-0"
           }`}
       >

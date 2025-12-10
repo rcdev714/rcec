@@ -75,33 +75,50 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin = false }: SidebarProps) 
   return (
     <aside
       className={cn(
-        "fixed top-0 left-0 h-full bg-white text-gray-500 transition-all duration-300 ease-in-out z-50 border-r border-gray-200 flex flex-col",
-        isCollapsed ? "w-16" : "w-16 md:w-48"
+        "fixed top-0 left-0 h-full bg-white text-gray-500 transition-all duration-300 ease-in-out z-50 border-r border-gray-100 shadow-sm flex flex-col",
+        isCollapsed ? "w-16" : "w-16 md:w-56"
       )}
       aria-label="Main navigation"
     >
-      <div className="flex items-center justify-center h-16 relative">
-        <div className="flex items-center gap-2">
-          <Image src="/logo.svg" alt="Camella Logo" width={32} height={32} />
-          {!isCollapsed && subscriptionStatus && translatePlan(subscriptionStatus.plan) && (
-            <Badge
-              variant="secondary"
-              className="text-xs px-1 py-0 h-4"
-            >
-              {translatePlan(subscriptionStatus.plan)}
-            </Badge>
-          )}
+      <div className="flex items-center justify-between h-16 px-4 relative border-b border-gray-50/50">
+        <div className={cn("flex items-center gap-3 transition-opacity duration-200", isCollapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100")}>
+          <Image src="/logo.svg" alt="Camella Logo" width={28} height={28} className="flex-shrink-0" />
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold text-gray-900 tracking-tight">Camella</span>
+            {subscriptionStatus && translatePlan(subscriptionStatus.plan) && (
+              <Badge
+                variant="secondary"
+                className="text-[10px] px-1.5 py-0 h-4 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-100 font-normal w-fit"
+              >
+                {translatePlan(subscriptionStatus.plan)}
+              </Badge>
+            )}
+          </div>
         </div>
+        
+        {/* Logo fallback for collapsed state */}
+        <div className={cn("absolute left-1/2 -translate-x-1/2 transition-opacity duration-200", isCollapsed ? "opacity-100" : "opacity-0 pointer-events-none")}>
+           <Image src="/logo.svg" alt="Camella Logo" width={24} height={24} />
+        </div>
+
         <button
           onClick={toggleSidebar}
-          className="absolute right-[-12px] top-1/2 -translate-y-1/2 bg-white border border-gray-300 rounded-full p-1 shadow-md hover:bg-gray-100 transition-all z-10"
+          className={cn(
+            "bg-white border border-gray-200 rounded-full p-1.5 shadow-sm hover:bg-gray-50 hover:text-indigo-600 transition-all z-10 hidden md:flex items-center justify-center",
+            isCollapsed ? "absolute -right-3 top-1/2 -translate-y-1/2" : "absolute -right-3 top-1/2 -translate-y-1/2"
+          )}
         >
-          {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
       </div>
 
-      <nav className="flex-grow px-2 py-6">
-        <ul className="space-y-3">
+      <nav className="flex-grow px-3 py-6 overflow-y-auto scrollbar-hide">
+        <div className="mb-2 px-3">
+          <p className={cn("text-xs font-medium text-gray-400 uppercase tracking-wider transition-opacity duration-200", isCollapsed ? "opacity-0 h-0" : "opacity-100")}>
+            Menu
+          </p>
+        </div>
+        <ul className="space-y-1">
           {navItems.map((item) => {
             const isActive = pathname.startsWith(item.href);
             const Icon = item.icon as LucideIcon;
@@ -110,41 +127,40 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin = false }: SidebarProps) 
                 <Link
                   href={item.href}
                   className={cn(
-                    "group relative flex items-center justify-start pl-3 pr-2 py-2 rounded-md transition-colors duration-200",
-                    "text-gray-600 hover:bg-white hover:scale-105",
-                    isActive && "bg-white text-gray-900 font-medium"
+                    "group relative flex items-center justify-start px-3 py-2.5 rounded-xl transition-all duration-200",
+                    "text-gray-500 hover:bg-gray-50",
+                    isActive && "bg-indigo-50/80 text-indigo-600 shadow-sm shadow-indigo-100"
                   )}
+                  title={isCollapsed ? item.label : undefined}
                 >
-                  <span
-                    className={cn(
-                      "absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[2px] rounded-r-full opacity-0 transition-all duration-200",
-                      isActive
-                        ? "opacity-100 bg-indigo-500"
-                        : "group-hover:opacity-100 bg-indigo-300"
-                    )}
-                  />
-                  <div className={cn("flex items-center")}>
+                  <div className={cn("flex items-center justify-center min-w-[20px]")}>
                     <Icon
                       size={20}
+                      strokeWidth={isActive ? 2.5 : 2}
                       className={cn(
-                        "transition-colors transform duration-200",
+                        "transition-all duration-200",
                         isActive
-                          ? "text-indigo-500 hover:text-indigo-500 group-hover:text-indigo-500 scale-105"
-                          : "text-gray-500 hover:text-indigo-500 group-hover:text-indigo-500 group-hover:scale-105"
+                          ? "text-indigo-600 scale-100"
+                          : "text-gray-400 group-hover:text-gray-600 group-hover:scale-105"
                       )}
                     />
                   </div>
                   <span
                     className={cn(
-                      "overflow-hidden transition-all duration-200 whitespace-nowrap text-sm",
-                      isCollapsed ? "hidden" : "hidden md:inline ml-2",
+                      "overflow-hidden transition-all duration-300 whitespace-nowrap text-sm font-medium ml-3",
+                      isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100",
                       isActive
-                        ? "text-indigo-500"
-                        : "text-gray-700 group-hover:text-indigo-500"
+                        ? "text-indigo-900"
+                        : "text-gray-600 group-hover:text-gray-900"
                     )}
                   >
                     {item.label}
                   </span>
+                  
+                  {/* Active Indicator Dot for Collapsed State */}
+                  {isCollapsed && isActive && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                  )}
                 </Link>
               </li>
             );
@@ -152,85 +168,79 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin = false }: SidebarProps) 
         </ul>
       </nav>
 
-      <div className="mt-auto p-2 space-y-2">
+      <div className="mt-auto p-3 space-y-1 border-t border-gray-100 bg-gray-50/30">
         <Link
           href="/docs"
           className={cn(
-            "group relative flex items-center justify-start pl-3 pr-2 py-2 rounded-md transition-colors duration-200",
-            "text-gray-600 hover:bg-white hover:scale-105",
+            "group relative flex items-center justify-start px-3 py-2.5 rounded-xl transition-all duration-200",
+            "text-gray-500 hover:bg-white hover:shadow-sm",
             pathname.startsWith("/docs") &&
-            "bg-white text-gray-900 font-medium"
+            "bg-white text-indigo-600 shadow-sm"
           )}
+          title={isCollapsed ? "Documentación" : undefined}
         >
+          <div className={cn("flex items-center justify-center min-w-[20px]")}>
+            <FileText
+              size={18}
+              strokeWidth={pathname.startsWith("/docs") ? 2.5 : 2}
+              className={cn(
+                "transition-all duration-200",
+                pathname.startsWith("/docs")
+                  ? "text-indigo-600"
+                  : "text-gray-400 group-hover:text-gray-600"
+              )}
+            />
+          </div>
           <span
             className={cn(
-              "absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[2px] rounded-r-full opacity-0 transition-all duration-200",
+              "overflow-hidden transition-all duration-300 whitespace-nowrap text-sm font-medium ml-3",
+              isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100",
               pathname.startsWith("/docs")
-                ? "opacity-100 bg-indigo-500"
-                : "group-hover:opacity-100 bg-indigo-300"
-            )}
-          />
-          <FileText
-            size={18}
-            className={cn(
-              "transition-colors transform duration-200",
-              pathname.startsWith("/docs")
-                ? "text-indigo-500 hover:text-indigo-500 group-hover:text-indigo-500 scale-105"
-                : "text-gray-500 hover:text-indigo-500 group-hover:text-indigo-500 group-hover:scale-105"
-            )}
-          />
-          <span
-            className={cn(
-              "overflow-hidden transition-all duration-200 whitespace-nowrap text-sm",
-              isCollapsed ? "hidden" : "hidden md:inline ml-2",
-              pathname.startsWith("/docs")
-                ? "text-indigo-500"
-                : "text-gray-700 group-hover:text-indigo-500"
+                ? "text-indigo-900"
+                : "text-gray-600 group-hover:text-gray-900"
             )}
           >
             Documentación
           </span>
         </Link>
+
         <Link
           href="/settings"
           className={cn(
-            "group relative flex items-center justify-start pl-3 pr-2 py-2 rounded-md transition-colors duration-200",
-            "text-gray-600 hover:bg-white hover:scale-105",
+            "group relative flex items-center justify-start px-3 py-2.5 rounded-xl transition-all duration-200",
+            "text-gray-500 hover:bg-white hover:shadow-sm",
             pathname.startsWith("/settings") &&
-            "bg-white text-gray-900 font-medium"
+            "bg-white text-indigo-600 shadow-sm"
           )}
+           title={isCollapsed ? "Configuración" : undefined}
         >
+          <div className={cn("flex items-center justify-center min-w-[20px]")}>
+            <Settings
+              size={18}
+              strokeWidth={pathname.startsWith("/settings") ? 2.5 : 2}
+              className={cn(
+                "transition-all duration-200",
+                pathname.startsWith("/settings")
+                  ? "text-indigo-600"
+                  : "text-gray-400 group-hover:text-gray-600"
+              )}
+            />
+          </div>
           <span
             className={cn(
-              "absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[2px] rounded-r-full opacity-0 transition-all duration-200",
+              "overflow-hidden transition-all duration-300 whitespace-nowrap text-sm font-medium ml-3",
+              isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100",
               pathname.startsWith("/settings")
-                ? "opacity-100 bg-indigo-500"
-                : "group-hover:opacity-100 bg-indigo-300"
-            )}
-          />
-          <Settings
-            size={18}
-            className={cn(
-              "transition-colors transform duration-200",
-              pathname.startsWith("/settings")
-                ? "text-indigo-500 hover:text-indigo-500 group-hover:text-indigo-500 scale-105"
-                : "text-gray-500 hover:text-indigo-500 group-hover:text-indigo-500 group-hover:scale-105"
-            )}
-          />
-          <span
-            className={cn(
-              "overflow-hidden transition-all duration-200 whitespace-nowrap text-sm",
-              isCollapsed ? "hidden" : "hidden md:inline ml-2",
-              pathname.startsWith("/settings")
-                ? "text-indigo-500"
-                : "text-gray-700 group-hover:text-indigo-500"
+                ? "text-indigo-900"
+                : "text-gray-600 group-hover:text-gray-900"
             )}
           >
             Configuración
           </span>
         </Link>
-        <div className="flex justify-center items-center">
-          <UserAvatar />
+        
+        <div className={cn("pt-2 flex justify-center", isCollapsed ? "" : "justify-start px-1")}>
+          <UserAvatar showName={!isCollapsed} />
         </div>
       </div>
     </aside>

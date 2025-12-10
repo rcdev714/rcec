@@ -188,8 +188,8 @@ export const enterpriseAgentTask = task({
 
         // Track current node
         if (nodeName !== currentNode) {
-          currentNode = nodeName;
           logger.info("Node transition", { from: currentNode, to: nodeName });
+          currentNode = nodeName;
           
           // Update progress in Supabase for real-time UI
           await updateRunStatus({

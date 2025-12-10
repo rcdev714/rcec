@@ -6,7 +6,11 @@ import { Company } from '@/types/company';
 import { CompanyFilter } from '@/components/company-filter';
 import { PaginationControls } from '@/components/pagination-controls';
 import Link from 'next/link';
-import { Building2, MapPin, DollarSign, TrendingUp, Users, Loader2 } from 'lucide-react';
+import { Building2, MapPin, DollarSign, TrendingUp, Users, Loader2, ArrowRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Filter } from 'lucide-react';
 
 interface CompaniesUIProps {
   companies: Company[];
@@ -19,6 +23,7 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isFetching, setIsFetching] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   // When filters are applied, this function updates the URL search parameters.
   // This triggers a server-side re-render with the new filtered data.
@@ -46,6 +51,7 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
     // Reset to the first page whenever filters change.
     params.set('page', '1');
     setIsFetching(true);
+    setShowMobileFilters(false);
     router.push(`/companies?${params.toString()}`, { scroll: false });
   };
 
@@ -114,9 +120,43 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
 
 
   return (
-    <div className="flex gap-4">
-      {/* Sidebar with filters */}
-      <div className="w-72 flex-shrink-0">
+    <div className="flex flex-col lg:flex-row gap-6">
+      {/* Mobile Filter Button */}
+      <div className="lg:hidden mb-4">
+        <Button 
+          onClick={() => setShowMobileFilters(true)} 
+          variant="outline" 
+          className="w-full flex items-center justify-center gap-2 bg-white border-gray-200 text-gray-700"
+        >
+          <Filter size={16} />
+          Filtrar Empresas
+        </Button>
+      </div>
+
+      {/* Mobile Filters Dialog */}
+      <Dialog open={showMobileFilters} onOpenChange={setShowMobileFilters}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto p-0 border-0 bg-transparent shadow-none">
+          <div className="bg-white rounded-xl shadow-xl overflow-hidden">
+            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h3 className="font-semibold text-gray-900">Filtros</h3>
+              <button onClick={() => setShowMobileFilters(false)} className="text-gray-400 hover:text-gray-600">
+                <span className="sr-only">Cerrar</span>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="p-4">
+              <CompanyFilter
+                initialFilters={initialFilters}
+                onApplyFilters={handleFiltersChange}
+                companyCount={totalCount}
+              />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sidebar with filters (Desktop) */}
+      <div className="hidden lg:block w-72 flex-shrink-0">
         <div className="sticky top-8">
           <CompanyFilter
             initialFilters={initialFilters}
@@ -131,38 +171,41 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
         {companies.length > 0 ? (
           <div className="space-y-4">
             {/* Results summary */}
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3 px-1">
               <div className="text-xs font-medium text-gray-500 tracking-wide uppercase">
                 <span className="text-indigo-600 font-semibold">{totalCount.toLocaleString()}</span> {totalCount === 1 ? 'empresa' : 'empresas'} encontradas
               </div>
             </div>
 
-            {/* Table */}
+            {/* Desktop Table View */}
             <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl overflow-hidden shadow-lg shadow-gray-900/5">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gradient-to-r from-gray-50 via-gray-50/50 to-gray-50 border-b border-gray-200/60">
                     <tr>
-                      <th className="px-6 py-4 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-[0.15em]">
+                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Empresa
                       </th>
-                      <th className="px-6 py-4 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-[0.15em]">
+                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
                         Ubicación
                       </th>
-                      <th className="px-6 py-4 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-[0.15em]">
+                      <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
                         Ingresos
                       </th>
-                      <th className="px-6 py-4 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-[0.15em]">
+                      <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden xl:table-cell">
                         Activos
                       </th>
-                      <th className="px-6 py-4 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-[0.15em]">
+                      <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden 2xl:table-cell">
                         Patrimonio
                       </th>
-                      <th className="px-6 py-4 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-[0.15em]">
+                      <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden xl:table-cell">
                         Empleados
                       </th>
-                      <th className="px-6 py-4 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-[0.15em]">
+                      <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider hidden 2xl:table-cell">
                         Año
+                      </th>
+                      <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Acciones
                       </th>
                     </tr>
                   </thead>
@@ -179,7 +222,8 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
                       return (
                         <tr
                           key={company.id}
-                          className="hover:bg-gradient-to-r hover:from-indigo-50/30 hover:via-white/50 hover:to-white/50 transition-all duration-200 border-l-2 border-l-transparent hover:border-l-indigo-400/50 group"
+                          onClick={() => router.push(profileUrl)}
+                          className="hover:bg-gradient-to-r hover:from-indigo-50/30 hover:via-white/50 hover:to-white/50 transition-all duration-200 border-l-2 border-l-transparent hover:border-l-indigo-400/50 group cursor-pointer"
                         >
                           <td className="px-6 py-5 whitespace-nowrap">
                             <div className="flex items-center gap-3">
@@ -196,16 +240,11 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
                                   <span className="text-[10px] text-gray-500 font-mono tracking-wider">
                                     RUC: {company.ruc || '—'}
                                   </span>
-                                  <Link href={profileUrl}>
-                                    <button className="text-[10px] text-indigo-600 hover:text-white font-normal px-2 py-0.5 border border-indigo-300/60 rounded-md hover:bg-gradient-to-r hover:from-indigo-600 hover:to-purple-600 hover:border-transparent transition-all duration-200 shadow-sm hover:shadow-md hover:shadow-indigo-500/20 ml-2">
-                                      Ver
-                                    </button>
-                                  </Link>
                                 </div>
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-5 whitespace-nowrap">
+                          <td className="px-6 py-5 whitespace-nowrap hidden md:table-cell">
                             <div className="flex items-center gap-1.5 text-xs text-gray-700 font-normal">
                               {company.provincia && (
                                 <>
@@ -216,7 +255,7 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
                               {!company.provincia && <span className="text-gray-400">—</span>}
                             </div>
                           </td>
-                          <td className="px-6 py-5 whitespace-nowrap text-right">
+                          <td className="px-6 py-5 whitespace-nowrap text-right hidden lg:table-cell">
                             <div className="flex items-center justify-end gap-1.5">
                               <DollarSign className="h-3 w-3 text-gray-400" />
                               <span className="text-xs font-normal text-gray-900 font-mono">
@@ -224,7 +263,7 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-5 whitespace-nowrap text-right">
+                          <td className="px-6 py-5 whitespace-nowrap text-right hidden xl:table-cell">
                             <div className="flex items-center justify-end gap-1.5">
                               <Building2 className="h-3 w-3 text-gray-400" />
                               <span className="text-xs font-normal text-gray-900 font-mono">
@@ -232,7 +271,7 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-5 whitespace-nowrap text-right">
+                          <td className="px-6 py-5 whitespace-nowrap text-right hidden 2xl:table-cell">
                             <div className="flex items-center justify-end gap-1.5">
                               <TrendingUp className="h-3 w-3 text-gray-400" />
                               <span className="text-xs font-normal text-gray-900 font-mono">
@@ -240,7 +279,7 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-5 whitespace-nowrap text-right">
+                          <td className="px-6 py-5 whitespace-nowrap text-right hidden xl:table-cell">
                             <div className="flex items-center justify-end gap-1.5">
                               <Users className="h-3.5 w-3.5 text-gray-400" />
                               <span className="text-xs font-normal text-gray-900 font-mono">
@@ -248,10 +287,27 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-5 whitespace-nowrap text-center">
+                          <td className="px-6 py-5 whitespace-nowrap text-center hidden 2xl:table-cell">
                             <span className="text-xs font-normal text-gray-600 bg-gray-100/60 px-2 py-1 rounded-md font-mono">
                               {company.anio || '—'}
                             </span>
+                          </td>
+                          <td className="px-6 py-5 whitespace-nowrap text-right">
+                            <div 
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-block"
+                            >
+                              <Link href={profileUrl}>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-all duration-200 group/btn"
+                                >
+                                  Ver Perfil
+                                  <ArrowRight className="ml-1.5 h-3.5 w-3.5 transition-transform duration-200 group-hover/btn:translate-x-0.5" />
+                                </Button>
+                              </Link>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -260,7 +316,10 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
                 </table>
               </div>
             </div>
-            
+
+            {/* Mobile Card View - Removed to prioritize responsive table */}
+            {/* <div className="md:hidden space-y-3"> ... </div> */}
+
             {totalPages > 1 && (
               <div className="flex justify-center pt-4">
                 <PaginationControls

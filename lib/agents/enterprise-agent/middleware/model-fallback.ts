@@ -347,6 +347,20 @@ export async function executeWithModelFallback<T>(
           console.log(
             `[ModelFallback] Fatal error for ${modelConfig.name}, skipping retries`
           );
+          
+          // For authentication errors, all models share the same API key - return early
+          // to avoid wasting requests that will all fail
+          if (/invalid api key|api key.*invalid|authentication failed/i.test(error.message)) {
+            console.log(`[ModelFallback] Authentication error - returning early (all models share same key)`);
+            return {
+              success: false,
+              error,
+              modelUsed: modelConfig.name,
+              attempts,
+              totalDuration: Date.now() - startTime,
+            };
+          }
+          
           break;
         }
       }

@@ -79,10 +79,12 @@ export class AgentRecoveryManager {
   
   /**
    * Update partial response
+   * Uses content comparison (not length) to handle replacements correctly
    */
   updatePartialResponse(content: string) {
-    if (content && content.length > this.checkpoint.partialResponse.length) {
+    if (content && content !== this.checkpoint.partialResponse) {
       this.checkpoint.partialResponse = content;
+      this.checkpoint.timestamp = new Date();
       this.lastHeartbeat = Date.now();
     }
   }
@@ -102,10 +104,16 @@ export class AgentRecoveryManager {
   }
   
   /**
-   * Get current checkpoint
+   * Get current checkpoint (deep clone to prevent external mutation)
    */
   getCheckpoint(): AgentCheckpoint {
-    return { ...this.checkpoint };
+    return {
+      ...this.checkpoint,
+      completedTools: [...this.checkpoint.completedTools],
+      toolOutputs: [...this.checkpoint.toolOutputs],
+      todos: [...this.checkpoint.todos],
+      warnings: [...this.checkpoint.warnings],
+    };
   }
   
   /**

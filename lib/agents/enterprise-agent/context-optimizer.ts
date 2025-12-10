@@ -203,11 +203,13 @@ export function optimizeConversationHistory(
 }
 
 /**
- * Estimate token count from text (rough approximation)
+ * Estimate token count from text or character count (rough approximation)
  * ~4 chars per token for English/Spanish mixed content
+ * @param input - Either a string (will use its length) or a number (character count)
  */
-export function estimateTokens(text: string): number {
-  return Math.ceil(text.length / 4);
+export function estimateTokens(input: string | number): number {
+  const charCount = typeof input === 'number' ? input : input.length;
+  return Math.ceil(charCount / 4);
 }
 
 /**
@@ -224,7 +226,8 @@ export function isWithinTokenBudget(
       : JSON.stringify(msg.content);
     totalChars += content.length;
   }
-  return estimateTokens(totalChars.toString()) < maxTokens;
+  // Fix: Use totalChars directly (not toString()) - estimateTokens now accepts number
+  return estimateTokens(totalChars) < maxTokens;
 }
 
 /**

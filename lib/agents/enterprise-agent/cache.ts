@@ -27,14 +27,22 @@ class AgentCache {
 
   /**
    * Generate a cache key from query parameters
+   * Handles circular references and serialization errors gracefully
    */
   private generateKey(prefix: string, params: Record<string, unknown>): string {
-    const sortedParams = Object.keys(params)
-      .sort()
-      .filter(k => params[k] !== undefined && params[k] !== null && params[k] !== '')
-      .map(k => `${k}:${JSON.stringify(params[k])}`)
-      .join('|');
-    return `${prefix}:${sortedParams}`;
+    try {
+      const sortedParams = Object.keys(params)
+        .sort()
+        .filter(k => params[k] !== undefined && params[k] !== null && params[k] !== '')
+        .map(k => `${k}:${JSON.stringify(params[k])}`)
+        .join('|');
+      return `${prefix}:${sortedParams}`;
+    } catch (error) {
+      // Fallback for circular references or other serialization errors
+      // Use a deterministic key based on sorted keys and timestamp
+      console.warn('[AgentCache] Key generation fallback due to serialization error:', error);
+      return `${prefix}:${Object.keys(params).sort().join('|')}:${Date.now()}`;
+    }
   }
 
   /**
@@ -95,8 +103,10 @@ class AgentCache {
 
   /**
    * Get cache stats for monitoring
+   * Note: avgHitsPerEntry measures average access frequency per cached entry,
+   * not a true hit rate (which would require tracking misses)
    */
-  getStats(): { size: number; maxSize: number; hitRate: number } {
+  getStats(): { size: number; maxSize: number; avgHitsPerEntry: number } {
     let totalHits = 0;
     this.cache.forEach(entry => {
       totalHits += entry.hits;
@@ -105,7 +115,7 @@ class AgentCache {
     return {
       size: this.cache.size,
       maxSize: this.config.maxSize,
-      hitRate: this.cache.size > 0 ? totalHits / this.cache.size : 0,
+      avgHitsPerEntry: this.cache.size > 0 ? totalHits / this.cache.size : 0,
     };
   }
 

@@ -46,23 +46,21 @@ let piiMiddleware: PIIRedactionMiddleware | null = null;
 
 /**
  * Get or create the PII middleware instance
+ * 
+ * NOTE: PII redaction has been DISABLED to allow full visibility of RUCs,
+ * cédulas, and other business identifiers in responses.
+ * The middleware is kept in place but configured to not apply any redaction.
  */
 function getPIIMiddleware(): PIIRedactionMiddleware {
   if (!piiMiddleware) {
     piiMiddleware = new PIIRedactionMiddleware({
       rules: LATAM_PII_RULES,
-      applyToInput: true,
-      applyToOutput: true,
-      restoreForTools: [
-        'search_companies',
-        'get_company_details',
-        'lookup_customer_by_ssn',
-        'enrich_company_contacts',
-      ],
-      enableAuditLog: true,
-      onAudit: (event) => {
-        console.log(`[PII] ${event.type}: ${event.piiType} in ${event.location}`);
-      },
+      // DISABLED: No longer redacting any PII data
+      applyToInput: false,
+      applyToOutput: false,
+      applyToToolInputs: false,
+      restoreForTools: [], // No need to restore if we're not redacting
+      enableAuditLog: false, // Disable audit logging since no redaction happening
     });
   }
   return piiMiddleware;
