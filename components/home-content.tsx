@@ -4,10 +4,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Search, ArrowRight } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { User } from "@supabase/supabase-js";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Video component that autoplays when scrolled into view
 function AutoplayVideo({ 
@@ -74,6 +74,42 @@ function AutoplayVideo({
   );
 }
 
+// Typewriter hook
+const useTypewriter = (phrases: string[], typingSpeed = 50, deletingSpeed = 30, pauseDuration = 2000) => {
+  const [text, setText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [phraseIndex, setPhraseIndex] = useState(0);
+
+  useEffect(() => {
+    const currentPhrase = phrases[phraseIndex];
+    
+    const handleTyping = () => {
+      if (isDeleting) {
+        setText((prev) => prev.slice(0, -1));
+        if (text === "") {
+          setIsDeleting(false);
+          setPhraseIndex((prev) => (prev + 1) % phrases.length);
+        }
+      } else {
+        setText((prev) => currentPhrase.slice(0, prev.length + 1));
+        if (text === currentPhrase) {
+          setTimeout(() => setIsDeleting(true), pauseDuration);
+          return;
+        }
+      }
+    };
+
+    const timer = setTimeout(
+      handleTyping,
+      isDeleting ? deletingSpeed : typingSpeed
+    );
+
+    return () => clearTimeout(timer);
+  }, [text, isDeleting, phraseIndex, phrases, typingSpeed, deletingSpeed, pauseDuration]);
+
+  return text;
+};
+
 // Feature data for the scrolling section
 const features = [
   {
@@ -106,9 +142,21 @@ type HomeContentProps = {
   initialUser?: User | null;
 };
 
+const SEARCH_PHRASES = [
+  "Investiga la salud financiera de una empresa con RUC 1790016919001",
+  "Busca personas que trabajen en la empresa Salud SA con LinkedIn",
+  "Analiza el sector de logística en Guayas",
+  "Busca proveedores de alimentos con ingresos > $100k",
+  "Investiga la salud financiera de Corporación Favorita",
+  "Mapea competidores en el sector farmacéutico",
+  "Identifica empresas exportadoras de banano",
+  "Busca oportunidades de inversión inmobiliaria"
+];
+
 export default function HomeContent({ initialUser = null }: HomeContentProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(initialUser);
+  const typewriterText = useTypewriter(SEARCH_PHRASES);
 
   useEffect(() => {
     const supabase = createClient();
@@ -172,16 +220,15 @@ export default function HomeContent({ initialUser = null }: HomeContentProps) {
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] w-full overflow-x-hidden font-inter text-gray-900 selection:bg-indigo-100 selection:text-indigo-900">
+    <div className="min-h-screen bg-white w-full overflow-x-hidden font-inter text-gray-900 selection:bg-indigo-100 selection:text-indigo-900 flex flex-col">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-[#FAFAFA]/80 backdrop-blur-md border-b border-gray-100/50">
+      <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-gray-100/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="relative w-6 h-6 transition-transform duration-300 group-hover:scale-105">
+              <div className="relative w-7 h-7 transition-transform duration-300 group-hover:scale-105">
                 <Image src="/logo.svg" alt="Camella Icon" fill className="object-contain" />
               </div>
-              <span className="font-medium text-lg tracking-tight text-gray-900">Camella</span>
             </Link>
 
             {/* Desktop Navigation */}
@@ -190,7 +237,7 @@ export default function HomeContent({ initialUser = null }: HomeContentProps) {
                 <Link 
                   key={item}
                   href={`/${item.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}`}
-                  className="text-[13px] font-normal text-gray-500 hover:text-gray-900 transition-colors"
+                  className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
                 >
                   {item}
                 </Link>
@@ -201,19 +248,19 @@ export default function HomeContent({ initialUser = null }: HomeContentProps) {
             <div className="hidden md:flex items-center gap-4">
               {user ? (
                 <Link href="/dashboard">
-                  <Button size="sm" className="rounded-full bg-indigo-600 hover:bg-indigo-700 text-white px-5 h-9 text-xs font-medium transition-all">
+                  <Button size="sm" className="rounded-full bg-indigo-600 hover:bg-indigo-700 text-white px-5 h-9 text-xs font-medium transition-all shadow-sm">
                     Dashboard
                   </Button>
                 </Link>
               ) : (
                 <>
                   <Link href="/auth/login">
-                    <Button variant="ghost" size="sm" className="text-xs font-medium text-gray-500 hover:text-gray-900">
+                    <Button variant="ghost" size="sm" className="text-sm font-medium text-gray-500 hover:text-gray-900">
                       Iniciar Sesión
                     </Button>
                   </Link>
                   <Link href="/auth/sign-up">
-                    <Button size="sm" className="rounded-full bg-indigo-600 hover:bg-gray-700 text-white px-5 h-9 text-xs font-medium transition-all">
+                    <Button size="sm" className="rounded-full bg-indigo-600 hover:bg-indigo-700 text-white px-5 h-9 text-xs font-medium transition-all shadow-sm">
                       Registrarse
                     </Button>
                   </Link>
@@ -231,181 +278,189 @@ export default function HomeContent({ initialUser = null }: HomeContentProps) {
         </div>
 
         {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="absolute top-16 left-0 w-full bg-white border-b border-gray-100 md:hidden animate-in slide-in-from-top-5">
-            <div className="p-4 space-y-4">
-              {["Precios", "Inversores", "Carreras", "Documentación"].map((item) => (
-                <Link
-                  key={item}
-                  href={`/${item.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}`}
-                  className="block text-sm font-medium text-gray-600"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {item}
-                </Link>
-              ))}
-              <div className="pt-4 border-t border-gray-100 space-y-3">
-                {user ? (
-                  <Link href="/dashboard">
-                    <Button className="w-full rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm">Dashboard</Button>
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="absolute top-16 left-0 w-full bg-white border-b border-gray-100 md:hidden overflow-hidden"
+            >
+              <div className="p-4 space-y-4">
+                {["Precios", "Inversores", "Carreras", "Documentación"].map((item) => (
+                  <Link
+                    key={item}
+                    href={`/${item.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}`}
+                    className="block text-base font-medium text-gray-600 py-2"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {item}
                   </Link>
-                ) : (
-                  <>
-                    <Link href="/auth/login">
-                      <Button variant="ghost" className="w-full justify-start text-sm">Iniciar Sesión</Button>
+                ))}
+                <div className="pt-4 border-t border-gray-100 space-y-3">
+                  {user ? (
+                    <Link href="/dashboard">
+                      <Button className="w-full rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm">Dashboard</Button>
                     </Link>
-                    <Link href="/auth/sign-up">
-                      <Button className="w-full rounded-full bg-gray-900 text-white text-sm">Registrarse</Button>
-                    </Link>
-                  </>
-                )}
+                  ) : (
+                    <>
+                      <Link href="/auth/login">
+                        <Button variant="ghost" className="w-full justify-start text-sm">Iniciar Sesión</Button>
+                      </Link>
+                      <Link href="/auth/sign-up">
+                        <Button className="w-full rounded-full bg-indigo-600 text-white text-sm hover:bg-indigo-700">Registrarse</Button>
+                      </Link>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
-      <main className="pt-24 pb-16 sm:pt-32 sm:pb-24">
-        {/* Hero Section */}
-        <section className="max-w-5xl mx-auto px-6 lg:px-8 text-center mb-8 sm:mb-12">
+      <main className="flex-grow pt-24 pb-16">
+        {/* Search Engine Hero */}
+        <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center min-h-[50vh] sm:min-h-[70vh] text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="w-full max-w-2xl"
           >
-            <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-[9px] sm:text-[10px] md:text-xs font-medium text-gray-600 mb-3">
-              <span>USD $5 gratis en uso · Sin tarjeta requerida</span>
-            </div>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-medium tracking-tight text-gray-900 mb-3 leading-[1.1]">
-              Motor de Búsqueda Empresarial
+            {/* Logo/Title */}
+            <h1 className="text-3xl sm:text-6xl font-bold tracking-tight text-indigo-600 mb-2 sm:mb-3">
+              Camella
             </h1>
             
-            <p className="max-w-xl mx-auto text-base sm:text-lg text-gray-500 mb-4 leading-relaxed font-light">
-              Encuentra empresas y personas clave, rápido.
+            <p className="text-sm sm:text-lg text-gray-500 font-medium mb-6 sm:mb-10 tracking-tight">
+              Motor de Búsqueda Empresarial
             </p>
 
-            {/* Available Countries */}
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <span className="text-xs text-gray-400">Países disponibles</span>
-              <span className="text-lg">🇪🇨</span>
-            </div>
-
-            {/* Coming Soon Countries */}
-            <div className="flex items-center justify-center gap-3 mb-6 flex-wrap">
-              <span className="text-xs text-gray-400">Próximamente:</span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm opacity-40 grayscale" title="Canadá">🇨🇦</span>
-                <span className="text-sm opacity-40 grayscale" title="Brasil">🇧🇷</span>
-                <span className="text-sm opacity-40 grayscale" title="Argentina">🇦🇷</span>
-                <span className="text-sm opacity-40 grayscale" title="México">🇲🇽</span>
-                <span className="text-sm opacity-40 grayscale" title="Perú">🇵🇪</span>
-                <span className="text-sm opacity-40 grayscale" title="Estados Unidos">🇺🇸</span>
+            {/* Search Input Simulation */}
+            <div className="relative group w-full mb-8">
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative flex items-center w-full h-12 sm:h-16 px-4 sm:px-6 bg-white border border-gray-200 rounded-full shadow-lg shadow-gray-200/50 hover:shadow-xl hover:border-indigo-300 transition-all duration-300 ring-0 ring-indigo-100 focus-within:ring-4">
+                <Search className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 mr-3 sm:mr-4 flex-shrink-0" />
+                <div className="flex-grow text-left text-sm sm:text-lg text-gray-600 font-medium overflow-hidden whitespace-nowrap">
+                  {typewriterText}
+                  <span className="animate-pulse text-indigo-500">|</span>
+                </div>
               </div>
             </div>
 
-            {!user && (
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link href="/auth/sign-up">
-                  <Button className="h-10 px-6 rounded-full text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md">
-                    Empezar Gratis
-                  </Button>
-                </Link>
-              </div>
-            )}
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-12">
+              <Link href={user ? "/dashboard" : "/auth/sign-up"} className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto h-10 sm:h-11 px-6 sm:px-8 rounded-full text-xs sm:text-base font-medium bg-gray-50 hover:bg-gray-100 text-gray-900 border border-gray-200 shadow-sm transition-all hover:border-gray-300">
+                  {user ? "Ir a mi Dashboard" : "Buscar"}
+                </Button>
+              </Link>
+            </div>
+
+            {/* Subtext */}
+            <p className="text-xs sm:text-sm text-gray-500 font-light px-4">
+              El motor de búsqueda empresarial más completo de Latinoamérica.
+              <br className="hidden sm:block" />
+              <span className="mt-2 block sm:inline-block">
+                Disponible en <span className="font-medium text-gray-700">Ecuador 🇪🇨</span> · Próximamente en <span className="opacity-60">🇨🇴 🇲🇽 🇵🇪 🇨🇱</span>
+              </span>
+            </p>
           </motion.div>
         </section>
 
-        {/* Feature Story Section */}
-        <section className="max-w-7xl mx-auto px-6 lg:px-8 mb-16 space-y-12">
-          {features.map((feature) => (
-            <div key={feature.id} className="space-y-4">
+        {/* Feature Story Section - Clean & Minimal */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 space-y-20 sm:space-y-32">
+          {features.map((feature, index) => (
+            <div key={feature.id} className={`flex flex-col ${index % 2 === 0 ? 'lg:flex-row' : 'lg:flex-row-reverse'} gap-8 lg:gap-24 items-center`}>
+              
+              {/* Text Content */}
               <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.5 }}
-                transition={{ duration: 0.4 }}
-                className="space-y-2 text-center max-w-2xl mx-auto"
+                initial={{ opacity: 0, x: index % 2 === 0 ? -20 : 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.6 }}
+                className="flex-1 space-y-4 sm:space-y-6 text-center lg:text-left w-full"
               >
-                <h3 className="text-lg sm:text-xl font-medium text-gray-900 tracking-tight">{feature.title}</h3>
-                <p className="text-xs sm:text-sm text-gray-600 leading-relaxed max-w-xl mx-auto">
+                <div className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-[10px] sm:text-xs font-medium text-indigo-700">
+                  {feature.tags[0]}
+                </div>
+                <h3 className="text-2xl sm:text-4xl font-semibold text-gray-900 tracking-tight leading-tight">
+                  {feature.title}
+                </h3>
+                <p className="text-base sm:text-lg text-gray-500 leading-relaxed max-w-lg mx-auto lg:mx-0">
                   {feature.description}
                 </p>
-                <div className="flex flex-wrap gap-1.5 justify-center text-[10px] text-gray-500 pt-0.5">
-                  {feature.tags.map(tag => (
-                    <span key={tag} className="px-2 py-0.5 rounded-full border border-gray-200 bg-white">
+                
+                <div className="flex flex-wrap gap-2 justify-center lg:justify-start pt-2">
+                  {feature.tags.slice(1).map(tag => (
+                    <span key={tag} className="px-3 py-1 rounded-full border border-gray-200 bg-white text-[10px] sm:text-xs text-gray-600">
                       {tag}
                     </span>
                   ))}
                 </div>
+
+                <div className="pt-4 flex justify-center lg:justify-start">
+                  <Link href="/auth/sign-up" className="inline-flex items-center text-indigo-600 font-medium hover:text-indigo-700 hover:underline underline-offset-4 transition-all text-sm sm:text-base">
+                    Probar ahora <ArrowRight className="ml-1 w-4 h-4" />
+                  </Link>
+                </div>
               </motion.div>
 
+              {/* Video Content */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.99 }}
+                initial={{ opacity: 0, scale: 0.95 }}
                 whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true, amount: 0.4 }}
-                transition={{ duration: 0.4 }}
-                className={(feature.id === "search" || feature.id === "management") ? "max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-6xl mx-auto relative overflow-hidden rounded-xl border border-gray-200 bg-white" : "max-w-2xl mx-auto relative overflow-hidden rounded-xl border border-gray-200 bg-white"}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.6 }}
+                className={index > 0 ? "flex-[2.1] w-full lg:max-w-6xl" : "flex-1 w-full lg:max-w-4xl"}
               >
-                <AutoplayVideo
-                  src={feature.videoSrc}
-                  poster={feature.poster}
-                  preload={feature.id === "analysis" ? "auto" : "metadata"}
-                  priority={feature.id === "analysis"}
-                  className="w-full h-auto object-contain"
-                />
+                <div className="relative rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl shadow-gray-200 border border-gray-100 bg-white w-full">
+                  <AutoplayVideo
+                    src={feature.videoSrc}
+                    poster={feature.poster}
+                    preload={feature.id === "analysis" ? "auto" : "metadata"}
+                    priority={feature.id === "analysis"}
+                    className="w-full h-auto"
+                  />
+                </div>
               </motion.div>
             </div>
           ))}
         </section>
 
-        {/* Promo CTA */}
-        <section className="max-w-3xl mx-auto px-6 lg:px-8 mb-16">
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.4 }}
-            className="rounded-xl border border-gray-200 bg-white p-6 sm:p-8 text-center"
-          >
-            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 mb-2">
-              Promo de lanzamiento
+        {/* Final CTA */}
+        <section className="bg-gray-50 border-y border-gray-100 py-16 sm:py-24 mt-8 sm:mt-12">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+            <h2 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">
+              Empieza a buscar hoy.
+            </h2>
+            <p className="text-base sm:text-lg text-gray-600 mb-6 sm:mb-8 max-w-2xl mx-auto">
+              Únete a las empresas que ya están utilizando Camella para conectar y crecer. 5 USD de crédito gratis al registrarte.
             </p>
-            <h3 className="text-xl sm:text-2xl font-medium text-gray-900 mb-3">
-              USD $5 gratis · Sin tarjeta
-            </h3>
-            <p className="text-xs sm:text-sm text-gray-600 mb-5">
-              Prueba las búsquedas y el agente sin costo.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link href={user ? "/dashboard" : "/auth/sign-up"} className="w-full sm:w-auto">
-                <Button className="w-full sm:w-auto h-10 px-6 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-full">
-                  {user ? "Ir al Dashboard" : "Empezar Gratis"}
-                </Button>
-              </Link>
-              {!user && (
-                <Link href="/auth/login" className="text-xs text-gray-500 hover:text-gray-900">
-                  ¿Ya tienes cuenta?
-                </Link>
-              )}
-            </div>
-          </motion.div>
+            <Link href="/auth/sign-up" className="inline-block w-full sm:w-auto">
+              <Button size="lg" className="w-full sm:w-auto rounded-full bg-indigo-600 hover:bg-indigo-700 text-white px-8 h-12 text-sm sm:text-base font-medium shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transition-all">
+                Crear cuenta gratis
+              </Button>
+            </Link>
+          </div>
         </section>
-
+        
         {/* Simple Footer */}
-        <footer className="max-w-7xl mx-auto px-6 lg:px-8 pt-16 border-t border-gray-100">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12">
-            <div className="flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
-              <Image src="/logo.svg" alt="Logo" width={24} height={24} />
-              <span className="font-medium text-sm text-gray-900">Camella</span>
+        <footer className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="flex items-center gap-2">
+              <Image src="/logo.svg" alt="Logo" width={24} height={24} className="opacity-80" />
+              <span className="font-semibold text-gray-700">Camella</span>
             </div>
-            <div className="flex gap-6 text-xs text-gray-500">
-              <Link href="/pricing" className="hover:text-gray-900">Precios</Link>
-              <Link href="/companies" className="hover:text-gray-900">Empresas</Link>
-              <Link href="/contacto" className="hover:text-gray-900">Contacto</Link>
-              <Link href="/login" className="hover:text-gray-900">Login</Link>
+            <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 text-sm text-gray-500">
+              <Link href="/pricing" className="hover:text-indigo-600 transition-colors">Precios</Link>
+              <Link href="/companies" className="hover:text-indigo-600 transition-colors">Empresas</Link>
+              <Link href="/contacto" className="hover:text-indigo-600 transition-colors">Contacto</Link>
+              <Link href="/login" className="hover:text-indigo-600 transition-colors">Login</Link>
             </div>
-            <p className="text-xs text-gray-400">
-              © 2025 Perceptron Labs.
+            <p className="text-xs sm:text-sm text-gray-400">
+              © 2025 Camella Inc.
             </p>
           </div>
         </footer>

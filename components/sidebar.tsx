@@ -144,7 +144,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin: _isAdmin = false }: Side
         </button>
       </div>
 
-      <nav className="flex-grow px-3 py-6 overflow-y-auto scrollbar-hide">
+      <nav className="flex-grow px-3 py-6 overflow-visible">
         <div className="mb-2 px-3">
           <p className={cn("text-xs font-medium text-gray-400 uppercase tracking-wider transition-opacity duration-200", isCollapsed ? "opacity-0 h-0" : "opacity-100")}>
             Menu
@@ -166,7 +166,6 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin: _isAdmin = false }: Side
                       "text-gray-500 hover:bg-gray-50",
                       isActive && "bg-indigo-50/80 text-indigo-600 shadow-sm shadow-indigo-100"
                     )}
-                    title={isCollapsed ? item.label : undefined}
                   >
                     <div className={cn("flex items-center justify-center min-w-[20px]")}>
                       <Icon
@@ -191,10 +190,11 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin: _isAdmin = false }: Side
                     >
                       {item.label}
                     </span>
-                    
-                    {/* Active Indicator Dot for Collapsed State */}
-                    {isCollapsed && isActive && (
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                    {/* Tooltip on Hover (Collapsed) */}
+                    {isCollapsed && (
+                      <div className="absolute left-full ml-2 px-2.5 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none shadow-lg transform -translate-y-1/2 top-1/2">
+                        {item.label}
+                      </div>
                     )}
                   </button>
                 ) : (
@@ -205,7 +205,6 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin: _isAdmin = false }: Side
                       "text-gray-500 hover:bg-gray-50",
                       isActive && "bg-indigo-50/80 text-indigo-600 shadow-sm shadow-indigo-100"
                     )}
-                    title={isCollapsed ? item.label : undefined}
                   >
                   <div className={cn("flex items-center justify-center min-w-[20px]")}>
                     <Icon
@@ -230,10 +229,11 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin: _isAdmin = false }: Side
                   >
                     {item.label}
                   </span>
-                  
-                  {/* Active Indicator Dot for Collapsed State */}
-                  {isCollapsed && isActive && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                  {/* Tooltip on Hover (Collapsed) */}
+                  {isCollapsed && (
+                    <div className="absolute left-full ml-2 px-2.5 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none shadow-lg transform -translate-y-1/2 top-1/2">
+                      {item.label}
+                    </div>
                   )}
                 </Link>
                 )}
@@ -252,7 +252,6 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin: _isAdmin = false }: Side
             pathname.startsWith("/docs") &&
             "bg-white text-indigo-600 shadow-sm"
           )}
-          title={isCollapsed ? "Documentación" : undefined}
         >
           <div className={cn("flex items-center justify-center min-w-[20px]")}>
             <FileText
@@ -277,6 +276,11 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin: _isAdmin = false }: Side
           >
             Documentación
           </span>
+          {isCollapsed && (
+            <div className="absolute left-full ml-2 px-2.5 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none shadow-lg transform -translate-y-1/2 top-1/2">
+              Documentación
+            </div>
+          )}
         </Link>
 
         <Link
@@ -287,7 +291,6 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin: _isAdmin = false }: Side
             pathname.startsWith("/settings") &&
             "bg-white text-indigo-600 shadow-sm"
           )}
-           title={isCollapsed ? "Configuración" : undefined}
         >
           <div className={cn("flex items-center justify-center min-w-[20px]")}>
             <Settings
@@ -312,6 +315,11 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin: _isAdmin = false }: Side
           >
             Configuración
           </span>
+          {isCollapsed && (
+            <div className="absolute left-full ml-2 px-2.5 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none shadow-lg transform -translate-y-1/2 top-1/2">
+              Configuración
+            </div>
+          )}
         </Link>
         
         <div className={cn("pt-2 flex justify-center", isCollapsed ? "" : "justify-start px-1")}>
