@@ -360,10 +360,9 @@ export default function HomeContent({ initialUser = null }: HomeContentProps) {
 
             {/* Subtext */}
             <p className="text-xs sm:text-sm text-gray-500 font-light px-4">
-              El motor de búsqueda empresarial más completo de Latinoamérica.
               <br className="hidden sm:block" />
               <span className="mt-2 block sm:inline-block">
-                Disponible en <span className="font-medium text-gray-700">Ecuador 🇪🇨</span> · Próximamente en <span className="opacity-60">🇨🇴 🇲🇽 🇵🇪 🇨🇱</span>
+                Disponible en <span className="font-medium text-gray-700">Ecuador 🇪🇨</span> · Próximamente en toda America <span className="opacity-60">🇲🇽 🇵🇪 🇨🇱 🇦🇷 🇧🇷 🇺🇸 🇨🇴</span>
               </span>
             </p>
           </motion.div>
