@@ -277,7 +277,7 @@ export default function HomeContent({ initialUser = null }: HomeContentProps) {
               <span>USD $5 gratis en uso · Sin tarjeta requerida</span>
             </div>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-medium tracking-tight text-gray-900 mb-3 leading-[1.1]">
-              Agente Empresarial
+              Motor de Búsqueda Empresarial
             </h1>
             
             <p className="max-w-xl mx-auto text-base sm:text-lg text-gray-500 mb-4 leading-relaxed font-light">

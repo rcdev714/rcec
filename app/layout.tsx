@@ -18,7 +18,7 @@ const defaultUrl = getDefaultUrl();
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
   title: {
-    default: 'Camella | Agente Empresarial',
+    default: 'Camella | Motor de Búsqueda Empresarial',
     template: '%s | Camella',
   },
   description: "Busca, audita y conecta con empresas, sin abogados ni terceros a la velocidad de la luz.",
@@ -63,20 +63,20 @@ export const metadata: Metadata = {
     locale: 'es_EC',
     url: defaultUrl,
     siteName: 'Camella.app',
-    title: 'Camella | Agente Empresarial',
+    title: 'Camella | Motor de Búsqueda Empresarial',
     description: 'Busca, audita y conecta con empresas, sin abogados ni terceros a la velocidad de la luz.',
     images: [
       {
         url: '/HeroImage.jpeg',
         width: 1200,
         height: 630,
-        alt: 'Camella - Agente Empresarial',
+        alt: 'Camella - Motor de Búsqueda Empresarial',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Camella | Agente Empresarial',
+    title: 'Camella | Motor de Búsqueda Empresarial',
     description: 'Busca, audita y conecta con empresas, sin abogados ni terceros a la velocidad de la luz.',
     images: [`${defaultUrl}/HeroImage.jpeg`],
   },

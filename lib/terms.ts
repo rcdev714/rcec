@@ -17,7 +17,7 @@ export const TERMS_SECTIONS: TermsSection[] = [
   {
     title: '2. Descripción del servicio',
     paragraphs: [
-      'Camella provee un software en la nube (SaaS) que funciona como un agente empresarial con inteligencia artificial. La plataforma consolida y normaliza datos corporativos de empresas ecuatorianas para ayudarte a investigar, auditar y conectar con empresas en América Latina.',
+      'Camella provee un software en la nube (SaaS) que funciona como un Motor de Búsqueda Empresarial con inteligencia artificial. La plataforma consolida y normaliza datos corporativos de empresas ecuatorianas para ayudarte a investigar, auditar y conectar con empresas en América Latina.',
       'Nos reservamos el derecho de actualizar, modificar o descontinuar funciones del software con previo aviso razonable a través de la plataforma.',
     ],
     bullets: [

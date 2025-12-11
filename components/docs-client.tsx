@@ -36,7 +36,7 @@ export default function DocsPageClient() {
           <h2 id="overview-intro" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">¿Qué es Camella?</h2>
           <p className="!mt-4">
                   Camella es una plataforma B2B especializada en el mercado ecuatoriano que combina una base de datos
-                  completa de empresas con un Agente Personal de Ventas para potenciar estrategias comerciales
+                  completa de empresas con un Motor de Búsqueda Empresarial para potenciar estrategias comerciales
                   y de venta. Diseñada para vendedores, consultores y empresas que necesitan encontrar prospectos
                   ideales en el mercado ecuatoriano.
                 </p>
@@ -54,7 +54,7 @@ export default function DocsPageClient() {
       icon: Rocket,
       subsections: [
         { id: "g-start-guide", title: "Guía Paso a Paso" },
-        { id: "g-start-nav", title: "1. Navega al Agente" },
+        { id: "g-start-nav", title: "1. Navega al Motor de Búsqueda Empresarial" },
         { id: "g-start-convo", title: "2. Tu Primera Conversación" },
         { id: "g-start-explore", title: "3. Explora Más Funciones" }
       ],
@@ -62,14 +62,14 @@ export default function DocsPageClient() {
         <div className="prose prose-lg max-w-none">
           <h1 className="text-3xl font-semibold tracking-tight text-gray-900 !mb-3">Primeros Pasos en Camella</h1>
           <p className="text-lg !mt-0 text-gray-500">
-            Descubre el poder de nuestro Agente IA, el corazón de Camella que transforma cómo encuentras empresas. Comienza tu viaje en menos de 5 minutos.
+            Descubre el poder de nuestro Motor de Búsqueda Empresarial, el corazón de Camella que transforma cómo encuentras empresas. Comienza tu viaje en menos de 5 minutos.
           </p>
           
           <h2 id="g-start-guide" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Tu Guía Paso a Paso</h2>
 
-          <h3 id="g-start-nav" className="!mt-8 !mb-3 text-lg font-semibold tracking-tight">1. Navega al Agente</h3>
+          <h3 id="g-start-nav" className="!mt-8 !mb-3 text-lg font-semibold tracking-tight">1. Navega al Motor de Búsqueda Empresarial</h3>
           <p className="!mt-4">
-            Ve al menú lateral y haz clic en &quot;Agente&quot; para abrir el chat de IA. El plan gratuito te ofrece límites generosos para empezar:
+            Ve al menú lateral y haz clic en &quot;Agente&quot; para abrir el Motor de Búsqueda Empresarial. El plan gratuito te ofrece límites generosos para empezar:
           </p>
             <ul className="!mt-6 !space-y-3">
               <li>10 Mensajes IA/mes</li>
@@ -79,7 +79,7 @@ export default function DocsPageClient() {
 
             <h3 id="g-start-convo" className="!mt-8 !mb-3 text-lg font-semibold tracking-tight">2. Tu Primera Conversación</h3>
             <p className="!mt-4">
-              Prueba el Agente preguntando por empresas en tu sector o ubicación. Aquí tienes algunos ejemplos:
+              Prueba el Motor de Búsqueda Empresarial preguntando por empresas en tu sector o ubicación. Aquí tienes algunos ejemplos:
             </p>
             <ul className="!mt-6 !space-y-3">
                 <li>&quot;Empresas con mayores ingresos en Pichincha&quot;</li>
@@ -170,7 +170,7 @@ export default function DocsPageClient() {
       ],
       content: (
         <div className="prose prose-lg max-w-none">
-            <h1 className="text-3xl font-semibold tracking-tight text-gray-900 !mb-3">Agentes</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-gray-900 !mb-3">Motor de Búsqueda Empresarial</h1>
           <p className="text-lg !mt-0 text-gray-500">
             El corazón de Camella: una interfaz conversacional para explorar datos complejos de forma sencilla.
           </p>

@@ -1523,7 +1523,7 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
                 >
                   <p className="text-[11px] md:text-[13px] uppercase tracking-[0.2em] text-gray-400">Impulsado por Gemini</p>
                   <h1 className="text-2xl md:text-3xl lg:text-4xl font-medium text-gray-900 leading-tight">
-                    Agente Empresarial
+                    Motor de Búsqueda Empresarial
                   </h1>
                   <p className="text-sm md:text-base lg:text-lg text-gray-600 font-light leading-relaxed px-4">
                     Analiza empresas, compara mercados y genera ideas accionables con una interfaz enfocada en la información.

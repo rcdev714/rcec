@@ -3,7 +3,7 @@ import HomeContent from "@/components/home-content";
 import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Camella | Agente Empresarial",
+  title: "Camella | Motor de Búsqueda Empresarial",
   description: "Busca, audita y conecta con empresas, sin abogados ni terceros a la velocidad de la luz.",
   keywords: [
     'camella',
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     'ventas inteligentes',
   ],
   openGraph: {
-    title: "Camella | Agente Empresarial",
+    title: "Camella | Motor de Búsqueda Empresarial",
     description: "Busca, audita y conecta con empresas, sin abogados ni terceros a la velocidad de la luz.",
     images: ['/logo.png'],
   },

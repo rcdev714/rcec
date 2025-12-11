@@ -3,7 +3,7 @@ import DocsPageClient from "@/components/docs-client";
 
 export const metadata: Metadata = {
   title: "Documentación",
-  description: "Documentación completa de Camella. Aprende a usar nuestro Agente Personal de Ventas, la base de datos de empresas, y a gestionar tus servicios para potenciar tus ventas B2B en Ecuador.",
+  description: "Documentación completa de Camella. Aprende a usar nuestro Motor de Búsqueda Empresarial, la base de datos de empresas, y a gestionar tus servicios para potenciar tus ventas B2B en Ecuador.",
   alternates: {
     canonical: '/docs',
   },
