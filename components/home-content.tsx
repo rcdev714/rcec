@@ -75,7 +75,7 @@ function AutoplayVideo({
 }
 
 // Typewriter hook
-const useTypewriter = (phrases: string[], typingSpeed = 50, deletingSpeed = 30, pauseDuration = 2000) => {
+const useTypewriter = (phrases: string[], typingSpeed = 50, deletingSpeed = 12, pauseDuration = 1200) => {
   const [text, setText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [phraseIndex, setPhraseIndex] = useState(0);
@@ -143,14 +143,14 @@ type HomeContentProps = {
 };
 
 const SEARCH_PHRASES = [
-  "Investiga la salud financiera de una empresa con RUC 1790016919001",
-  "Busca personas que trabajen en la empresa Salud SA con LinkedIn",
-  "Analiza el sector de logística en Guayas",
-  "Busca proveedores de alimentos con ingresos > $100k",
-  "Investiga la salud financiera de Corporación Favorita",
-  "Mapea competidores en el sector farmacéutico",
-  "Identifica empresas exportadoras de banano",
-  "Busca oportunidades de inversión inmobiliaria"
+  "Busca personas en LinkedIn que trabajen en Unibrokers SA",
+  "Encuentra empresas de manufactura en Quito",
+  "Analiza RUC 1790016919001",
+  "Proveedores de alimentos > $100k",
+  "Salud financiera: Corporación Favorita",
+  "Competencia farmacéutica en Cuenca",
+  "Exportadores de banano en El Oro",
+  "Oportunidades inmobiliarias en Manta"
 ];
 
 export default function HomeContent({ initialUser = null }: HomeContentProps) {
@@ -342,7 +342,7 @@ export default function HomeContent({ initialUser = null }: HomeContentProps) {
               <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="relative flex items-center w-full h-12 sm:h-16 px-4 sm:px-6 bg-white border border-gray-200 rounded-full shadow-lg shadow-gray-200/50 hover:shadow-xl hover:border-indigo-300 transition-all duration-300 ring-0 ring-indigo-100 focus-within:ring-4">
                 <Search className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 mr-3 sm:mr-4 flex-shrink-0" />
-                <div className="flex-grow text-left text-sm sm:text-lg text-gray-600 font-medium overflow-hidden whitespace-nowrap">
+                <div className="flex-grow min-w-0 text-left text-sm sm:text-lg text-gray-600 font-medium overflow-hidden whitespace-nowrap">
                   {typewriterText}
                   <span className="animate-pulse text-indigo-500">|</span>
                 </div>
