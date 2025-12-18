@@ -1,6 +1,7 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseMessage } from "@langchain/core/messages";
 import { UserOffering } from "@/types/user-offering";
+import { AgentSettings } from "@/lib/types/agent-settings";
 
 // Todo item structure for task management
 export interface TodoItem {
@@ -235,6 +236,12 @@ export const EnterpriseAgentState = Annotation.Root({
 
   // Trigger.dev run ID for background task coordination
   runId: Annotation<string | null>({
+    reducer: (_, update) => update,
+    default: () => null,
+  }),
+
+  // Agent settings (model, temperature, tools)
+  agentSettings: Annotation<AgentSettings | null>({
     reducer: (_, update) => update,
     default: () => null,
   }),

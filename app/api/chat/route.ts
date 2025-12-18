@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { HumanMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
 import { validateEnvironment } from "@/lib/env-validation";
 import { ensurePromptAllowedAndTrack, estimateTokensFromTextLength } from "@/lib/usage";
+import { mergeAgentSettings, AgentSettings } from "@/lib/types/agent-settings";
 
 // Use Node.js runtime for full compatibility with LangChain and streaming
 // Edge runtime has limitations with certain Node.js APIs
@@ -48,14 +49,62 @@ export async function POST(req: Request) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const { message, conversationId, useLangGraph = true, useSalesAgent = true, model, thinkingLevel = 'high' } = await req.json();
+    const { message, conversationId, useLangGraph = true, useSalesAgent = true, model, thinkingLevel = 'high', agentSettings: requestSettings } = await req.json();
 
     // Use user ID as conversation ID if not provided for user-specific memory
     const effectiveConversationId = conversationId || user.id;
 
+    // Fetch user profile for default settings
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('agent_settings')
+      .eq('user_id', user.id)
+      .single();
+
+    let conversationSettings: AgentSettings | null = null;
+    if (conversationId) {
+      const { data: conversation } = await supabase
+        .from('conversations')
+        .select('metadata')
+        .eq('id', conversationId)
+        .single();
+      
+      if (conversation?.metadata && typeof conversation.metadata === 'object') {
+        const meta = conversation.metadata as Record<string, any>;
+        if (meta.agentSettings) {
+          conversationSettings = meta.agentSettings as AgentSettings;
+        }
+      }
+      
+      // If request has new settings, update conversation metadata
+      if (requestSettings) {
+        await supabase
+          .from('conversations')
+          .update({
+            metadata: { 
+              ...(conversation?.metadata as object || {}), 
+              agentSettings: requestSettings 
+            }
+          })
+          .eq("id", conversationId);
+      }
+    }
+
+    // Merge settings
+    const effectiveSettings = mergeAgentSettings(
+      userProfile?.agent_settings as AgentSettings | null,
+      conversationSettings,
+      requestSettings as AgentSettings | null
+    );
+    
+    // Ensure model/thinking match
+    if (model) effectiveSettings.modelName = model;
+    if (thinkingLevel) effectiveSettings.thinkingLevel = thinkingLevel as any;
+
     // Check and track prompt usage before processing
     const inputTokensEstimate = estimateTokensFromTextLength(message);
-    const selectedModel = model || "gemini-2.5-flash"; // Default model
+    const selectedModel = effectiveSettings.modelName; // Default model
+
 
     // Model access validation removed - all models available to all users
     /*
@@ -152,8 +201,9 @@ export async function POST(req: Request) {
         conversationId: effectiveConversationId,
         ...langsmithConfig,
         runName: "Sales Agent Chat",
-        modelName: selectedModel,
-        thinkingLevel: thinkingLevel as 'high' | 'low',
+        modelName: effectiveSettings.modelName,
+        thinkingLevel: effectiveSettings.thinkingLevel,
+        agentSettings: effectiveSettings,
       });
     } else if (useLangGraph) {
       // Fallback to simple LangGraph React agent

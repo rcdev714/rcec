@@ -36,7 +36,7 @@ async function trackUsageSafe(
   // Always use background-safe version since this code only runs in Trigger.dev workers
   await trackLLMUsageBackground(userId, model, inputTokens, outputTokens);
 }
-import { optimizeConversationHistory } from "./context-optimizer";
+import { optimizeConversationHistory, reconstructMessages, getMessageType } from "./context-optimizer";
 
 // Initialize Gemini models (lazy, cached per model name)
 const geminiModels: Record<string, ChatGoogleGenerativeAI> = {};
@@ -77,14 +77,25 @@ export function resetPIIMiddleware(): void {
   }
 }
 
-function getGeminiModel(modelName: string = "gemini-2.5-flash"): ChatGoogleGenerativeAI {
+function getGeminiModel(modelName: string = "gemini-2.5-flash", options?: { temperature?: number }): ChatGoogleGenerativeAI {
   // Always recreate in development to pick up config changes
   if (process.env.NODE_ENV === 'development') {
-    delete geminiModels[modelName];
+    // Clear cache for this model/temp combo
+    const keyPrefix = `${modelName}`;
+    Object.keys(geminiModels).forEach(k => {
+      if (k.startsWith(keyPrefix)) delete geminiModels[k];
+    });
   }
   
-  if (!geminiModels[modelName]) {
-    console.log('[getGeminiModel] Initializing model:', modelName);
+  // Use temperature from options or default based on model
+  const isGemini3 = modelName.startsWith('gemini-3');
+  const defaultTemp = isGemini3 ? 0.1 : 0.2;
+  const temperature = options?.temperature ?? defaultTemp;
+
+  const cacheKey = `${modelName}-${temperature}`;
+
+  if (!geminiModels[cacheKey]) {
+    console.log('[getGeminiModel] Initializing model:', modelName, 'temp:', temperature);
     
     // Validate API key before initialization
     const apiKey = process.env.GOOGLE_API_KEY;
@@ -92,19 +103,15 @@ function getGeminiModel(modelName: string = "gemini-2.5-flash"): ChatGoogleGener
       throw new Error('GOOGLE_API_KEY environment variable is required but not set. Please configure your environment.');
     }
     
-    const isGemini3 = modelName.startsWith('gemini-3');
     // Use v1beta for Gemini 3 models as they are in preview and may not be fully available in v1
     // Some capabilities like 'thinking' mode are definitely preview/beta
     const apiVersion = isGemini3 ? 'v1beta' : undefined; 
-    // Lower temperatures for stricter instruction-following
-    // Increase slightly to avoid repetition loops
-    const temperature = isGemini3 ? 0.1 : 0.2;
 
     // Workaround: Remove 'tools' from Gemini 3 initialization if they are causing issues
     // or bind them later. For now, we initialize the base model without binding tools here.
     // The bindTools call in the think function handles the binding.
     
-    geminiModels[modelName] = new ChatGoogleGenerativeAI({
+    geminiModels[cacheKey] = new ChatGoogleGenerativeAI({
       apiKey,
       model: modelName,
       temperature,
@@ -112,7 +119,7 @@ function getGeminiModel(modelName: string = "gemini-2.5-flash"): ChatGoogleGener
       ...(apiVersion && { apiVersion }),
     });
   }
-  return geminiModels[modelName];
+  return geminiModels[cacheKey];
 }
 
 /**
@@ -348,9 +355,18 @@ REGLAS:
  * 
  * SIMPLIFIED: Let the model work naturally. Don't force tool calls.
  * Gemini doesn't respect tool_choice anyway.
+ * 
+ * CRITICAL FIX: Messages are reconstructed from checkpoint serialization
+ * at the start of this function to ensure _getType() works correctly.
  */
 export async function think(state: EnterpriseAgentStateType): Promise<Partial<EnterpriseAgentStateType>> {
   try {
+    // CRITICAL: Reconstruct messages from checkpoint serialization
+    // When messages are loaded from Supabase checkpoints, they become plain objects
+    // without prototype methods like _getType(). This reconstructs proper LangChain messages.
+    const reconstructedMessages = reconstructMessages(state.messages);
+    console.log(`[think] Reconstructed ${reconstructedMessages.length} messages from state`);
+    
     // SIMPLIFIED: No narration detection, no forced tool calls
     // Just let the model do its job
     const shouldSkipTools = false;
@@ -362,17 +378,28 @@ export async function think(state: EnterpriseAgentStateType): Promise<Partial<En
     const { offeringTools } = await import("@/lib/tools/offerings-tools");
     const { perplexitySearchTool } = await import("@/lib/tools/perplexity-search");
     
-    const allTools = shouldSkipTools ? [] : [
+    const allToolsFull = shouldSkipTools ? [] : [
       ...companyTools,
       webSearchTool,
       webExtractTool,
       enrichCompanyContactsTool,
       ...offeringTools,
       perplexitySearchTool,
+      // export_companies is dynamically imported/handled in callTools but we should include definition if we want the model to see it
+      // For now, assume model knows about it or it's handled via prompts/state
     ];
+
+    // Filter tools based on settings
+    const toolPolicy = state.agentSettings?.toolPolicy?.allowedTools;
+    const allTools = allToolsFull.filter(t => {
+      // If no policy, allow all. If policy exists, check if tool is enabled (default true if missing in map)
+      if (!toolPolicy) return true;
+      return toolPolicy[t.name] !== false;
+    });
     
     // Bind tools to the model (use state.modelName for dynamic selection)
     const modelName = state.modelName || "gemini-3-pro-preview";
+    const temperature = state.agentSettings?.temperature;
     
     // Gemini 3 models currently have issues with tool binding in some library versions or regions.
     // If we encounter issues with Gemini 3, we might need to fallback to a version without tools bound
@@ -380,7 +407,7 @@ export async function think(state: EnterpriseAgentStateType): Promise<Partial<En
     
     // NOTE: If using Gemini 3 thinking mode, we might need to be careful with tool binding
     // as some preview versions don't support both simultaneously well.
-    const baseModel = getGeminiModel(modelName);
+    const baseModel = getGeminiModel(modelName, { temperature });
     
     // Add thinking level hint for Gemini 3 models (fallback if native param unsupported by current lib)
     let aiThinkingHint = '';
@@ -424,6 +451,34 @@ export async function think(state: EnterpriseAgentStateType): Promise<Partial<En
 
     // Build context message
     const contextParts: string[] = [];
+    
+    // TOOL PRIORITY INJECTION: Remind the model about correct tool usage
+    // This is critical because the model often defaults to web search when the database has the data
+    const recentToolCalls = state.toolOutputs.slice(-3).map(o => o.toolName);
+    const webSearchCount = recentToolCalls.filter(t => t === 'tavily_web_search').length;
+    
+    if (webSearchCount >= 2) {
+      // Model is over-using web search - inject strong guidance
+      contextParts.push(`
+⚠️ **RECORDATORIO DE HERRAMIENTAS - LEE ESTO**
+
+Has estado usando tavily_web_search repetidamente. RECUERDA:
+
+Para empresas ECUATORIANAS, LA BASE DE DATOS YA TIENE:
+- Estados financieros completos (ingresos, utilidad, activos, patrimonio)
+- RUC y datos de identificación
+- Información de empleados y sector
+
+USA ESTAS HERRAMIENTAS PRIMERO:
+1. search_company_by_name("nombre") → Para encontrar el RUC
+2. lookup_company_by_ruc("1234567890123") → Para estados financieros COMPLETOS
+
+SOLO usa tavily_web_search para:
+- Noticias recientes
+- Contactos/LinkedIn
+- Empresas NO ecuatorianas
+`);
+    }
     
     if (state.userContext) {
       contextParts.push(`Usuario: ${state.userContext.userProfile?.firstName || 'Usuario'}`);
@@ -686,19 +741,22 @@ export async function think(state: EnterpriseAgentStateType): Promise<Partial<En
     // Prepare conversation messages
     // For Gemini 3, avoid sending functionCall/response parts directly because the current LangChain
     // wrapper may not preserve thoughtSignature. Rely on summarized tool results in context.
+    // 
+    // CRITICAL: Use reconstructedMessages (not state.messages) and getMessageType() for safe type detection
+    // This handles messages restored from checkpoint serialization that lost their prototype methods.
     const shouldFilterFunctionTurn = modelIsGemini3;
     let baseMessages = shouldFilterFunctionTurn
-      ? state.messages.filter((m) => {
-          const type = m._getType();
+      ? reconstructedMessages.filter((m) => {
+          const type = getMessageType(m);
           const isFunctionCall = type === 'ai' && 'tool_calls' in (m as any);
           const isFunctionResponse = type === 'tool';
           return !isFunctionCall && !isFunctionResponse;
         })
-      : state.messages;
-    // Safeguard: if filtering removed everything, fall back to original messages
+      : reconstructedMessages;
+    // Safeguard: if filtering removed everything, fall back to reconstructed messages
     if (shouldFilterFunctionTurn && baseMessages.length === 0) {
-      console.warn('[think] All messages filtered out, using original messages');
-      baseMessages = state.messages;
+      console.warn('[think] All messages filtered out, using reconstructed messages');
+      baseMessages = reconstructedMessages;
     }
     
     // OPTIMIZATION: Compress conversation history to reduce token usage
@@ -730,8 +788,9 @@ export async function think(state: EnterpriseAgentStateType): Promise<Partial<En
     
     // Fix for Google Generative AI error: "Google requires a tool name for each tool call response"
     // Ensure all ToolMessages have a name property. If missing, try to infer it or set a default.
+    // Use getMessageType() for safe type detection that handles serialized messages.
     messagesToSend = messagesToSend.map(msg => {
-      if (msg._getType() === 'tool') {
+      if (getMessageType(msg) === 'tool') {
         const toolMsg = msg as any;
         if (!toolMsg.name) {
           // Try to find the corresponding tool call in previous AI messages
@@ -743,7 +802,7 @@ export async function think(state: EnterpriseAgentStateType): Promise<Partial<En
              // Look backwards for the AI message that called this tool
              for (let i = messagesToSend.indexOf(msg) - 1; i >= 0; i--) {
                const prevMsg = messagesToSend[i] as any;
-               if (prevMsg._getType() === 'ai' && Array.isArray(prevMsg.tool_calls)) {
+               if (getMessageType(prevMsg) === 'ai' && Array.isArray(prevMsg.tool_calls)) {
                  const matchingCall = prevMsg.tool_calls.find((tc: any) => tc.id === toolCallId);
                  if (matchingCall && matchingCall.name) {
                    foundName = matchingCall.name;
@@ -764,7 +823,7 @@ export async function think(state: EnterpriseAgentStateType): Promise<Partial<En
     });
     
     console.log('[think] Sending', messagesToSend.length, 'messages to model');
-    console.log('[think] Message types:', messagesToSend.map(m => m._getType()).join(', '));
+    console.log('[think] Message types:', messagesToSend.map(m => getMessageType(m)).join(', '));
     if (aiThinkingHint) {
       console.log('[think] Thinking level: low (optimizing for speed)');
     }
@@ -868,10 +927,11 @@ export function processToolResults(state: EnterpriseAgentStateType): Partial<Ent
   const processedIds = new Set((state.toolOutputs || []).map(o => o.toolCallId).filter(Boolean) as string[]);
 
   // Build a lookup of tool_call_id -> { name, args } from AI tool_calls
+  // Use getMessageType() for safe type detection that handles serialized checkpoint messages
   const toolCallInfo = new Map<string, { name: string; args: Record<string, unknown> }>();
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i] as any;
-    if (msg._getType && msg._getType() === 'ai' && Array.isArray(msg.tool_calls)) {
+    if (getMessageType(msg) === 'ai' && Array.isArray(msg.tool_calls)) {
       for (const tc of msg.tool_calls) {
         if (tc?.id) {
           toolCallInfo.set(tc.id, { name: tc.name || 'unknown_tool', args: tc.args || {} });
@@ -951,11 +1011,37 @@ export function processToolResults(state: EnterpriseAgentStateType): Partial<Ent
     
     if (sameToolCount >= 4) {
       console.warn(`[processToolResults] Detected semantic loop: ${sameToolCount} consecutive ${lastNewOutput.toolName} calls. Forcing strategy change.`);
+      
+      // Provide specific guidance based on which tool is being overused
+      let errorMessage = '';
+      if (lastNewOutput.toolName === 'tavily_web_search') {
+        errorMessage = `⚠️ DETENTE: Has usado tavily_web_search ${sameToolCount} veces consecutivas. 
+
+RECUERDA: La BASE DE DATOS tiene ESTADOS FINANCIEROS COMPLETOS de empresas ecuatorianas:
+- lookup_company_by_ruc → Estados financieros completos por RUC
+- search_company_by_name → Encontrar empresas por nombre
+- search_companies_advanced → Filtros por sector, provincia, ingresos
+
+NO NECESITAS buscar en la web para:
+- RUC de una empresa → USA search_company_by_name
+- Estados financieros → USA lookup_company_by_ruc
+- Ingresos, utilidad, activos → USA lookup_company_by_ruc
+
+USA LA BASE DE DATOS PRIMERO.`;
+      } else if (lastNewOutput.toolName === 'search_companies' || lastNewOutput.toolName === 'get_company_details') {
+        errorMessage = `Has intentado búsquedas en la base de datos ${sameToolCount} veces. Si no encuentras resultados, intenta:
+1. Verificar la ortografía del nombre de la empresa
+2. Usar un término más corto o general
+3. Si la empresa no es ecuatoriana, usa tavily_web_search`;
+      } else {
+        errorMessage = `Has intentado ${lastNewOutput.toolName} ${sameToolCount} veces sin resultados satisfactorios. Intenta un enfoque diferente o reformula tu consulta.`;
+      }
+      
       return {
         toolOutputs: newOutputs,
         lastTool: lastNewOutput.toolName,
         lastToolSuccess: false,
-        errorInfo: `Has intentado ${lastNewOutput.toolName} ${sameToolCount} veces sin resultados satisfactorios. Intenta un enfoque diferente o reformula tu consulta.`,
+        errorInfo: errorMessage,
         retryCount: MAX_RETRIES
       };
     }
@@ -1240,7 +1326,8 @@ export async function finalize(state: EnterpriseAgentStateType): Promise<Partial
   const lastMessage = messages[messages.length - 1];
   
   // If last message is an AIMessage with substantial content, we're good
-  if (lastMessage && lastMessage._getType() === 'ai') {
+  // Use getMessageType() for safe type detection that handles serialized checkpoint messages
+  if (lastMessage && getMessageType(lastMessage) === 'ai') {
     let content = lastMessage.content.toString().trim();
     
     // Clean content similar to how index.ts does it to ensure we're measuring visible text
@@ -1389,7 +1476,8 @@ export async function finalize(state: EnterpriseAgentStateType): Promise<Partial
     const finalizationContext = contextParts.join('\n');
     
     // Get the most recent user query
-    const lastUserMessage = [...messages].reverse().find(m => m._getType() === 'human');
+    // Use getMessageType() for safe type detection that handles serialized checkpoint messages
+    const lastUserMessage = [...messages].reverse().find(m => getMessageType(m) === 'human');
     const userQuery = lastUserMessage?.content?.toString() || 'consulta del usuario';
     
     // Add thinking level hint for Gemini 3 models (fallback until LangChain exposes native param)
@@ -1531,7 +1619,8 @@ export async function callTools(state: EnterpriseAgentStateType): Promise<Partia
     console.log('[callTools] Processing, messages count:', messages.length);
     
     // Verify we have an AIMessage with tool_calls
-    if (lastMessage._getType() !== 'ai' || !('tool_calls' in lastMessage)) {
+    // Use getMessageType() for safe type detection that handles serialized checkpoint messages
+    if (getMessageType(lastMessage) !== 'ai' || !('tool_calls' in lastMessage)) {
       console.log('[callTools] No tool calls found in last message');
       return {};
     }
@@ -1571,7 +1660,9 @@ export async function callTools(state: EnterpriseAgentStateType): Promise<Partia
     // Tools that need userId injection for background task support
     const toolsNeedingUserId = ['list_user_offerings', 'get_offering_details'];
     // Tools that require human approval in background runs
-    const GATED_TOOLS = ['perplexity_search', 'export_companies'];
+    // Use dynamic list from settings if available, fallback to defaults
+    const requiredApprovalTools =
+      state.agentSettings?.toolPolicy?.requireApproval ?? ['perplexity_search', 'export_companies'];
     
     // Execute ALL requested tools (no limiting in async mode)
     const toolExecutionPromises = toolCalls.map(async (toolCall: any) => {
@@ -1590,6 +1681,19 @@ export async function callTools(state: EnterpriseAgentStateType): Promise<Partia
         });
       }
 
+      // CHECK: Is tool enabled in settings?
+      if (state.agentSettings?.toolPolicy?.allowedTools && state.agentSettings.toolPolicy.allowedTools[toolCall.name] === false) {
+        console.warn(`[callTools] Tool ${toolCall.name} is disabled by user settings.`);
+        return new ToolMessage({
+          content: JSON.stringify({
+            success: false,
+            error: `La herramienta "${toolCall.name}" está desactivada por tu configuración. Habilítala en el panel de control si deseas usarla.`,
+          }),
+          tool_call_id: toolCall.id,
+          name: toolCall.name,
+        });
+      }
+
       // Inject userId for tools that need it in background mode
       const toolArgs = { ...toolCall.args };
       if (toolsNeedingUserId.includes(toolCall.name) && state.userContext?.userId) {
@@ -1598,7 +1702,7 @@ export async function callTools(state: EnterpriseAgentStateType): Promise<Partia
       }
 
       // Check for gated tools in background runs
-      if (isBackgroundTask() && GATED_TOOLS.includes(toolCall.name) && state.runId) {
+      if (isBackgroundTask() && requiredApprovalTools.includes(toolCall.name) && state.runId) {
         try {
           // Dynamic import to avoid bundling issues
           // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -1860,7 +1964,8 @@ export function shouldCallTools(state: EnterpriseAgentStateType): string {
   }
   
   const lastMessage = messages[messages.length - 1];
-  const messageType = lastMessage._getType();
+  // Use getMessageType() for safe type detection that handles serialized checkpoint messages
+  const messageType = getMessageType(lastMessage);
   const hasToolCalls = 'tool_calls' in lastMessage && 
     Array.isArray((lastMessage as { tool_calls?: unknown[] }).tool_calls) && 
     ((lastMessage as { tool_calls: unknown[] }).tool_calls).length > 0;

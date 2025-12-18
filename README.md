@@ -94,6 +94,18 @@ If you wish to just develop locally and not deploy to Vercel, [follow the steps 
 
 > Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
 
+## Vector search (Supabase Vector Buckets / S3 Vectors)
+
+This project can optionally use Supabase **Vector Buckets** (S3 Vectors) to improve `search_companies` with semantic candidate generation.
+
+- **COMPANIES_VECTOR_ENABLED**: set to `true` to enable vector search.
+- **COMPANIES_VECTOR_BUCKET**: your Vector Bucket name (e.g. `companies`).
+- **COMPANIES_VECTOR_INDEX**: your index name inside the bucket (e.g. `companies-ec-latest`).
+- **COMPANIES_VECTOR_EMBEDDING_MODEL** (optional): defaults to `text-embedding-004` (Google). Requires `GOOGLE_API_KEY`.
+
+Admin indexing endpoint (batch):
+- `POST /api/admin/companies/vectorize` with JSON `{ "afterId": 0, "limit": 50 }`
+
 ## Feedback and issues
 
 Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).

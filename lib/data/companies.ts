@@ -134,6 +134,8 @@ export async function searchCompaniesSemanticRPC(
 // Define the structure of the search parameters for clarity and type safety.
 interface SearchParams {
   page?: string;
+  // Optional: constrain results to a set of company IDs (used by vector candidate generation)
+  ids?: number[];
   ruc?: string;
   nombre?: string;
   provincia?: string;
@@ -218,6 +220,12 @@ export async function fetchCompanies(
     .from("companies")
     .select("*", { count: "estimated" })
     .in("anio", [2024, 2023, 2022, 2021, 2020]); // Default to the most recent 5 fiscal years; user can filter by anio if needed
+
+  // Optional ID constraint (vector candidate set). Keep small to avoid large IN clauses.
+  if (Array.isArray(params.ids) && params.ids.length > 0) {
+    const cappedIds = params.ids.filter((n) => Number.isFinite(n)).slice(0, 500);
+    query = query.in("id", cappedIds as any);
+  }
 
   // Apply filters based on search parameters.
   // These map directly to the user's input in the filter

@@ -41,6 +41,10 @@ export function validateEnvironment() {
   if (!process.env.STRIPE_PRO_PRICE_ID) recommended.push('STRIPE_PRO_PRICE_ID');
   if (!process.env.STRIPE_ENTERPRISE_PRICE_ID) recommended.push('STRIPE_ENTERPRISE_PRICE_ID');
   if (!process.env.NEXT_PUBLIC_APP_URL && !process.env.RAILWAY_PUBLIC_DOMAIN) recommended.push('NEXT_PUBLIC_APP_URL or RAILWAY_PUBLIC_DOMAIN');
+  // Vector Buckets / S3 Vectors (optional, used for semantic search candidate generation)
+  if (!process.env.COMPANIES_VECTOR_BUCKET) recommended.push('COMPANIES_VECTOR_BUCKET');
+  if (!process.env.COMPANIES_VECTOR_INDEX) recommended.push('COMPANIES_VECTOR_INDEX');
+  if (!process.env.COMPANIES_VECTOR_ENABLED) recommended.push('COMPANIES_VECTOR_ENABLED');
 
   if (recommended.length > 0) {
     console.warn('Recommended environment variables not set (using safe defaults/fallbacks):', recommended);

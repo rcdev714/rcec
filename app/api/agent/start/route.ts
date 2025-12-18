@@ -3,6 +3,7 @@ import { tasks } from "@trigger.dev/sdk";
 import { validateEnvironment } from "@/lib/env-validation";
 import { ensurePromptAllowedAndTrack, estimateTokensFromTextLength } from "@/lib/usage";
 import type { enterpriseAgentTask } from "@/src/trigger/enterprise-agent";
+import { mergeAgentSettings, AgentSettings } from "@/lib/types/agent-settings";
 
 
 export const runtime = "nodejs";
@@ -49,6 +50,7 @@ export async function POST(req: Request) {
       conversationId, 
       model = "gemini-2.5-flash",
       thinkingLevel = "high",
+      agentSettings: requestSettings,
     } = body;
 
     if (!message || typeof message !== "string" || message.trim().length === 0) {
@@ -80,6 +82,14 @@ export async function POST(req: Request) {
 
     // Use or create conversation
     let effectiveConversationId = conversationId;
+    let conversationSettings: AgentSettings | null = null;
+    
+    // Fetch user profile for default settings
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('agent_settings')
+      .eq('user_id', user.id)
+      .single();
     
     if (!effectiveConversationId) {
       // Create new conversation
@@ -88,6 +98,7 @@ export async function POST(req: Request) {
         .insert({
           user_id: user.id,
           title: message.substring(0, 100),
+          metadata: { agentSettings: requestSettings || {} }
         })
         .select("id")
         .single();
@@ -101,7 +112,45 @@ export async function POST(req: Request) {
       }
 
       effectiveConversationId = newConversation.id;
+    } else {
+      // Fetch existing conversation metadata
+      const { data: conversation } = await supabase
+        .from("conversations")
+        .select("metadata")
+        .eq("id", effectiveConversationId)
+        .single();
+      
+      if (conversation?.metadata && typeof conversation.metadata === 'object') {
+        const meta = conversation.metadata as Record<string, any>;
+        if (meta.agentSettings) {
+          conversationSettings = meta.agentSettings as AgentSettings;
+        }
+      }
+      
+      // If request has new settings, update conversation metadata to persist overrides
+      if (requestSettings) {
+        await supabase
+          .from("conversations")
+          .update({
+            metadata: { 
+              ...(conversation?.metadata as object || {}), 
+              agentSettings: requestSettings 
+            }
+          })
+          .eq("id", effectiveConversationId);
+      }
     }
+
+    // Merge settings: User Defaults -> Conversation Overrides -> Request Overrides
+    const effectiveSettings = mergeAgentSettings(
+      userProfile?.agent_settings as AgentSettings | null,
+      conversationSettings,
+      requestSettings as AgentSettings | null
+    );
+    
+    // Ensure model/thinking match (legacy params take precedence if passed explicitly)
+    if (model) effectiveSettings.modelName = model;
+    if (thinkingLevel) effectiveSettings.thinkingLevel = thinkingLevel as any;
 
     // Save user message to conversation
     const { error: insertError } = await supabase.from("conversation_messages").insert({
@@ -144,9 +193,10 @@ export async function POST(req: Request) {
         conversation_id: effectiveConversationId,
         user_id: user.id,
         status: "pending",
-        model_name: model,
+        model_name: effectiveSettings.modelName,
         progress: { currentNode: "pending" },
         todos: [],
+        settings: effectiveSettings,
       })
       .select("id")
       .single();
@@ -167,8 +217,9 @@ export async function POST(req: Request) {
         conversationId: effectiveConversationId,
         userId: user.id,
         message,
-        modelName: model,
-        thinkingLevel,
+        modelName: effectiveSettings.modelName,
+        thinkingLevel: effectiveSettings.thinkingLevel,
+        agentSettings: effectiveSettings,
         conversationHistory,
       });
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { AgentSettings } from "@/lib/types/agent-settings";
 
 /**
  * Agent run status from Supabase
@@ -162,6 +163,7 @@ export function useAgentRun(options: UseAgentRunOptions = {}) {
     conversationId?: string;
     model?: string;
     thinkingLevel?: "high" | "low";
+    agentSettings?: AgentSettings;
   }) => {
     setIsLoading(true);
     setError(null);

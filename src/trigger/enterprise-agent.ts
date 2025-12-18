@@ -1,5 +1,6 @@
 import { task, logger, metadata } from "@trigger.dev/sdk";
 import { BaseMessage } from "@langchain/core/messages";
+import { AgentSettings } from "@/lib/types/agent-settings";
 
 // Import agent components - these will be executed in the background
 // Note: We import dynamically to avoid bundling issues
@@ -38,6 +39,7 @@ export const enterpriseAgentTask = task({
     message: string;
     modelName?: string;
     thinkingLevel?: "high" | "low";
+    agentSettings?: AgentSettings;
     conversationHistory?: Array<{ role: string; content: string }>;
   }) => {
     const { 
@@ -48,6 +50,7 @@ export const enterpriseAgentTask = task({
       message, 
       modelName = "gemini-2.5-flash",
       thinkingLevel = "high",
+      agentSettings,
       conversationHistory = []
     } = payload;
 
@@ -233,6 +236,7 @@ export const enterpriseAgentTask = task({
           toolOutputs: [],
           modelName,
           thinkingLevel,
+          agentSettings,
           startTime: new Date(),
           runId,
           // Initialize userContext with userId - required for offerings tools in background

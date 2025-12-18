@@ -1,12 +1,18 @@
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
-import { SearchFilters, CompanySearchResult } from '@/types/chat';
+// These types are kept for potential future use
+import type { SearchFilters as _SearchFilters, CompanySearchResult as _CompanySearchResult } from '@/types/chat';
 import { FilterTranslator } from './filter-translator';
-import { fetchCompanies, searchCompaniesBySector } from '@/lib/data/companies';
-import { sortByRelevanceAndCompleteness, getCompletenessStats, calculateCompletenessScore } from '@/lib/data-completeness-scorer';
+// These functions are kept for potential future use
+import { sortByRelevanceAndCompleteness as _sortByRelevanceAndCompleteness, getCompletenessStats as _getCompletenessStats, calculateCompletenessScore as _calculateCompletenessScore } from '@/lib/data-completeness-scorer';
 import { agentCache } from '@/lib/agents/enterprise-agent/cache';
 import { createClient } from '@supabase/supabase-js';
-import { Company } from '@/types/company';
+import type { Company as _Company } from '@/types/company';
+
+const stripDiacritics = (value: string) =>
+  value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+const normalizeKey = (value: string) => stripDiacritics(value).trim().toLowerCase();
 
 // ============================================================================
 // DISPLAY CONFIG TYPES
@@ -22,614 +28,767 @@ export interface CompanyDisplayConfig {
   selectionReason?: string;
 }
 
-// ============================================================================
-// SMART DISPLAY CONFIG GENERATOR
-// ============================================================================
-
-/**
- * Analyzes the query and results to determine optimal display configuration
- */
-function generateDisplayConfig(
-  query: string,
-  companies: Company[],
-  totalCount: number
-): CompanyDisplayConfig {
-  const queryLower = query.toLowerCase();
-  
-  // 1. SINGLE COMPANY LOOKUP PATTERNS
-  const singleLookupPatterns = [
-    /\bRUC\s*:?\s*(\d{13})\b/i,                    // RUC lookup
-    /^(?:busca|encuentra|dame|muestra|investiga)\s+(?:a\s+)?(?:la\s+)?empresa\s+(\w+)/i,  // "busca la empresa X"
-    /^(?:qué|que)\s+(?:es|sabes)\s+(?:de|sobre)\s+(\w+)/i,  // "qué sabes de X"
-    /^(?:info|información|detalles?)\s+(?:de|sobre)\s+/i,    // "info de X"
-    /^(\w+)\s*-\s*(?:empresa|company)/i,            // "Pronaca - empresa"
-  ];
-  
-  const isSingleLookup = singleLookupPatterns.some(p => p.test(queryLower));
-  
-  if (isSingleLookup && companies.length >= 1) {
-    // Find the best matching company (highest completeness among first 3)
-    const topCompanies = companies.slice(0, 3).filter(c => c.ruc);
-    if (topCompanies.length === 0) {
-      // Fallback if no valid RUCs
-      return {
-        mode: 'featured',
-        featuredRUCs: [],
-        query,
-        totalCount,
-      };
-    }
-    
-    const bestMatch = topCompanies.reduce((best, curr) => {
-      const bestScore = calculateCompletenessScore(best);
-      const currScore = calculateCompletenessScore(curr);
-      return currScore > bestScore ? curr : best;
-    }, topCompanies[0]);
-    
-    return {
-      mode: 'single',
-      featuredRUCs: [bestMatch.ruc!],
-      query,
-      totalCount,
-      selectionReason: `Mostrando ${bestMatch.nombre_comercial || bestMatch.nombre} (mejor coincidencia con datos más completos)`,
-    };
-  }
-  
-  // 2. COMPARISON PATTERNS
-  const comparisonPatterns = [
-    /\bcompara(?:r|ndo)?\b/i,
-    /\bvs\.?\b/i,
-    /\bentre\s+(\w+)\s+y\s+(\w+)/i,
-    /\bdiferencia(?:s)?\s+entre\b/i,
-    /\btop\s*(\d+)\b/i,
-    /\bmejores?\s*(\d+)?\b/i,
-  ];
-  
-  const isComparison = comparisonPatterns.some(p => p.test(queryLower));
-  
-  if (isComparison || (totalCount >= 2 && totalCount <= 5)) {
-    // For comparison, pick top companies with best data quality
-    const rankedCompanies = [...companies]
-      .filter(c => c.ruc) // Filter out null RUCs
-      .map(c => ({ company: c, score: calculateCompletenessScore(c) }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 5);
-    
-    return {
-      mode: 'comparison',
-      featuredRUCs: rankedCompanies.map(r => r.company.ruc!),
-      query,
-      totalCount,
-      selectionReason: `Comparando las ${rankedCompanies.length} empresas con información más completa`,
-    };
-  }
-  
-  // 3. EXPLORATION/SEARCH PATTERNS (default)
-  // For general searches, feature top 3-4 most relevant companies
-  const featuredCount = Math.min(4, companies.length);
-  const featured = companies.slice(0, featuredCount).filter(c => c.ruc);
-  
-  // Determine if this is a sector/category search
-  const sectorPatterns = [
-    /\b(?:empresas?|compañías?)\s+(?:de|del|en)\s+(?:el\s+)?(?:sector|rubro|industria)?\s*(\w+)/i,
-    /\b(?:busca|encuentra|muestra|lista)\s+(?:empresas?|compañías?)/i,
-    /\b(?:proveedores?|distribuidores?|fabricantes?)\s+(?:de\s+)?/i,
-  ];
-  
-  const isExploration = sectorPatterns.some(p => p.test(queryLower)) || totalCount > 10;
-  
-  return {
-    mode: isExploration ? 'featured' : 'featured',
-    featuredRUCs: featured.map(c => c.ruc!),
-    query,
-    totalCount,
-    selectionReason: totalCount > featuredCount 
-      ? `Mostrando ${featuredCount} de ${totalCount} resultados (ordenados por relevancia y completitud de datos)`
-      : undefined,
-  };
-}
-
-// Helper to get Supabase client for backend tasks (bypassing cookies)
+// Helper to get Supabase client for backend tasks
 const getSupabaseClient = () => {
   const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
   return createClient(sbUrl, sbKey, { auth: { persistSession: false } });
 };
 
-// Schema for search filters validation
-const searchFiltersSchema = z.object({
-  ruc: z.string().optional(),
-  nombre: z.string().optional(),
-  provincia: z.string().optional(),
-  anio: z.string().optional(),
-  nEmpleadosMin: z.string().optional(),
-  nEmpleadosMax: z.string().optional(),
-  ingresosVentasMin: z.string().optional(),
-  ingresosVentasMax: z.string().optional(),
-  activosMin: z.string().optional(),
-  activosMax: z.string().optional(),
-  patrimonioMin: z.string().optional(),
-  patrimonioMax: z.string().optional(),
-  impuestoRentaMin: z.string().optional(),
-  impuestoRentaMax: z.string().optional(),
-  utilidadAnImpMin: z.string().optional(),
-  utilidadAnImpMax: z.string().optional(),
-  utilidadNetaMin: z.string().optional(),
-  utilidadNetaMax: z.string().optional(),
-  nombreComercial: z.string().optional(),
-});
+// ============================================================================
+// TOOL 1: LOOKUP COMPANY BY RUC (Exact lookup - most reliable)
+// 
+// This is the PRIMARY tool for getting company data when you have a RUC.
+// Returns COMPLETE financial data from official government sources.
+// ============================================================================
 
-/**
- * Tool for searching companies based on filters (location, size, financials)
- * 
- * DESIGN PRINCIPLE: This tool does ONE thing - filtered search by company attributes.
- * For sector/industry searches, use `search_companies_by_sector` instead.
- * Let the MODEL decide which tool is appropriate for the query.
- */
-export const searchCompaniesTool = tool(
-  async ({ query, limit = 10, page = 1 }: { query: string; limit?: number; page?: number }) => {
+export const lookupCompanyByRucTool = tool(
+  async ({ ruc }: { ruc: string }) => {
     try {
-      // Translate natural language query to filters (location, size, financials)
-      const filters = FilterTranslator.translateQuery(query);
-      const validatedFilters = FilterTranslator.validateFilters(filters);
+      const cleanRuc = ruc.trim().replace(/\D/g, '');
       
-      // Ensure reasonable limits
-      const actualLimit = Math.min(Math.max(limit, 1), 50);
-      const actualPage = Math.max(page, 1);
+      if (cleanRuc.length !== 13) {
+        return {
+          success: false,
+          error: `El RUC debe tener 13 dígitos. Recibido: "${ruc}" (${cleanRuc.length} dígitos)`,
+          suggestion: 'Verifica el RUC. Si no tienes el RUC, usa search_company_by_name para buscarlo.',
+        };
+      }
       
-      // Check cache first for performance
-      const cacheKey = { ...validatedFilters, page: actualPage, limit: actualLimit };
-      const cachedResult = agentCache.getCompanySearch(query, cacheKey);
-      if (cachedResult) {
-        console.log('[searchCompaniesTool] Cache HIT for query:', query);
-        return cachedResult;
+      // Check cache
+      const cached = agentCache.getCompanyDetails(cleanRuc);
+      if (cached) {
+        console.log('[lookupCompanyByRucTool] Cache HIT:', cleanRuc);
+        return cached;
       }
       
       const supabase = getSupabaseClient();
       
-      // Standard search using filters
-      const searchParams = {
-        ...validatedFilters,
-        page: actualPage.toString(),
-        pageSize: actualLimit,
-      } as SearchFilters & { page: string; pageSize: number };
+      console.log('[lookupCompanyByRucTool] Looking up RUC:', cleanRuc);
       
-      const { companies, totalCount } = await fetchCompanies(searchParams, supabase);
+      const { data, error } = await supabase.rpc('get_company_by_ruc', { p_ruc: cleanRuc });
       
-      // Sort by relevance/completeness
-      const shouldPreserveServerOrder = !!validatedFilters.sortBy && validatedFilters.sortBy !== 'completitud';
-      const sortedCompanies = shouldPreserveServerOrder ? companies : sortByRelevanceAndCompleteness(companies);
+      if (error) {
+        console.error('[lookupCompanyByRucTool] Error:', error);
+        throw new Error(`Error en búsqueda: ${error.message}`);
+      }
       
-      // Get completeness statistics
-      const stats = getCompletenessStats(sortedCompanies);
+      if (!data || data.length === 0) {
+        return {
+          success: false,
+          error: `No se encontró empresa con RUC ${cleanRuc}`,
+          suggestion: 'Verifica que el RUC sea correcto. Si buscas por nombre, usa search_company_by_name.',
+        };
+      }
       
-      // Generate summary
-      const filterSummary = FilterTranslator.generateFilterSummary(validatedFilters);
+      const company = data[0];
       
-      const result: CompanySearchResult = {
-        companies: sortedCompanies,
-        totalCount,
-        filters: validatedFilters,
-        query,
-      };
-      
-      // Generate smart display configuration
-      const displayConfig = generateDisplayConfig(query, sortedCompanies, totalCount);
-      
-      // Simple summary for this filter-based tool
-      const summary = `Encontré ${totalCount} empresas que coinciden con: ${filterSummary}. Los resultados se ordenan por completitud de datos.`;
-      
-      // Return structured result for the agent
-      const toolResult = {
+      const result = {
         success: true,
-        result,
-        displayConfig,
-        summary,
-        showingResults: `Mostrando ${sortedCompanies.length} de ${totalCount} resultados.`,
-        appliedFilters: validatedFilters,
-        dataQuality: stats,
-        // Hint to the model about when to use sector search
-        hint: validatedFilters.sector || validatedFilters.sectorText 
-          ? 'TIP: Para búsquedas por sector/industria específica, usa search_companies_by_sector para mejores resultados.'
-          : null,
+        empresa: {
+          // Identificación
+          ruc: company.ruc,
+          nombre: company.nombre,
+          nombreComercial: company.nombre_comercial,
+          expediente: company.expediente,
+          
+          // Ubicación
+          provincia: company.provincia?.trim(),
+          canton: company.canton,
+          ciudad: company.ciudad,
+          
+          // Clasificación
+          ciiu: company.ciiu,
+          descripcionActividad: company.descripcion,
+          segmento: company.segmento, // GRANDE, MEDIANA, PEQUEÑA, MICROEMPRESA
+          tipo: company.tipo,
+          tipoEmpresa: company.tipo_empresa,
+          estadoEmpresa: company.estado_empresa,
+          fechaConstitucion: company.fecha_constitucion,
+          
+          // DATOS FINANCIEROS (año fiscal más reciente)
+          anioFiscal: company.anio,
+          empleados: company.n_empleados,
+          
+          // Estado de Resultados
+          ingresosVentas: company.ingresos_ventas,
+          ingresosTotales: company.ingresos_totales,
+          utilidadNeta: company.utilidad_neta,
+          utilidadAntesImpuestos: company.utilidad_an_imp,
+          impuestoRenta: company.impuesto_renta,
+          gastosFinancieros: company.gastos_financieros,
+          gastosAdminVentas: company.gastos_admin_ventas,
+          costosVentasProduccion: company.costos_ventas_prod,
+          
+          // Balance General
+          activos: company.activos,
+          patrimonio: company.patrimonio,
+          deudaTotal: company.deuda_total,
+          
+          // Ratios Financieros
+          roe: company.roe, // Return on Equity
+          roa: company.roa, // Return on Assets
+          liquidezCorriente: company.liquidez_corriente,
+          pruebaAcida: company.prueba_acida,
+          margenBruto: company.margen_bruto,
+          margenOperacional: company.margen_operacional,
+        },
+        fuente: 'Base de datos oficial - Superintendencia de Compañías Ecuador',
+        disclaimer: 'Datos financieros del año fiscal indicado. Para años anteriores, consultar historial.',
       };
       
-      // Cache successful results
-      agentCache.cacheCompanySearch(query, cacheKey, toolResult);
-      console.log('[searchCompaniesTool] Cached results for query:', query);
+      // Cache it
+      agentCache.cacheCompanyDetails(cleanRuc, result);
       
-      return toolResult;
+      return result;
       
     } catch (error) {
-      console.error('Error in searchCompaniesTool:', error);
+      console.error('[lookupCompanyByRucTool] Error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Ocurrió un error desconocido',
-        suggestion: 'Intenta simplificar tu consulta o usar criterios más específicos',
+        error: error instanceof Error ? error.message : 'Error desconocido',
+        suggestion: 'Intenta de nuevo o verifica que el RUC sea válido.',
+      };
+    }
+  },
+  {
+    name: 'lookup_company_by_ruc',
+    description: `🎯 BÚSQUEDA EXACTA POR RUC - La forma MÁS CONFIABLE de obtener datos de una empresa.
+
+⚡ USA ESTA HERRAMIENTA CUANDO:
+- Tienes el RUC (13 dígitos) de una empresa
+- Necesitas estados financieros oficiales
+- Quieres datos precisos y verificados
+
+📊 DATOS QUE RETORNA (fuente oficial Superintendencia de Compañías):
+- Identificación: RUC, nombre, expediente
+- Ubicación: provincia, cantón, ciudad
+- Clasificación: CIIU, segmento (GRANDE/MEDIANA/PEQUEÑA/MICRO)
+- ESTADOS FINANCIEROS COMPLETOS:
+  * Ingresos y ventas
+  * Utilidad neta y antes de impuestos
+  * Activos totales
+  * Patrimonio
+  * Deuda total
+  * Empleados
+- RATIOS FINANCIEROS: ROE, ROA, liquidez, márgenes
+
+⚠️ NO USES ESTA HERRAMIENTA SI:
+- No tienes el RUC exacto (usa search_company_by_name en su lugar)
+- Buscas múltiples empresas (usa search_companies_advanced)
+
+📌 EJEMPLO: lookup_company_by_ruc("1790016919001") → Corporación Favorita completa`,
+    schema: z.object({
+      ruc: z.string().describe('RUC de la empresa (13 dígitos)'),
+    }),
+  }
+);
+
+// ============================================================================
+// TOOL 2: SEARCH COMPANY BY NAME (Fuzzy name search)
+//
+// Use when you know the company name but not the RUC.
+// Returns matches with similarity scores.
+// ============================================================================
+
+export const searchCompanyByNameTool = tool(
+  async ({ name, province }: { name: string; province?: string }) => {
+    try {
+      const normalizedName = stripDiacritics(name).trim();
+      
+      if (normalizedName.length < 2) {
+        return {
+          success: false,
+          error: 'El nombre debe tener al menos 2 caracteres',
+        };
+      }
+      
+      const supabase = getSupabaseClient();
+      
+      console.log('[searchCompanyByNameTool] Searching for:', normalizedName);
+      
+      const { data, error } = await supabase.rpc('search_companies_by_name', {
+        p_search_term: normalizedName,
+        p_provincia: province || null,
+        p_limit: 10,
+      });
+      
+      if (error) {
+        console.error('[searchCompanyByNameTool] Error:', error);
+        throw new Error(`Error en búsqueda: ${error.message}`);
+      }
+      
+      const companies = data || [];
+      
+      if (companies.length === 0) {
+        return {
+          success: true,
+          encontradas: 0,
+          empresas: [],
+          sugerencia: 'No se encontraron empresas. Intenta con otro nombre o verifica la ortografía.',
+        };
+      }
+      
+      return {
+        success: true,
+        encontradas: companies.length,
+        empresas: companies.map((c: any) => ({
+          ruc: c.ruc,
+          nombre: c.nombre,
+          nombreComercial: c.nombre_comercial,
+          provincia: c.provincia?.trim(),
+          segmento: c.segmento,
+          anio: c.anio,
+          empleados: c.n_empleados,
+          ingresos: c.ingresos_ventas,
+          utilidadNeta: c.utilidad_neta,
+          coincidencia: Math.round((c.similarity_score || 0) * 100) + '%',
+        })),
+        instruccion: 'Para obtener estados financieros COMPLETOS, usa lookup_company_by_ruc con el RUC deseado.',
+      };
+      
+    } catch (error) {
+      console.error('[searchCompanyByNameTool] Error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error desconocido',
+      };
+    }
+  },
+  {
+    name: 'search_company_by_name',
+    description: `🔍 BUSCAR EMPRESA POR NOMBRE - Encuentra el RUC cuando solo tienes el nombre.
+
+⚡ USA ESTA HERRAMIENTA CUANDO:
+- Conoces el nombre de la empresa pero NO el RUC
+- El usuario menciona una empresa sin dar el RUC
+- Quieres verificar si una empresa existe en la base de datos
+
+📊 RETORNA:
+- Lista de empresas que coinciden con el nombre
+- RUC de cada empresa (para luego usar lookup_company_by_ruc)
+- Datos básicos: ubicación, tamaño, ingresos
+- Porcentaje de coincidencia
+
+🔄 FLUJO TÍPICO:
+1. Usuario dice "información de Pronaca"
+2. Usa search_company_by_name("Pronaca") → Obtiene RUC 1790319857001
+3. Usa lookup_company_by_ruc("1790319857001") → Estados financieros completos
+
+📌 EJEMPLO: search_company_by_name("favorita") → Lista de empresas con "favorita" en el nombre`,
+    schema: z.object({
+      name: z.string().describe('Nombre de la empresa a buscar'),
+      province: z.string().optional().describe('Filtrar por provincia (PICHINCHA, GUAYAS, etc.)'),
+    }),
+  }
+);
+
+// ============================================================================
+// TOOL 3: SEARCH COMPANIES ADVANCED (Multi-filter search)
+//
+// For complex searches with multiple criteria.
+// ============================================================================
+
+export const searchCompaniesAdvancedTool = tool(
+  async ({
+    provincia,
+    sector,
+    minEmpleados,
+    maxEmpleados,
+    minIngresos,
+    maxIngresos,
+    rentables,
+    limit = 20,
+  }: {
+    provincia?: string;
+    sector?: string;
+    minEmpleados?: number;
+    maxEmpleados?: number;
+    minIngresos?: number;
+    maxIngresos?: number;
+    rentables?: boolean;
+    limit?: number;
+  }) => {
+    try {
+      const supabase = getSupabaseClient();
+      
+      // If sector is provided, use sector search
+      if (sector) {
+        const { SECTOR_KEYWORD_MAPPING, CIIU_SECTOR_MAPPING } = await import('./filter-translator');
+        const sectorLower = normalizeKey(sector);
+        const sectorKeywords = SECTOR_KEYWORD_MAPPING[sectorLower] || [sector];
+        const ciuuPrefixes = CIIU_SECTOR_MAPPING[sectorLower] || [];
+        
+        console.log('[searchCompaniesAdvancedTool] Sector search:', sector);
+        
+        const { data, error } = await supabase.rpc('search_companies_by_sector', {
+          p_sector_keywords: sectorKeywords,
+          p_ciiu_prefixes: ciuuPrefixes.length > 0 ? ciuuPrefixes : null,
+          p_province_filter: provincia || null,
+          p_min_revenue: minIngresos || null,
+          p_min_employees: minEmpleados || null,
+          p_max_results: Math.min(limit, 50),
+        });
+        
+        if (error) throw new Error(error.message);
+        
+        const companies = (data || []).map((c: any) => ({
+          ruc: c.ruc,
+          nombre: c.nombre,
+          nombreComercial: c.nombre_comercial,
+          provincia: c.provincia?.trim(),
+          actividad: c.descripcion?.substring(0, 100),
+          ciiu: c.ciiu,
+          segmento: c.segmento,
+          anio: c.anio,
+          empleados: c.n_empleados,
+          ingresos: c.ingresos_ventas,
+          utilidadNeta: c.utilidad_neta,
+        }));
+        
+        return {
+          success: true,
+          encontradas: companies.length,
+          filtros: { sector, provincia, minEmpleados, minIngresos },
+          empresas: companies,
+          instruccion: 'Para estados financieros completos de una empresa, usa lookup_company_by_ruc con su RUC.',
+        };
+      }
+      
+      // Otherwise use filtered search
+      console.log('[searchCompaniesAdvancedTool] Filtered search');
+      
+      const { data, error } = await supabase.rpc('search_companies_filtered', {
+        p_ruc: null,
+        p_nombre: null,
+        p_nombre_comercial: null,
+        p_provincia: provincia || null,
+        p_ciiu_prefix: null,
+        p_segmento: null,
+        p_min_empleados: minEmpleados || null,
+        p_max_empleados: maxEmpleados || null,
+        p_min_ingresos: minIngresos || null,
+        p_max_ingresos: maxIngresos || null,
+        p_min_utilidad: rentables ? 1 : null,
+        p_anio: null,
+        p_limit: Math.min(limit, 50),
+        p_offset: 0,
+      });
+      
+      if (error) throw new Error(error.message);
+      
+      const companies = (data || []).map((c: any) => ({
+        ruc: c.ruc,
+        nombre: c.nombre,
+        nombreComercial: c.nombre_comercial,
+        provincia: c.provincia?.trim(),
+        actividad: c.descripcion?.substring(0, 100),
+        ciiu: c.ciiu,
+        segmento: c.segmento,
+        anio: c.anio,
+        empleados: c.n_empleados,
+        ingresos: c.ingresos_ventas,
+        utilidadNeta: c.utilidad_neta,
+      }));
+      
+      const totalCount = companies.length > 0 && (data[0] as any).total_count 
+        ? Number((data[0] as any).total_count) 
+        : companies.length;
+      
+      return {
+        success: true,
+        encontradas: totalCount,
+        mostrando: companies.length,
+        filtros: { provincia, minEmpleados, maxEmpleados, minIngresos, maxIngresos, rentables },
+        empresas: companies,
+        instruccion: 'Para estados financieros completos de una empresa, usa lookup_company_by_ruc con su RUC.',
+      };
+      
+    } catch (error) {
+      console.error('[searchCompaniesAdvancedTool] Error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error desconocido',
+      };
+    }
+  },
+  {
+    name: 'search_companies_advanced',
+    description: `📋 BÚSQUEDA AVANZADA - Encuentra empresas con múltiples filtros.
+
+⚡ USA ESTA HERRAMIENTA CUANDO:
+- Necesitas listar empresas de un sector específico
+- Quieres filtrar por ubicación, tamaño o ingresos
+- Buscas empresas con características específicas
+
+📊 FILTROS DISPONIBLES:
+- sector: "alimentos", "tecnologia", "construccion", etc.
+- provincia: "PICHINCHA", "GUAYAS", "AZUAY", etc.
+- minEmpleados/maxEmpleados: Rango de empleados
+- minIngresos/maxIngresos: Rango de ingresos (USD)
+- rentables: true = solo empresas con utilidad positiva
+
+🔄 FLUJO TÍPICO:
+1. search_companies_advanced(sector: "tecnologia", provincia: "PICHINCHA")
+2. Revisar lista de empresas con RUCs
+3. lookup_company_by_ruc para detalles de las más interesantes
+
+📌 SECTORES: alimentos, tecnologia, software, construccion, inmobiliaria, logistica, salud, farmaceutica, financiero, comercio, manufactura, energia, mineria, educacion, turismo`,
+    schema: z.object({
+      provincia: z.string().optional().describe('Provincia (PICHINCHA, GUAYAS, etc.)'),
+      sector: z.string().optional().describe('Sector/industria (alimentos, tecnologia, etc.)'),
+      minEmpleados: z.number().optional().describe('Mínimo de empleados'),
+      maxEmpleados: z.number().optional().describe('Máximo de empleados'),
+      minIngresos: z.number().optional().describe('Ingresos mínimos (USD)'),
+      maxIngresos: z.number().optional().describe('Ingresos máximos (USD)'),
+      rentables: z.boolean().optional().describe('Solo empresas con utilidad positiva'),
+      limit: z.number().optional().default(20).describe('Máximo de resultados'),
+    }),
+  }
+);
+
+// ============================================================================
+// TOOL 4: GET COMPANY FINANCIALS HISTORY (Multi-year financial data)
+//
+// For getting historical financial data across multiple years.
+// ============================================================================
+
+export const getCompanyFinancialsHistoryTool = tool(
+  async ({ ruc }: { ruc: string }) => {
+    try {
+      const cleanRuc = ruc.trim().replace(/\D/g, '');
+      
+      if (cleanRuc.length !== 13) {
+        return {
+          success: false,
+          error: `El RUC debe tener 13 dígitos. Recibido: ${cleanRuc.length} dígitos`,
+        };
+      }
+      
+      const supabase = getSupabaseClient();
+      
+      console.log('[getCompanyFinancialsHistoryTool] Getting history for RUC:', cleanRuc);
+      
+      // Get all years for this company
+      const { data, error } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('ruc', cleanRuc)
+        .order('anio', { ascending: false });
+      
+      if (error) throw new Error(error.message);
+      
+      if (!data || data.length === 0) {
+        return {
+          success: false,
+          error: `No se encontró historial para RUC ${cleanRuc}`,
+        };
+      }
+      
+      const company = data[0];
+      const years = data.map((record: any) => ({
+        anio: record.anio,
+        ingresos: record.ingresos_ventas,
+        utilidadNeta: record.utilidad_neta,
+        activos: record.activos,
+        patrimonio: record.patrimonio,
+        empleados: record.n_empleados,
+        roe: record.roe,
+        roa: record.roa,
+        margenBruto: record.margen_bruto,
+      }));
+      
+      // Calculate growth rates
+      const latestYear = years[0];
+      const previousYear = years.length > 1 ? years[1] : null;
+      
+      let crecimiento = null;
+      if (previousYear && latestYear.ingresos && previousYear.ingresos) {
+        crecimiento = {
+          ingresos: ((latestYear.ingresos - previousYear.ingresos) / previousYear.ingresos * 100).toFixed(1) + '%',
+          utilidad: previousYear.utilidadNeta 
+            ? ((latestYear.utilidadNeta - previousYear.utilidadNeta) / Math.abs(previousYear.utilidadNeta) * 100).toFixed(1) + '%'
+            : 'N/A',
+          empleados: previousYear.empleados
+            ? ((latestYear.empleados - previousYear.empleados) / previousYear.empleados * 100).toFixed(1) + '%'
+            : 'N/A',
+        };
+      }
+      
+      return {
+        success: true,
+        empresa: {
+          ruc: company.ruc,
+          nombre: company.nombre,
+          nombreComercial: company.nombre_comercial,
+          provincia: company.provincia?.trim(),
+          segmento: company.segmento,
+        },
+        aniosDisponibles: years.length,
+        historialFinanciero: years,
+        crecimiento: crecimiento,
+        fuente: 'Base de datos oficial - Superintendencia de Compañías Ecuador',
+      };
+      
+    } catch (error) {
+      console.error('[getCompanyFinancialsHistoryTool] Error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error desconocido',
+      };
+    }
+  },
+  {
+    name: 'get_company_financials_history',
+    description: `📈 HISTORIAL FINANCIERO - Obtener estados financieros de MÚLTIPLES AÑOS.
+
+⚡ USA ESTA HERRAMIENTA CUANDO:
+- Necesitas analizar la evolución financiera de una empresa
+- Quieres calcular tasas de crecimiento
+- Requieres comparar rendimiento año a año
+
+📊 RETORNA:
+- Datos financieros de cada año disponible (2020-2024)
+- Ingresos, utilidad, activos, patrimonio por año
+- Ratios financieros históricos (ROE, ROA, márgenes)
+- Cálculo automático de crecimiento interanual
+
+📌 EJEMPLO: get_company_financials_history("1790016919001") → 5 años de datos de Corporación Favorita`,
+    schema: z.object({
+      ruc: z.string().describe('RUC de la empresa (13 dígitos)'),
+    }),
+  }
+);
+
+// ============================================================================
+// TOOL 5: LIST TOP COMPANIES (Quick listing by metric)
+//
+// Simple tool to get top companies by a metric.
+// ============================================================================
+
+export const listTopCompaniesTool = tool(
+  async ({
+    metric = 'ingresos',
+    provincia,
+    ciiu_section,
+    limit = 20,
+  }: {
+    metric?: string;
+    provincia?: string;
+    ciiu_section?: string;
+    limit?: number;
+  }) => {
+    try {
+      const supabase = getSupabaseClient();
+      
+      const sortByMap: Record<string, string> = {
+        ingresos: 'ingresos_ventas',
+        empleados: 'n_empleados',
+        utilidad: 'utilidad_neta',
+        activos: 'activos',
+      };
+      
+      const sortBy = sortByMap[metric] || 'ingresos_ventas';
+      
+      console.log('[listTopCompaniesTool] Listing top by:', metric);
+      
+      const { data, error } = await supabase.rpc('list_companies', {
+        p_provincia: provincia || null,
+        p_ciiu_section: ciiu_section || null,
+        p_sort_by: sortBy,
+        p_sort_dir: 'desc',
+        p_limit: Math.min(limit, 50),
+        p_offset: 0,
+      });
+      
+      if (error) throw new Error(error.message);
+      
+      const companies = (data || []).map((c: any, idx: number) => ({
+        posicion: idx + 1,
+        ruc: c.ruc,
+        nombre: c.nombre,
+        nombreComercial: c.nombre_comercial,
+        provincia: c.provincia?.trim(),
+        segmento: c.segmento,
+        anio: c.anio,
+        empleados: c.n_empleados,
+        ingresos: c.ingresos_ventas,
+        utilidadNeta: c.utilidad_neta,
+      }));
+      
+      return {
+        success: true,
+        ordenadoPor: metric,
+        filtros: { provincia, ciiu_section },
+        totalEncontradas: companies.length,
+        ranking: companies,
+        instruccion: 'Para estados financieros completos, usa lookup_company_by_ruc con el RUC deseado.',
+      };
+      
+    } catch (error) {
+      console.error('[listTopCompaniesTool] Error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error desconocido',
+      };
+    }
+  },
+  {
+    name: 'list_top_companies',
+    description: `🏆 RANKING DE EMPRESAS - Lista las empresas top por una métrica.
+
+⚡ USA ESTA HERRAMIENTA CUANDO:
+- Quieres ver las empresas más grandes de una provincia
+- Necesitas un ranking por ingresos, empleados o utilidad
+- Buscas los líderes de un sector
+
+📊 MÉTRICAS DISPONIBLES:
+- ingresos: Por facturación/ventas (default)
+- empleados: Por número de trabajadores
+- utilidad: Por utilidad neta
+- activos: Por total de activos
+
+📊 FILTROS OPCIONALES:
+- provincia: PICHINCHA, GUAYAS, AZUAY, etc.
+- ciiu_section: A (Agricultura), C (Manufactura), G (Comercio), etc.
+
+📌 EJEMPLO: list_top_companies(metric: "ingresos", provincia: "GUAYAS", limit: 10)`,
+    schema: z.object({
+      metric: z.string().optional().default('ingresos').describe('Métrica: ingresos, empleados, utilidad, activos'),
+      provincia: z.string().optional().describe('Filtrar por provincia'),
+      ciiu_section: z.string().optional().describe('Filtrar por sección CIIU (A, C, G, etc.)'),
+      limit: z.number().optional().default(20).describe('Cantidad de empresas'),
+    }),
+  }
+);
+
+// ============================================================================
+// LEGACY TOOLS (for backward compatibility)
+// ============================================================================
+
+// Wrapper for old search_companies calls
+export const searchCompaniesTool = tool(
+  async ({ query, limit = 15, page: _page = 1 }: { query: string; limit?: number; page?: number }) => {
+    try {
+      const normalizedQuery = stripDiacritics(query).trim();
+      
+      // Check for RUC pattern
+      const rucMatch = normalizedQuery.match(/\b(\d{13})\b/);
+      if (rucMatch) {
+        // Redirect to exact RUC lookup
+        const result = await lookupCompanyByRucTool.func({ ruc: rucMatch[1] });
+        return {
+          ...result,
+          _redirectedFrom: 'search_companies',
+          _hint: 'Para búsquedas por RUC, usa lookup_company_by_ruc directamente.',
+        };
+      }
+      
+      // Parse filters
+      const filters = FilterTranslator.translateQuery(normalizedQuery);
+      
+      // If it looks like a company name search
+      if (!filters.provincia && !filters.sector && !filters.nEmpleadosMin && normalizedQuery.length >= 3) {
+        const result = await searchCompanyByNameTool.func({ name: normalizedQuery });
+        return {
+          ...result,
+          _redirectedFrom: 'search_companies',
+          _hint: 'Para búsquedas por nombre, usa search_company_by_name directamente.',
+        };
+      }
+      
+      // Otherwise do advanced search
+      const result = await searchCompaniesAdvancedTool.func({
+        provincia: filters.provincia,
+        sector: filters.sector,
+        minEmpleados: filters.nEmpleadosMin ? parseInt(filters.nEmpleadosMin) : undefined,
+        maxEmpleados: filters.nEmpleadosMax ? parseInt(filters.nEmpleadosMax) : undefined,
+        minIngresos: filters.ingresosVentasMin ? parseFloat(filters.ingresosVentasMin) : undefined,
+        maxIngresos: filters.ingresosVentasMax ? parseFloat(filters.ingresosVentasMax) : undefined,
+        rentables: filters.utilidadNetaMin ? parseFloat(filters.utilidadNetaMin) > 0 : undefined,
+        limit,
+      });
+      
+      return {
+        ...result,
+        _redirectedFrom: 'search_companies',
+      };
+      
+    } catch (error) {
+      console.error('[searchCompaniesTool] Error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error desconocido',
       };
     }
   },
   {
     name: 'search_companies',
-    description: `Buscar empresas en Ecuador por FILTROS ESTRUCTURADOS: ubicación, tamaño, métricas financieras.
+    description: `🔍 BÚSQUEDA GENERAL (Legacy) - Intenta interpretar la consulta y usar la herramienta correcta.
 
-**USA ESTA HERRAMIENTA CUANDO:**
-- Busques por ubicación: "empresas en Guayaquil", "compañías en Pichincha"
-- Busques por tamaño: "empresas con más de 100 empleados", "empresas grandes"
-- Busques por finanzas: "empresas con ingresos > 1M", "empresas rentables"
-- Busques empresa específica: "empresa con RUC 1790016919001", "Corporación Favorita"
-
-**NO USES ESTA HERRAMIENTA CUANDO:**
-- Busques por sector/industria: "empresas de alimentos", "proveedores de tecnología"
-- Para sectores, USA \`search_companies_by_sector\` que tiene mejor relevancia
-
-Ejemplos válidos:
-- "Empresas en Guayaquil con más de 50 empleados"
-- "Empresas rentables en Pichincha con ingresos > 500k"
-- "Buscar empresa RUC 1790016919001"`,
+⚠️ NOTA: Esta herramienta es un wrapper que redirige a herramientas más específicas.
+Es mejor usar directamente:
+- lookup_company_by_ruc → Si tienes el RUC
+- search_company_by_name → Si buscas por nombre
+- search_companies_advanced → Si necesitas filtros
+- list_top_companies → Si quieres un ranking`,
     schema: z.object({
-      query: z.string().describe('Consulta con filtros de ubicación, tamaño o finanzas'),
-      limit: z.number().optional().default(10).describe('Máximo de resultados (default: 10, max: 50)'),
-      page: z.number().optional().default(1).describe('Página para paginación'),
+      query: z.string().describe('Consulta de búsqueda'),
+      limit: z.number().optional().default(15),
+      page: z.number().optional().default(1),
     }),
   }
 );
 
-/**
- * NEW: Dedicated tool for SECTOR/INDUSTRY searches
- * Uses PostgreSQL RPC with pg_trgm for semantic matching and CIIU codes
- * 
- * DESIGN: The MODEL decides when to use this tool based on the query intent
- */
-export const searchCompaniesBySectorTool = tool(
-  async ({ 
-    sector, 
-    keywords = [], 
-    province, 
-    minRevenue, 
-    minEmployees,
-    limit = 15 
-  }: { 
-    sector: string;
-    keywords?: string[];
-    province?: string;
-    minRevenue?: number;
-    minEmployees?: number;
-    limit?: number;
-  }) => {
-    try {
-      console.log('[searchCompaniesBySectorTool] Sector search:', { sector, keywords, province, minRevenue });
-      
-      // Import sector mappings
-      const { SECTOR_KEYWORD_MAPPING, CIIU_SECTOR_MAPPING } = await import('./filter-translator');
-      
-      // Build keywords list from sector + provided keywords
-      const sectorLower = sector.toLowerCase();
-      const sectorKeywords = SECTOR_KEYWORD_MAPPING[sectorLower] || [];
-      const allKeywords = [...new Set([...sectorKeywords, ...keywords, sectorLower])].filter(Boolean);
-      
-      // Get CIIU codes for the sector
-      const ciuuPrefixes = CIIU_SECTOR_MAPPING[sectorLower] || [];
-      
-      if (allKeywords.length === 0 && ciuuPrefixes.length === 0) {
-        return {
-          success: false,
-          error: `Sector "${sector}" no reconocido. Sectores válidos: alimentos, tecnologia, construccion, logistica, salud, financiero, comercio, manufactura, mineria, turismo, educacion, etc.`,
-          suggestion: 'Intenta con un nombre de sector más común o usa search_companies con filtros específicos.',
-        };
-      }
-      
-      const supabase = getSupabaseClient();
-      
-      // Call the specialized RPC function
-      const { companies } = await searchCompaniesBySector({
-        sectorKeywords: allKeywords,
-        ciuuPrefixes: ciuuPrefixes.length > 0 ? ciuuPrefixes : undefined,
-        province,
-        minRevenue,
-        minEmployees,
-        maxResults: Math.min(limit, 50),
-      }, supabase);
-      
-      if (companies.length === 0) {
-        return {
-          success: true,
-          result: { companies: [], totalCount: 0 },
-          summary: `No encontré empresas del sector "${sector}"${province ? ` en ${province}` : ''}.`,
-          suggestion: 'Intenta con criterios más amplios o usa web_search para encontrar empresas específicas del sector.',
-        };
-      }
-      
-      // Calculate match type statistics
-      const matchTypes: Record<string, number> = {};
-      let totalRelevance = 0;
-      for (const company of companies) {
-        matchTypes[company.sector_match_type] = (matchTypes[company.sector_match_type] || 0) + 1;
-        totalRelevance += company.sector_relevance;
-      }
-      
-      // Convert to Company-like format for UI compatibility
-      const formattedCompanies = companies.map(c => ({
-        id: c.id,
-        ruc: c.ruc,
-        nombre: c.nombre,
-        nombre_comercial: c.nombre_comercial,
-        provincia: c.provincia,
-        descripcion: c.descripcion,
-        ciiu: c.ciiu,
-        ciiu_n1: c.ciiu_n1,
-        segmento: c.segmento,
-        ingresos_ventas: c.ingresos_ventas,
-        n_empleados: c.n_empleados,
-        utilidad_neta: c.utilidad_neta,
-        anio: c.anio,
-        // Sector-specific fields
-        _sectorMatchType: c.sector_match_type,
-        _sectorRelevance: c.sector_relevance,
-      }));
-      
-      const displayConfig = generateDisplayConfig(sector, formattedCompanies as any, companies.length);
-      
-      return {
-        success: true,
-        result: {
-          companies: formattedCompanies,
-          totalCount: companies.length,
-          query: sector,
-        },
-        displayConfig,
-        summary: `Encontré ${companies.length} empresas del sector "${sector}"${province ? ` en ${province}` : ''}. Resultados ordenados por relevancia sectorial.`,
-        sectorAnalysis: {
-          sector,
-          matchTypes, // e.g., { ciiu_exact: 8, descripcion_keyword: 2 }
-          avgRelevance: totalRelevance / companies.length,
-          topMatches: companies.slice(0, 3).map(c => ({
-            nombre: c.nombre_comercial || c.nombre,
-            ciiu: c.ciiu,
-            matchType: c.sector_match_type,
-          })),
-          ciuuCodesUsed: ciuuPrefixes,
-          keywordsUsed: allKeywords.slice(0, 5),
-        },
-      };
-      
-    } catch (error) {
-      console.error('[searchCompaniesBySectorTool] Error:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Error en búsqueda por sector',
-        suggestion: 'Intenta con search_companies o web_search como alternativa.',
-      };
-    }
-  },
-  {
-    name: 'search_companies_by_sector',
-    description: `Buscar empresas por SECTOR o INDUSTRIA específica. Usa clasificación CIIU y búsqueda semántica.
-
-**USA ESTA HERRAMIENTA CUANDO:**
-- El usuario menciona un sector: "empresas de alimentos", "proveedores de tecnología"
-- Busca por industria: "sector inmobiliario", "industria farmacéutica"
-- Busca proveedores/fabricantes: "fabricantes de textiles", "proveedores de logística"
-
-**SECTORES SOPORTADOS:**
-- Alimentos, Agrícola, Restaurantes
-- Tecnología, Software, Telecomunicaciones
-- Construcción, Inmobiliaria
-- Logística, Transporte
-- Salud, Farmacéutica
-- Financiero, Seguros
-- Comercio, Retail
-- Manufactura, Textil, Químico
-- Energía, Minería
-- Consultoría, Educación, Turismo
-- Automotriz, Publicidad, Seguridad
-
-**VENTAJAS sobre search_companies:**
-- Usa códigos CIIU internacionales para clasificación precisa
-- Búsqueda semántica con pg_trgm similarity
-- Retorna sector_match_type y sector_relevance para cada empresa
-
-Ejemplos:
-- sector: "alimentos", province: "PICHINCHA", minRevenue: 100000
-- sector: "tecnologia", keywords: ["software", "SaaS"]
-- sector: "inmobiliaria", province: "GUAYAS"`,
-    schema: z.object({
-      sector: z.string().describe('Nombre del sector/industria a buscar (ej: "alimentos", "tecnologia", "construccion")'),
-      keywords: z.array(z.string()).optional().describe('Keywords adicionales para refinar la búsqueda'),
-      province: z.string().optional().describe('Filtrar por provincia (ej: "PICHINCHA", "GUAYAS")'),
-      minRevenue: z.number().optional().describe('Ingresos mínimos en USD'),
-      minEmployees: z.number().optional().describe('Número mínimo de empleados'),
-      limit: z.number().optional().default(15).describe('Máximo de resultados (default: 15)'),
-    }),
-  }
-);
-
-/**
- * Tool for getting detailed information about a specific company
- */
+// Wrapper for old get_company_details calls
 export const getCompanyDetailsTool = tool(
-  async ({ identifier, type = 'ruc' }: { identifier: string; type?: 'ruc' | 'name' }) => {
-    try {
-      // Check cache for RUC lookups (most common case)
-      const isRucLookup = type === 'ruc' || /^\d{13}$/.test(identifier);
-      if (isRucLookup) {
-        const cached = agentCache.getCompanyDetails(identifier);
-        if (cached) {
-          console.log('[getCompanyDetailsTool] Cache HIT for RUC:', identifier);
-          return cached;
-        }
-      }
-      
-      let searchFilters: SearchFilters;
-      
-      if (isRucLookup) {
-        searchFilters = { ruc: identifier };
-      } else {
-        searchFilters = { nombre: identifier };
-      }
-      
-      const supabase = getSupabaseClient();
-      const { companies, totalCount } = await fetchCompanies({ 
-        ...searchFilters, 
-        pageSize: 5 
-      }, supabase);
-      
-      if (totalCount === 0) {
-        return {
-          success: false,
-          error: `No se encontró empresa con ${type}: ${identifier}`,
-          suggestion: 'Verifica el número RUC o intenta buscar por nombre de empresa',
-        };
-      }
-      
-      if (totalCount === 1) {
-        const company = companies[0];
-        const result = {
-          success: true,
-          company,
-          // NEW: Display config for single company view
-          displayConfig: {
-            mode: 'single' as DisplayMode,
-            featuredRUCs: [company.ruc],
-            totalCount: 1,
-          },
-          summary: `Empresa encontrada: ${company.nombre || company.nombre_comercial}`,
-          details: {
-            ruc: company.ruc,
-            name: company.nombre,
-            commercialName: company.nombre_comercial,
-            province: company.provincia,
-            employees: company.n_empleados,
-            revenue: company.ingresos_ventas,
-            assets: company.activos,
-            equity: company.patrimonio,
-            netProfit: company.utilidad_neta,
-            year: company.anio,
-          },
-        };
-        
-        // Cache by RUC for future lookups
-        if (company.ruc) {
-          agentCache.cacheCompanyDetails(company.ruc, result);
-          console.log('[getCompanyDetailsTool] Cached details for RUC:', company.ruc);
-        }
-        
-        return result;
-      }
-      
-      // Multiple matches - return list for user to choose
-      const topMatches = companies.slice(0, 5);
-      return {
-        success: true,
-        multiple: true,
-        companies: topMatches,
-        // NEW: Display config for multiple matches
-        displayConfig: {
-          mode: 'comparison' as DisplayMode,
-          featuredRUCs: topMatches.map(c => c.ruc),
-          query: identifier,
-          totalCount,
-          selectionReason: `Encontré ${totalCount} empresas que coinciden con "${identifier}"`,
-        },
-        totalCount,
-        summary: `Encontré ${totalCount} empresas que coinciden con "${identifier}". Mostrando los primeros 5 resultados.`,
-        suggestion: 'Por favor especifica qué empresa quieres ver proporcionando el RUC exacto',
-      };
-      
-    } catch (error) {
-      console.error('Error in getCompanyDetailsTool:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'No se pudieron obtener los detalles de la empresa',
-        suggestion: 'Intenta usar un número RUC válido (13 dígitos) o verifica la ortografía del nombre de la empresa',
-      };
+  async ({ identifier, type }: { identifier: string; type?: 'ruc' | 'name' }) => {
+    const isRuc = type === 'ruc' || /^\d{13}$/.test(identifier.trim());
+    
+    if (isRuc) {
+      const result = await lookupCompanyByRucTool.func({ ruc: identifier });
+      return { ...result, _redirectedFrom: 'get_company_details' };
+    } else {
+      const result = await searchCompanyByNameTool.func({ name: identifier });
+      return { ...result, _redirectedFrom: 'get_company_details' };
     }
   },
   {
     name: 'get_company_details',
-    description: `Obtener información detallada sobre una empresa específica por RUC o nombre. Esta herramienta obtiene datos completos de la empresa incluyendo historial financiero, detalles de contacto e información empresarial.
+    description: `📋 DETALLES DE EMPRESA (Legacy) - Wrapper para lookup_company_by_ruc y search_company_by_name.
 
-Usa esto cuando los usuarios quieren:
-- Obtener detalles sobre una empresa específica
-- Ver historial financiero
-- Verificar información de contacto
-- Analizar rendimiento de empresa a lo largo del tiempo`,
+⚠️ MEJOR USAR:
+- lookup_company_by_ruc → Si tienes el RUC (más rápido y preciso)
+- search_company_by_name → Si solo tienes el nombre`,
     schema: z.object({
-      identifier: z.string().describe('RUC de empresa (13 dígitos) o nombre de empresa a buscar'),
-      type: z.enum(['ruc', 'name']).optional().default('ruc').describe('Tipo de identificador: ruc o name'),
+      identifier: z.string().describe('RUC (13 dígitos) o nombre'),
+      type: z.enum(['ruc', 'name']).optional().describe('Tipo de identificador'),
     }),
   }
 );
 
-/**
- * Tool for refining search results based on user feedback
- */
-export const refineSearchTool = tool(
-  async ({ originalQuery, refinement, currentFilters = {} }: { 
-    originalQuery: string; 
-    refinement: string; 
-    currentFilters?: SearchFilters 
-  }) => {
-    try {
-      // Parse refinement query
-      const refinementFilters = FilterTranslator.translateQuery(refinement);
-      
-      // Combine current filters with refinement
-      const combinedFilters = { ...currentFilters, ...refinementFilters };
-      const validatedFilters = FilterTranslator.validateFilters(combinedFilters);
-      
-      // Execute refined search
-      const supabase = getSupabaseClient();
-      const { companies, totalCount } = await fetchCompanies({
-        ...validatedFilters,
-        pageSize: 10,
-      }, supabase);
-      
-      const filterSummary = FilterTranslator.generateFilterSummary(validatedFilters);
-      
-      return {
-        success: true,
-        result: {
-          companies,
-          totalCount,
-          filters: validatedFilters,
-          query: `${originalQuery} + ${refinement}`,
-        },
-        summary: `Búsqueda refinada: ${filterSummary}`,
-        showingResults: `Mostrando ${companies.length} de ${totalCount} resultados`,
-        refinementApplied: refinement,
-      };
-      
-    } catch (error) {
-      console.error('Error in refineSearchTool:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'No se pudo refinar la búsqueda',
-        suggestion: 'Intenta usar criterios de refinamiento más simples',
-      };
-    }
-  },
-  {
-    name: 'refine_search',
-    description: `Refinar resultados de búsqueda previos basado en retroalimentación del usuario o criterios adicionales. Esta herramienta ayuda a reducir o expandir resultados de búsqueda basado en solicitudes del usuario.
+// ============================================================================
+// EXPORT ALL TOOLS
+// ============================================================================
 
-Usa esto cuando los usuarios quieren:
-- Filtrar resultados previos más
-- Agregar criterios adicionales a búsqueda actual
-- Remover filtros específicos
-- Ajustar parámetros de búsqueda`,
-    schema: z.object({
-      originalQuery: z.string().describe('La consulta de búsqueda original'),
-      refinement: z.string().describe('Cómo refinar la búsqueda (ej: "solo mostrar empresas en Quito", "con más de 100 empleados")'),
-      currentFilters: searchFiltersSchema.optional().describe('Filtros aplicados actualmente'),
-    }),
-  }
-);
-
-// Export all tools as an array for easy use in LangGraph
 export const companyTools = [
-  searchCompaniesTool,
-  searchCompaniesBySectorTool, // NEW: Dedicated sector search - model decides when to use
-  getCompanyDetailsTool,
-  refineSearchTool,
+  // PRIMARY TOOLS (use these!)
+  lookupCompanyByRucTool,         // #1 for exact RUC lookup
+  searchCompanyByNameTool,        // #2 for finding RUC by name
+  searchCompaniesAdvancedTool,    // #3 for multi-filter search
+  getCompanyFinancialsHistoryTool, // #4 for historical analysis
+  listTopCompaniesTool,           // #5 for rankings
+  
+  // LEGACY WRAPPERS (for backward compatibility)
+  searchCompaniesTool,            // Redirects to specific tools
+  getCompanyDetailsTool,          // Redirects to specific tools
 ];
+
+// Export individual tools for direct imports
+export {
+  lookupCompanyByRucTool as lookupByRuc,
+  searchCompanyByNameTool as searchByName,
+  searchCompaniesAdvancedTool as searchAdvanced,
+  getCompanyFinancialsHistoryTool as getFinancialsHistory,
+  listTopCompaniesTool as listTop,
+};

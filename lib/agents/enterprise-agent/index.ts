@@ -1,9 +1,10 @@
-import { HumanMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
+import { HumanMessage, BaseMessage } from "@langchain/core/messages";
 import { getEnterpriseAgentGraph } from "./graph";
 import { EnterpriseAgentStateType, AgentStateEvent, EmailDraft, MAX_RETRIES } from "./state";
 import { getLangChainTracer, flushLangsmith, langsmithEnabled } from "@/lib/langsmith";
-import { optimizeConversationHistory } from "./context-optimizer";
+import { optimizeConversationHistory, getMessageType } from "./context-optimizer";
 import { AgentRecoveryManager } from "./recovery";
+import { AgentSettings } from "@/lib/types/agent-settings";
 
 // Shared TextEncoder for performance (avoid creating new instances)
 const sharedEncoder = new TextEncoder();
@@ -71,6 +72,7 @@ export async function chatWithEnterpriseAgent(
     runName?: string;
     modelName?: string;
     thinkingLevel?: 'high' | 'low';
+    agentSettings?: AgentSettings;
   }
 ): Promise<ReadableStream> {
   const userMessage = new HumanMessage(message);
@@ -141,6 +143,7 @@ export async function chatWithEnterpriseAgent(
             toolOutputs: [],
             modelName: options?.modelName || "gemini-2.5-flash",
             thinkingLevel: options?.thinkingLevel || 'high',
+            agentSettings: options?.agentSettings,
             // CRITICAL: Set start time for time-based circuit breaker
             startTime: new Date(),
           },
@@ -197,9 +200,10 @@ export async function chatWithEnterpriseAgent(
           }
 
           // Track tool calls from think node (when AI decides to call a tool)
+          // Use getMessageType() for safe type detection that handles serialized checkpoint messages
           if (nodeName === 'think' && nodeOutput.messages && nodeOutput.messages.length > 0) {
             const lastMsg = nodeOutput.messages[nodeOutput.messages.length - 1];
-            if (lastMsg._getType() === 'ai' && 'tool_calls' in lastMsg && Array.isArray((lastMsg as any).tool_calls)) {
+            if (getMessageType(lastMsg) === 'ai' && 'tool_calls' in lastMsg && Array.isArray((lastMsg as any).tool_calls)) {
               const toolCalls = (lastMsg as any).tool_calls;
               if (toolCalls.length > 0) {
                 toolCalls.forEach((tc: any) => {
@@ -298,23 +302,8 @@ export async function chatWithEnterpriseAgent(
             const lastMessage = nodeOutput.messages[nodeOutput.messages.length - 1];
             
             // Robust type guard for AI messages (handles both instances and serialized objects)
-            const isAIMessage = (() => {
-              if (lastMessage && typeof lastMessage === 'object') {
-                // Check for LangChain message methods/properties
-                if (typeof lastMessage._getType === 'function' && lastMessage._getType() === 'ai') {
-                  return true;
-                }
-                // Check for serialized properties (cast to any to access role/type)
-                const msgAsAny = lastMessage as any;
-                if (msgAsAny.type === 'ai' || msgAsAny.role === 'assistant') {
-                  if (!(lastMessage instanceof AIMessage)) {
-                    console.log('[stream] Detected serialized AI message (non-instance)');
-                  }
-                  return true;
-                }
-              }
-              return false;
-            })();
+            // Use centralized getMessageType() for consistent type detection
+            const isAIMessage = getMessageType(lastMessage) === 'ai';
             
             if (isAIMessage) {
               let content = '';
@@ -440,20 +429,10 @@ export async function chatWithEnterpriseAgent(
             let fallbackContent = '';
             if (previousState && previousState.messages && previousState.messages.length > 0) {
               // Find last AI-like message
+              // Use centralized getMessageType() for consistent type detection
               for (let i = previousState.messages.length - 1; i >= 0; i--) {
                 const msg = previousState.messages[i];
-                const isFallbackAIMessage = (() => {
-                  if (msg && typeof msg === 'object') {
-                    if (typeof msg._getType === 'function' && msg._getType() === 'ai') {
-                      return true;
-                    }
-                    const msgAsAny = msg as any;
-                    if (msgAsAny.type === 'ai' || msgAsAny.role === 'assistant') {
-                      return true;
-                    }
-                  }
-                  return false;
-                })();
+                const isFallbackAIMessage = getMessageType(msg) === 'ai';
                 
                 if (isFallbackAIMessage) {
                   const msgAsAny = msg as any;
