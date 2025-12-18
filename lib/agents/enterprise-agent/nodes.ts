@@ -1,6 +1,7 @@
 import { AIMessage, SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { EnterpriseAgentStateType, TodoItem, MAX_CORRECTIONS, MAX_ITERATIONS, MAX_RETRIES, ToolOutput } from "./state";
+import { agentCache } from "./cache";
 import { ENTERPRISE_AGENT_SYSTEM_PROMPT } from "./prompt";
 import { extractTokenUsageFromMetadata } from "@/lib/token-counter";
 import { trackLLMUsageBackground } from "@/lib/usage";
@@ -117,52 +118,67 @@ function getGeminiModel(modelName: string = "gemini-2.5-flash"): ChatGoogleGener
 /**
  * Load user context from Supabase (with caching for B2C performance)
  */
-export async function loadUserContext(_state: EnterpriseAgentStateType): Promise<Partial<EnterpriseAgentStateType>> {
+export async function loadUserContext(state: EnterpriseAgentStateType): Promise<Partial<EnterpriseAgentStateType>> {
   try {
-    // Dynamic imports for Node.js runtime compatibility
-    // Use require for Supabase as import() might return a module object in some environments
-    // const { createClient } = require("@supabase/supabase-js");
-    
-    // Use direct supabase-js client instead of server component helper
-    // to avoid "cookies was called outside a request scope" error in background tasks
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('Missing Supabase credentials in loadUserContext');
-      return {
-        errorInfo: 'Error de configuración: Faltan credenciales de Supabase',
-      };
+    const userId = state.userContext?.userId;
+    if (!userId) {
+      console.log('[loadUserContext] No userId in state, skipping context load');
+      return {};
     }
-    
-    // Use user ID passed from trigger payload if available in state
-    // Note: We need to update EnterpriseAgentState to include userId if not already present
-    // For now, we'll try to get it from context or fallback
-    
-    // Since we can't access cookies/auth.getUser() in background task, 
-    // we rely on the userId being passed in the userContext or we need to fetch it
-    // However, loadUserContext is the FIRST step to populate userContext.
-    // The fix is to pass userId into the graph state when initializing in src/trigger/enterprise-agent.ts
-    
-    // TEMPORARY FIX: Check if we can extract user ID from thread_id config if available
-    // or rely on the caller to pass it. The caller (enterprise-agent.ts) DOES pass userId
-    // but we need to read it from the state passed in.
-    
-    // Assuming userId is part of userContext if partially initialized, 
-    // or we need to modify how this node works.
-    
-    // Actually, let's look at how the graph is initialized. 
-    // The enterprise-agent.ts passes a message but maybe not the user context initially.
-    // We should update enterprise-agent.ts to pass initial userContext with userId.
-    
-    // For now, return empty context if we can't get user. 
-    // The real fix is in enterprise-agent.ts to pass userId in the initial state.
-    return {}; 
+
+    // Check cache first
+    const cachedContext = agentCache.getUserContext(userId);
+    if (cachedContext) {
+      console.log('[loadUserContext] Cache HIT for user:', userId);
+      return { userContext: cachedContext as any };
+    }
+
+    // Load from DB
+    const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { createClient } = require('@supabase/supabase-js');
+    const supabase = createClient(sbUrl, sbKey, { auth: { persistSession: false } });
+
+    console.log('[loadUserContext] Loading context from DB for user:', userId);
+
+    // Parallel fetch
+    const [profileRes, subscriptionRes, usageRes, offeringsRes] = await Promise.all([
+      supabase.from('user_profiles').select('*').eq('user_id', userId).single(),
+      supabase.from('user_subscriptions').select('*').eq('user_id', userId).single(),
+      supabase.from('user_usage').select('*').eq('user_id', userId).order('period_start', { ascending: false }).limit(1).single(),
+      supabase.from('user_offerings').select('*').eq('user_id', userId)
+    ]);
+
+    const userContext = {
+      userId,
+      userProfile: profileRes.data || undefined,
+      subscription: {
+        plan: subscriptionRes.data?.plan || 'FREE',
+        status: subscriptionRes.data?.status || 'inactive',
+      },
+      usage: {
+        searches: usageRes.data?.searches || 0,
+        exports: usageRes.data?.exports || 0,
+        prompts: usageRes.data?.prompts_count || 0,
+      },
+      limits: { // Hardcoded limits for now, could be dynamic based on plan
+        searches: subscriptionRes.data?.plan === 'ENTERPRISE' ? 1000 : (subscriptionRes.data?.plan === 'PRO' ? 100 : 10),
+        exports: subscriptionRes.data?.plan === 'ENTERPRISE' ? 50 : (subscriptionRes.data?.plan === 'PRO' ? 10 : 2),
+        prompts: subscriptionRes.data?.plan === 'ENTERPRISE' ? 1000 : (subscriptionRes.data?.plan === 'PRO' ? 200 : 20),
+      },
+      offerings: offeringsRes.data || [],
+    };
+
+    // Cache it
+    agentCache.cacheUserContext(userId, userContext);
+
+    return { userContext };
 
   } catch (error) {
     console.error('Error loading user context:', error);
     return {
-      errorInfo: 'Error al cargar contexto del usuario',
+      errorInfo: 'Advertencia: No se pudo cargar el contexto completo del usuario',
     };
   }
 }
@@ -988,12 +1004,78 @@ export function processToolResults(state: EnterpriseAgentStateType): Partial<Ent
   // NOTE: iterationCount is now incremented in think() to handle think→think loops correctly
   // Don't increment here to avoid double-counting
 
+  // CRITICAL: Update todos automatically when tools complete
+  // This makes the plan self-contained and dynamic
+  let updatedTodos = state.todo;
+  if (updatedTodos.length > 0 && newOutputs.length > 0) {
+    // Check if we have any successful tool executions
+    const hasSuccessfulTools = newOutputs.some(o => o.success);
+    const hasFailedTools = newOutputs.some(o => !o.success);
+    
+    // Find the currently in-progress todo
+    const inProgressIndex = updatedTodos.findIndex(t => t.status === 'in_progress');
+    
+    if (inProgressIndex !== -1) {
+      const currentTodo = updatedTodos[inProgressIndex];
+      
+      // If tools succeeded, mark current todo as completed
+      if (hasSuccessfulTools && allSucceeded) {
+        updatedTodos = [...updatedTodos];
+        updatedTodos[inProgressIndex] = {
+          ...currentTodo,
+          status: 'completed' as const,
+          completedAt: new Date(),
+        };
+        
+        // Auto-advance to next pending todo
+        const nextPendingIndex = updatedTodos.findIndex((t, idx) => 
+          idx > inProgressIndex && t.status === 'pending'
+        );
+        if (nextPendingIndex !== -1) {
+          updatedTodos[nextPendingIndex] = {
+            ...updatedTodos[nextPendingIndex],
+            status: 'in_progress' as const,
+          };
+        }
+        
+        console.log(`[processToolResults] Todo "${currentTodo.description}" marked as completed`);
+      } 
+      // If tools failed and retries exhausted, mark as failed
+      else if (hasFailedTools && !shouldRetry && state.retryCount >= MAX_RETRIES - 1) {
+        updatedTodos = [...updatedTodos];
+        updatedTodos[inProgressIndex] = {
+          ...currentTodo,
+          status: 'failed' as const,
+          errorMessage: lastOutput.errorMessage,
+        };
+        
+        // Auto-advance to next pending todo (skip failed one)
+        const nextPendingIndex = updatedTodos.findIndex((t, idx) => 
+          idx > inProgressIndex && t.status === 'pending'
+        );
+        if (nextPendingIndex !== -1) {
+          updatedTodos[nextPendingIndex] = {
+            ...updatedTodos[nextPendingIndex],
+            status: 'in_progress' as const,
+          };
+        }
+        
+        console.log(`[processToolResults] Todo "${currentTodo.description}" marked as failed after ${MAX_RETRIES} retries`);
+      }
+      // If tools failed but we can retry, keep todo as in_progress
+      else if (hasFailedTools && shouldRetry) {
+        console.log(`[processToolResults] Todo "${currentTodo.description}" still in progress (retry ${state.retryCount + 1}/${MAX_RETRIES})`);
+      }
+    }
+  }
+
   return {
     toolOutputs: newOutputs,
     lastTool: lastOutput.toolName,
     lastToolSuccess: allSucceeded,
     retryCount: shouldRetry ? state.retryCount + 1 : 0,
     errorInfo: allSucceeded ? null : lastOutput.errorMessage,
+    todo: updatedTodos, // CRITICAL: Return updated todos so they persist
   };
 }
 
@@ -1081,6 +1163,45 @@ export function updateTodos(state: EnterpriseAgentStateType): Partial<Enterprise
   return {
     todo: updatedTodos,
   };
+}
+
+/**
+ * Advance the current TODO without requiring a tool call.
+ *
+ * This is used for "synthesis" steps that are completed by writing/analysis
+ * (e.g., "Redactar email", "Resumir hallazgos", "Recopilar información").
+ *
+ * IMPORTANT: Only call this when routing has decided the current TODO does NOT
+ * require tool execution. Otherwise we'd allow skipping work.
+ */
+export function advanceTodo(state: EnterpriseAgentStateType): Partial<EnterpriseAgentStateType> {
+  const todos = state.todo || [];
+  if (todos.length === 0) return {};
+
+  const inProgressIndex = todos.findIndex(t => t.status === "in_progress");
+  if (inProgressIndex === -1) return {};
+
+  const updatedTodos = [...todos];
+  const currentTodo = updatedTodos[inProgressIndex];
+
+  updatedTodos[inProgressIndex] = {
+    ...currentTodo,
+    status: "completed",
+    completedAt: new Date(),
+  };
+
+  // Auto-advance to next pending todo
+  const nextPendingIndex = updatedTodos.findIndex((t, idx) => idx > inProgressIndex && t.status === "pending");
+  if (nextPendingIndex !== -1) {
+    updatedTodos[nextPendingIndex] = {
+      ...updatedTodos[nextPendingIndex],
+      status: "in_progress",
+    };
+  }
+
+  console.log(`[advanceTodo] Marked todo as completed: "${currentTodo.description}"`);
+
+  return { todo: updatedTodos };
 }
 
 /**
@@ -1390,6 +1511,11 @@ Genera tu respuesta final ahora. DEBE ser completa, profesional y útil.`);
 // NOTE: executeToolWithTimeout removed - not needed in async mode
 // The Trigger.dev worker manages overall execution time
 
+// Helper to detect background task
+function isBackgroundTask(): boolean {
+  return !!process.env.TRIGGER_PROJECT_ID;
+}
+
 /**
  * Manually execute tools (bypass ToolNode to avoid invocation issues)
  * This directly executes tool functions and creates ToolMessages manually
@@ -1444,6 +1570,8 @@ export async function callTools(state: EnterpriseAgentStateType): Promise<Partia
 
     // Tools that need userId injection for background task support
     const toolsNeedingUserId = ['list_user_offerings', 'get_offering_details'];
+    // Tools that require human approval in background runs
+    const GATED_TOOLS = ['perplexity_search', 'export_companies'];
     
     // Execute ALL requested tools (no limiting in async mode)
     const toolExecutionPromises = toolCalls.map(async (toolCall: any) => {
@@ -1467,6 +1595,91 @@ export async function callTools(state: EnterpriseAgentStateType): Promise<Partia
       if (toolsNeedingUserId.includes(toolCall.name) && state.userContext?.userId) {
         toolArgs.userId = state.userContext.userId;
         console.log('[callTools] Injected userId for', toolCall.name, ':', state.userContext.userId);
+      }
+
+      // Check for gated tools in background runs
+      if (isBackgroundTask() && GATED_TOOLS.includes(toolCall.name) && state.runId) {
+        try {
+          // Dynamic import to avoid bundling issues
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const { wait } = require("@trigger.dev/sdk");
+          
+          // Create a wait token (24h timeout)
+          const token = await wait.createToken({ timeout: "24h" });
+          
+          const waitTokenInfo = {
+            tokenId: token.id,
+            toolName: toolCall.name,
+            toolCallId: toolCall.id,
+            reason: `La herramienta ${toolCall.name} requiere aprobación.`,
+            createdAt: new Date().toISOString(),
+          };
+          
+          // Update agent_runs progress using service role client
+          const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+          const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const { createClient } = require('@supabase/supabase-js');
+          const supabase = createClient(sbUrl, sbKey, { auth: { persistSession: false } });
+          
+          await supabase.from('agent_runs').update({
+            progress: {
+              waitToken: waitTokenInfo,
+              currentNode: 'waiting_approval'
+            }
+          }).eq('id', state.runId);
+          
+          console.log(`[callTools] Waiting for token ${token.id} for tool ${toolCall.name}`);
+          
+          // Wait for approval
+          const result = await wait.forToken(token.id);
+          
+          // Clear waitToken
+          await supabase.from('agent_runs').update({
+            progress: {
+              waitToken: null,
+              currentNode: 'executing_tool'
+            }
+          }).eq('id', state.runId);
+          
+          // Fix: check result.ok which is how Trigger.dev v4 works
+          if (!result.ok) {
+             return new ToolMessage({
+              content: JSON.stringify({
+                success: false,
+                error: `Aprobación expiró o falló: ${result.error}`,
+              }),
+              tool_call_id: toolCall.id,
+              name: toolCall.name,
+            });
+          }
+          
+          // Check if approved in the token payload
+          // The completion payload is { status: 'approved' | 'rejected' }
+          const output = result.output as any;
+          if (output && output.status === 'rejected') {
+             return new ToolMessage({
+              content: JSON.stringify({
+                success: false,
+                error: `Acción rechazada por el usuario.`,
+              }),
+              tool_call_id: toolCall.id,
+              name: toolCall.name,
+            });
+          }
+          
+          // If approved, proceed to execute the tool below...
+        } catch (err) {
+          console.error("Waitpoint error:", err);
+          return new ToolMessage({
+            content: JSON.stringify({
+              success: false,
+              error: `Error del sistema durante aprobación: ${err instanceof Error ? err.message : String(err)}`,
+            }),
+            tool_call_id: toolCall.id,
+            name: toolCall.name,
+          });
+        }
       }
 
       try {
@@ -1584,9 +1797,14 @@ export async function correction(state: EnterpriseAgentStateType): Promise<Parti
   const attemptNote = `Intento de corrección ${correctionAttempt}/${MAX_CORRECTIONS}.`;
 
   let feedbackContent = [
-    "Has descrito lo que harás pero NO ejecutaste ninguna herramienta.",
-    nextTodo ? `Tarea pendiente: "${nextTodo.description}". Ejecútala ahora con tool_calls (ej. search_companies/search_companies_by_sector/get_company_details según corresponda).` : "Ejecútala con tool_calls (ej. search_companies/search_companies_by_sector/get_company_details según corresponda).",
-    "No respondas con planes ni JSON en texto. Llama la herramienta directamente.",
+    pendingTodos.length > 0
+      ? "AÚN QUEDAN PASOS DEL PLAN PENDIENTES. No des la respuesta final todavía."
+      : "Has descrito lo que harás pero NO ejecutaste ninguna herramienta.",
+    nextTodo
+      ? `Siguiente paso del plan: "${nextTodo.description}". Ejecútalo AHORA usando tool_calls (ej. search_companies/search_companies_by_sector/get_company_details/enrich_company_contacts/tavily_web_search según corresponda).`
+      : "Ejecuta la acción necesaria AHORA con tool_calls (ej. search_companies/search_companies_by_sector/get_company_details/enrich_company_contacts/tavily_web_search).",
+    "Regla: si existen TODOS en 'pending' o 'in_progress', debes seguir ejecutando herramientas hasta completarlos o fallarlos.",
+    "No respondas con planes ni JSON en texto. Llama la(s) herramienta(s) directamente.",
     attemptNote,
   ].join("\n\n");
   
@@ -1664,6 +1882,47 @@ export function shouldCallTools(state: EnterpriseAgentStateType): string {
     console.log('[shouldCallTools] Routing to tools');
     return 'tools';
   }
+ 
+  // TODO ENFORCEMENT: Never finalize while there are pending/in_progress todos.
+  // If the next todo is a "synthesis/writing" step, we can advance it without tools.
+  if (hasPendingTodos) {
+    const pendingTodos = state.todo.filter(t => t.status === "pending" || t.status === "in_progress");
+    const inProgressTodo = state.todo.find(t => t.status === "in_progress") || pendingTodos[0];
+    const desc = (inProgressTodo?.description || "").toLowerCase();
+
+    // Heuristic: if the current todo is NOT explicitly a "fetch data" action,
+    // allow advancing it without tool calls (analysis/synthesis step).
+    const toolVerbs = [
+      "buscar",
+      "encuentra",
+      "encontrar",
+      "investigar",
+      "obtener",
+      "extraer",
+      "consultar",
+      "exportar",
+      "scrap",
+      "scrape",
+      "recolectar",
+      "mapear",
+    ];
+    const looksLikeToolStep = toolVerbs.some(v => desc.includes(v));
+
+    if (messageType === "ai" && !hasToolCalls && inProgressTodo && !looksLikeToolStep) {
+      console.log("[shouldCallTools] Pending todos, but current step looks like synthesis. Advancing todo without tools.");
+      return "advance_todo";
+    }
+
+    // BUG FIX: Check if corrections limit exceeded before routing to correction
+    // This prevents infinite correction loops when the model repeatedly fails to call tools
+    if (exceededCorrections) {
+      console.log("[shouldCallTools] Max corrections exceeded. Finalizing despite pending todos.");
+      return "finalize";
+    }
+
+    console.log("[shouldCallTools] Todos still pending/in_progress. Forcing correction to continue execution.");
+    return "correction";
+  }
   
   // NARRATION DETECTION: If no tools but model says it will do something
   if (messageType === 'ai' && !hasToolCalls) {
@@ -1703,6 +1962,8 @@ export function shouldCallTools(state: EnterpriseAgentStateType): string {
   }
 
   // If there are pending tasks and no useful results, force correction unless we've exhausted corrections
+  // NOTE: A stricter guard above already routes to correction whenever hasPendingTodos is true.
+  // Kept for backwards compatibility and log clarity.
   if (hasPendingTodos && !hasUsefulResults) {
     console.log('[shouldCallTools] Pending todos without useful results. Routing to correction.');
     return exceededCorrections ? 'finalize' : 'correction';

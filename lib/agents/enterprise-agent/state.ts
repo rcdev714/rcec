@@ -232,6 +232,12 @@ export const EnterpriseAgentState = Annotation.Root({
     reducer: (_, update) => update,
     default: () => 0,
   }),
+
+  // Trigger.dev run ID for background task coordination
+  runId: Annotation<string | null>({
+    reducer: (_, update) => update,
+    default: () => null,
+  }),
 });
 
 // Type for the state
@@ -244,5 +250,7 @@ export type SalesAgentStateType = EnterpriseAgentStateType;
 // Constants
 export const MAX_ITERATIONS = 50; // Increased for complex multi-tool workflows (time-based circuit breaker is primary backstop)
 export const MAX_RETRIES = 3;
-export const MAX_CORRECTIONS = 3;
+// Increased so the agent can be nudged multiple times to keep executing pending TODOs
+// without showing confusing "attempt x/3" messages or finalizing prematurely.
+export const MAX_CORRECTIONS = 12;
 

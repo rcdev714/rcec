@@ -3,7 +3,7 @@
 import { useState, FormEvent, ChangeEvent, useRef, useEffect, useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowDown, LoaderCircle, Copy, CopyCheck, ArrowUp, Infinity, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowDown, LoaderCircle, Copy, CopyCheck, ArrowUp, Infinity, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { ModelSelector } from "./model-selector";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -30,6 +30,7 @@ interface TodoItem {
   status: 'pending' | 'in_progress' | 'completed' | 'failed';
   createdAt: Date;
   completedAt?: Date;
+  errorMessage?: string;
 }
 
 interface Message {
@@ -45,6 +46,13 @@ interface Message {
   metadata?: {
     type?: 'text' | 'company_results' | 'export_link' | 'email_draft' | 'planning';
     showAgentDetails?: boolean;
+  };
+  waitToken?: {
+    tokenId: string;
+    toolName: string;
+    toolCallId: string;
+    reason: string;
+    createdAt: string;
   };
 }
 
@@ -103,11 +111,14 @@ const formatToolName = (toolName: string): string => {
   const toolNames: Record<string, string> = {
     // Company tools
     'search_companies': 'Búsqueda en base de datos empresarial',
+    'search_companies_by_sector': 'Búsqueda por sector industrial',
     'get_company_details': 'Obtener detalles de empresa',
     'refine_search': 'Refinar búsqueda en base de datos empresarial',
     'export_companies': 'Exportar empresas',
     // Web search
     'web_search': 'Búsqueda en internet',
+    'tavily_web_search': 'Búsqueda en internet (Tavily)',
+    'perplexity_search': 'Investigación profunda (Perplexity)',
     'web_extract': 'Extraer información de páginas web',
     // Contact tools
     'enrich_company_contacts': 'Buscar contactos en base de datos empresarial',
@@ -230,8 +241,73 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
       const lastMessage = next[next.length - 1];
 
       if (lastMessage?.role === 'assistant') {
+        // Decide when to reveal the model's natural-language answer.
+        // UX goal: avoid the assistant "rewriting" the response every time a TODO completes.
+        // We still show live progress (plan + tool timeline), but we only reveal text
+        // once the agent is finalizing or completed.
+        const todos = (run.todos || []) as Array<{ status: string }>;
+        const hasUnresolvedTodos = todos.some(t => t.status === 'pending' || t.status === 'in_progress');
+        const isFinalizing = run.current_node === 'finalize' || run.current_node === 'completed';
+        const shouldRevealResponse = run.status === 'completed' || (!hasUnresolvedTodos && isFinalizing);
+        const incomingContent = (run.response_content || '').toString();
+        const previousContent = (lastMessage.content || '').toString();
+        
+        // BUG FIX: Always use incomingContent when shouldRevealResponse is true, regardless of length.
+        // The previous length comparison prevented shorter final responses from being displayed.
+        // Example: Final "Found 3 companies" was blocked by intermediate "Let me search for companies..."
+        const nextContent =
+          shouldRevealResponse && incomingContent
+            ? incomingContent
+            : previousContent;
+
         // Build agent state events from run progress
         const agentEvents: AgentStateEvent[] = [];
+        
+        // Add tool events from tool_outputs history
+        const processedToolResultIds = new Set<string>();
+        
+        if (run.tool_outputs && Array.isArray(run.tool_outputs)) {
+          run.tool_outputs.forEach((output: any) => {
+            if (output.kind === 'tool_call') {
+              agentEvents.push({
+                type: 'tool_call',
+                toolName: output.toolName,
+                toolCallId: output.toolCallId,
+                input: output.input || {},
+              });
+            } else {
+              // Default to tool_result if kind is missing or 'tool_result'
+              processedToolResultIds.add(output.toolCallId);
+              agentEvents.push({
+                type: 'tool_result',
+                toolName: output.toolName,
+                toolCallId: output.toolCallId,
+                success: !!output.success,
+                output: output.output,
+                error: output.error || output.errorMessage || (output.success ? undefined : 'Error desconocido'),
+              });
+            }
+          });
+        }
+
+        // If run is complete, force-close any orphaned tool calls (tools that started but never returned a result)
+        // This prevents the UI from showing "En progreso" forever.
+        if (run.status === 'completed' || run.status === 'failed') {
+          const orphanCalls = agentEvents.filter(e => e.type === 'tool_call' && !processedToolResultIds.has(e.toolCallId));
+          orphanCalls.forEach(call => {
+            if (call.type === 'tool_call') { // Type guard
+              agentEvents.push({
+                type: 'tool_result',
+                toolName: call.toolName,
+                toolCallId: call.toolCallId,
+                success: false,
+                output: null,
+                error: 'Cancelado (límite de iteraciones alcanzado)',
+              });
+            }
+          });
+        }
+
         if (run.current_node) {
           agentEvents.push({
             type: 'thinking',
@@ -240,21 +316,54 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
           });
         }
 
+        // Handle planning card (todos) - CRITICAL: Always update when todos change
+        if (run.todos && run.todos.length > 0) {
+          const planIndex = next.findIndex(m => m.role === 'system' && m.metadata?.type === 'planning');
+          const planMessage: Message = {
+            id: `plan-${run.id}`,
+            role: 'system',
+            content: '',
+            todos: run.todos.map(t => ({
+              id: t.id,
+              description: t.description,
+              status: t.status,
+              createdAt: t.createdAt ? new Date(t.createdAt) : new Date(),
+              completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
+              errorMessage: (t as any).errorMessage, // Preserve error messages for failed todos
+            })),
+            metadata: { type: 'planning' }
+          };
+          
+          if (planIndex !== -1) {
+            // CRITICAL: Always update the existing plan message to reflect status changes
+            next[planIndex] = planMessage;
+          } else {
+            // Insert plan before the assistant message
+            const assistantIndex = next.length - 1;
+            if (assistantIndex >= 0) {
+              next.splice(assistantIndex, 0, planMessage);
+            }
+          }
+        }
+
         next[next.length - 1] = {
           ...lastMessage,
-          content: run.response_content || lastMessage.content || '',
+          // Keep assistant text stable while the agent works; reveal only at the end/finalize.
+          content: nextContent,
           searchResult: run.search_results as CompanySearchResult | undefined,
           emailDraft: run.email_draft || undefined,
           todos: (run.todos || []).map(t => ({
             ...t,
             createdAt: t.createdAt ? new Date(t.createdAt) : new Date(),
             completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
+            errorMessage: (t as any).errorMessage, // Preserve error messages for failed todos
           })) as TodoItem[],
           agentStateEvents: agentEvents.length > 0 ? agentEvents : lastMessage.agentStateEvents,
           metadata: {
             ...lastMessage.metadata,
             type: run.search_results ? 'company_results' : run.email_draft ? 'email_draft' : 'text',
           },
+          waitToken: run.progress?.waitToken || undefined,
         };
       }
 
@@ -280,6 +389,7 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
             ...t,
             createdAt: t.createdAt ? new Date(t.createdAt) : new Date(),
             completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
+            errorMessage: (t as any).errorMessage, // Preserve error messages for failed todos
           })) as TodoItem[],
           metadata: {
             ...lastMessage.metadata,
@@ -314,6 +424,23 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
       return next;
     });
   }, []);
+
+  const handleWaitTokenAction = async (tokenId: string, approved: boolean) => {
+    try {
+      const response = await fetch('/api/agent/wait-token/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokenId, approved }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to complete wait token');
+      }
+    } catch (error) {
+      console.error('Error handling wait token:', error);
+      setBanner('Error al procesar la aprobación. Intenta de nuevo.');
+    }
+  };
 
   const { startRun } = useAgentRun({
     onUpdate: handleAgentUpdate,
@@ -646,14 +773,51 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
             metadata: { ...msg.metadata, ...metadata }
           });
         } else {
-          const { agentStateEvents: _drop, ...restMetadata } = (msg.metadata || {}) as Record<string, unknown>;
-          hydrated.push({
-            id: genId(),
-            role,
-            content: msg.content,
-            // pass through any metadata except agent state events
-            metadata: Object.keys(restMetadata).length > 0 ? restMetadata : undefined,
-          });
+          const rawMetadata = (msg.metadata || {}) as Record<string, unknown>;
+          const { agentStateEvents: _drop, ...restMetadata } = rawMetadata;
+
+          // Re-hydrate planning messages (system) so the UI can render the plan card on reload
+          const maybeType = (restMetadata as any)?.type;
+          const maybeTodos = (restMetadata as any)?.todos;
+          if (role === 'system' && maybeType === 'planning' && Array.isArray(maybeTodos)) {
+            const todos: TodoItem[] = (maybeTodos as any[])
+              .map((t: any, idx: number) => {
+                const status =
+                  t?.status === 'pending' || t?.status === 'in_progress' || t?.status === 'completed' || t?.status === 'failed'
+                    ? (t.status as TodoItem['status'])
+                    : 'pending';
+                const createdAt = t?.createdAt ? new Date(t.createdAt) : new Date();
+                const completedAt = t?.completedAt ? new Date(t.completedAt) : undefined;
+                const errorMessage = typeof t?.errorMessage === 'string' ? t.errorMessage : undefined;
+
+                return {
+                  id: String(t?.id ?? idx),
+                  description: String(t?.description ?? ''),
+                  status,
+                  createdAt,
+                  completedAt,
+                  errorMessage,
+                };
+              })
+              .filter(t => t.description.trim().length > 0);
+
+            const { todos: _todos, ...metaWithoutTodos } = restMetadata as any;
+            hydrated.push({
+              id: genId(),
+              role,
+              content: msg.content || '',
+              todos,
+              metadata: { ...metaWithoutTodos, type: 'planning' },
+            });
+          } else {
+            hydrated.push({
+              id: genId(),
+              role,
+              content: msg.content,
+              // pass through any metadata except agent state events
+              metadata: Object.keys(restMetadata).length > 0 ? restMetadata : undefined,
+            });
+          }
         }
       }
       setMessages(hydrated);
@@ -1586,36 +1750,77 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
                   if (msg.role === "system" && msg.metadata?.type === 'planning' && msg.todos) {
                     return (
                       <div key={msg.id} className="w-full mb-4 px-1 md:px-0">
-                        <div className="bg-white border border-gray-200 rounded-2xl p-4 md:p-5 shadow-sm">
+                        <div className="rounded-2xl border border-gray-200/70 bg-white/90 backdrop-blur p-4 md:p-5 shadow-sm">
                           <div className="flex items-center gap-3 mb-3 md:mb-4">
-                            <div className="w-6 h-6 md:w-8 md:h-8 rounded-lg md:rounded-xl bg-gray-900 text-white flex items-center justify-center text-[10px] md:text-xs font-semibold">
-                              AI
+                            <div className="h-7 w-7 md:h-8 md:w-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center shadow-sm">
+                              <Infinity className="w-3.5 h-3.5 md:w-4 md:h-4 text-gray-900" />
                             </div>
-                            <h4 className="font-medium text-gray-900 text-xs md:text-sm">Plan de acción</h4>
-                          </div>
-                          <div className="space-y-2">
-                            {msg.todos.map((todo, todoIndex) => (
-                              <div key={todoIndex} className="flex items-start gap-2 md:gap-3 text-xs md:text-sm p-2 rounded-xl border border-gray-100 bg-gray-50">
-                                <span className={cn(
-                                  "flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-[11px] font-medium",
-                                  todo.status === 'completed' && "bg-green-100 text-green-700",
-                                  todo.status === 'in_progress' && "bg-yellow-100 text-yellow-700",
-                                  todo.status === 'pending' && "bg-gray-200 text-gray-600",
-                                  todo.status === 'failed' && "bg-red-100 text-red-700"
-                                )}>
-                                  {todo.status === 'completed' ? '✓' : todoIndex + 1}
-                                </span>
-                                <span className={cn(
-                                  "flex-1 leading-relaxed",
-                                  todo.status === 'completed' && "text-gray-500 line-through",
-                                  todo.status === 'in_progress' && "text-gray-900 font-medium",
-                                  todo.status === 'pending' && "text-gray-600",
-                                  todo.status === 'failed' && "text-red-600 font-medium"
-                                )}>
-                                  {todo.description}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium text-gray-900 text-xs md:text-sm tracking-tight">Plan de acción</h4>
+                                <span className="text-[10px] md:text-[11px] text-gray-400">
+                                  {msg.todos.length} {msg.todos.length === 1 ? 'paso' : 'pasos'}
                                 </span>
                               </div>
-                            ))}
+                              <div className="mt-1 h-px w-full bg-gradient-to-r from-gray-200/80 via-gray-100 to-transparent" />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            {msg.todos.map((todo, todoIndex) => {
+                              const StatusIcon =
+                                todo.status === 'completed'
+                                  ? CheckCircle2
+                                  : todo.status === 'failed'
+                                    ? XCircle
+                                    : todo.status === 'in_progress'
+                                      ? LoaderCircle
+                                      : null;
+
+                              return (
+                                <div key={todo.id || todoIndex} className="flex items-start gap-3 rounded-xl px-2.5 py-2 hover:bg-gray-50/70 transition-colors">
+                                  <div className="flex-shrink-0 pt-[2px]">
+                                    {StatusIcon ? (
+                                      <StatusIcon
+                                        className={cn(
+                                          "w-4 h-4",
+                                          todo.status === 'completed' && "text-green-600",
+                                          todo.status === 'failed' && "text-red-600",
+                                          todo.status === 'in_progress' && "text-amber-600 animate-spin"
+                                        )}
+                                      />
+                                    ) : (
+                                      <div className="w-4 h-4 rounded-full border border-gray-300 bg-white" />
+                                    )}
+                                  </div>
+
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-start gap-2">
+                                      <span className="text-[10px] md:text-[11px] text-gray-400 tabular-nums pt-[1px]">
+                                        {todoIndex + 1}.
+                                      </span>
+                                      <span
+                                        className={cn(
+                                          "block text-xs md:text-sm leading-relaxed",
+                                          todo.status === 'completed' && "text-gray-500 line-through",
+                                          todo.status === 'in_progress' && "text-gray-900 font-medium",
+                                          todo.status === 'pending' && "text-gray-700",
+                                          todo.status === 'failed' && "text-gray-900 font-medium"
+                                        )}
+                                      >
+                                        {todo.description}
+                                      </span>
+                                    </div>
+
+                                    {todo.status === 'failed' && todo.errorMessage && (
+                                      <div className="mt-1 text-[11px] text-red-600/80 leading-snug">
+                                        {todo.errorMessage}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       </div>
@@ -1648,12 +1853,14 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
                             : "bg-white text-gray-800 border border-gray-100 px-3 py-2.5 md:px-4 md:py-3 shadow-sm rounded-bl-sm"
                         )}
                       >
-                        {msg.role === 'assistant' && msg.content === '' && isSending ? (
-                          <div className="space-y-3">
-                            <LoadingSpinner />
-                          </div>
-                        ) : (
-                          <div className="space-y-3 md:space-y-4">
+                        <div className="space-y-3 md:space-y-4">
+                          {/* While the agent runs, show progress UI even if text is still hidden */}
+                          {msg.role === 'assistant' && index === messages.length - 1 && isSending && msg.content === '' && (
+                            <div className="space-y-3">
+                              <LoadingSpinner />
+                            </div>
+                          )}
+
                             {/* Agent timeline: render events in chronological order */}
                             {msg.role === 'assistant' && msg.agentStateEvents && msg.agentStateEvents.length > 0 && (() => {
                               const raw = msg.agentStateEvents as AgentStateEvent[];
@@ -1808,6 +2015,39 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
                               </div>
                             )}
 
+                            {/* Wait Token Approval UI */}
+                            {msg.waitToken && (
+                              <div className="mt-3 p-4 bg-amber-50 border border-amber-200 rounded-xl shadow-sm">
+                                <div className="flex items-start gap-3">
+                                  <div className="p-2 bg-amber-100 rounded-full">
+                                    <AlertCircle className="w-5 h-5 text-amber-600" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <h4 className="text-sm font-semibold text-amber-900 mb-1">
+                                      Aprobación Requerida
+                                    </h4>
+                                    <p className="text-xs text-amber-800 mb-3">
+                                      {msg.waitToken.reason || `La herramienta ${msg.waitToken.toolName} requiere tu aprobación para continuar.`}
+                                    </p>
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => handleWaitTokenAction(msg.waitToken!.tokenId, true)}
+                                        className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded-md transition-colors"
+                                      >
+                                        Aprobar
+                                      </button>
+                                      <button
+                                        onClick={() => handleWaitTokenAction(msg.waitToken!.tokenId, false)}
+                                        className="px-3 py-1.5 bg-white border border-amber-300 hover:bg-amber-50 text-amber-800 text-xs font-medium rounded-md transition-colors"
+                                      >
+                                        Rechazar
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
                             {/* Render company search results - simple display */}
                             {msg.searchResult && msg.metadata?.type === 'company_results' && (
                               <SmartCompanyDisplay
@@ -1825,8 +2065,7 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
                                 index={index}
                               />
                             )}
-                          </div>
-                        )}
+                        </div>
                         {msg.role === 'assistant' && msg.content && !isSending && (
                           <button
                             onClick={() => handleCopy(msg.content, index)}

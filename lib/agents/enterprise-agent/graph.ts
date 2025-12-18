@@ -6,6 +6,7 @@ import {
   think,
   callTools,
   processToolResults,
+  advanceTodo,
   finalize,
   shouldCallTools,
   correction,
@@ -37,6 +38,8 @@ export function buildEnterpriseAgentGraph() {
   graph.addNode("tools", callTools);
   // Process tool results from ToolMessage and populate toolOutputs
   graph.addNode("process_tool_results", processToolResults);
+  // Advance the current todo for synthesis-only steps (no tool needed)
+  graph.addNode("advance_todo", advanceTodo);
   graph.addNode("finalize", finalize);
   // Correction node for narration without action
   graph.addNode("correction", correction);
@@ -56,6 +59,7 @@ export function buildEnterpriseAgentGraph() {
       tools: "tools",
       finalize: "finalize",
       correction: "correction",
+      advance_todo: "advance_todo",
     }
   );
 
@@ -63,6 +67,7 @@ export function buildEnterpriseAgentGraph() {
   // We need to process the ToolMessage and populate toolOutputs before going back to think
   graph.addEdge("tools", "process_tool_results");
   graph.addEdge("process_tool_results", "think");
+  graph.addEdge("advance_todo", "think");
   
   // correction → think (feedback loop)
   graph.addEdge("correction", "think");
@@ -89,6 +94,7 @@ export function buildEnterpriseAgentGraphWithCheckpointer() {
   graph.addNode("think", think);
   graph.addNode("tools", callTools);
   graph.addNode("process_tool_results", processToolResults);
+  graph.addNode("advance_todo", advanceTodo);
   graph.addNode("finalize", finalize);
   graph.addNode("correction", correction);
 
@@ -104,11 +110,13 @@ export function buildEnterpriseAgentGraphWithCheckpointer() {
       tools: "tools",
       finalize: "finalize",
       correction: "correction",
+      advance_todo: "advance_todo",
     }
   );
 
   graph.addEdge("tools", "process_tool_results");
   graph.addEdge("process_tool_results", "think");
+  graph.addEdge("advance_todo", "think");
   graph.addEdge("correction", "think");
   graph.addEdge("finalize", END);
 

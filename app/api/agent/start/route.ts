@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { tasks } from "@trigger.dev/sdk/v3";
+import { tasks } from "@trigger.dev/sdk";
 import { validateEnvironment } from "@/lib/env-validation";
 import { ensurePromptAllowedAndTrack, estimateTokensFromTextLength } from "@/lib/usage";
 import type { enterpriseAgentTask } from "@/src/trigger/enterprise-agent";
@@ -104,11 +104,19 @@ export async function POST(req: Request) {
     }
 
     // Save user message to conversation
-    await supabase.from("conversation_messages").insert({
+    const { error: insertError } = await supabase.from("conversation_messages").insert({
       conversation_id: effectiveConversationId,
       role: "user",
       content: message,
     });
+
+    if (insertError) {
+      console.error("Error saving user message:", insertError);
+      return new Response(
+        JSON.stringify({ error: "Failed to save message" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
     // Fetch conversation history
     const { data: historyMessages } = await supabase
@@ -270,4 +278,6 @@ export async function GET(req: Request) {
     );
   }
 }
+
+
 

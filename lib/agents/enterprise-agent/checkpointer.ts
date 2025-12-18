@@ -1,6 +1,44 @@
 import { BaseCheckpointSaver, Checkpoint, CheckpointMetadata, CheckpointTuple } from "@langchain/langgraph-checkpoint";
 import { RunnableConfig } from "@langchain/core/runnables";
-import { createClient } from "@/lib/supabase/server";
+
+// Helper to get safe client
+async function getSupabaseClient() {
+  // Trigger.dev sets slightly different env vars depending on runtime/version.
+  // We treat any of these as "background worker" context (no Next.js request store / cookies()).
+  const isTrigger =
+    !!process.env.TRIGGER_PROJECT_ID ||
+    !!process.env.TRIGGER_RUN_ID ||
+    !!process.env.TRIGGER_API_URL ||
+    !!process.env.TRIGGER_ENV_ID;
+  
+  if (isTrigger) {
+    // Background/Trigger context: Use service role
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { createClient } = require("@supabase/supabase-js");
+    return createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    );
+  }
+
+  // Next.js Server Context
+  try {
+    const { createClient } = await import("@/lib/supabase/server");
+    return await createClient();
+  } catch {
+    // In background contexts, Next.js `cookies()` is unavailable and throws.
+    // Falling back to service role is expected; don't spam logs.
+    // Fallback
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { createClient } = require("@supabase/supabase-js");
+    return createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    );
+  }
+}
 
 /**
  * Supabase-backed checkpoint saver for LangGraph
@@ -24,7 +62,7 @@ export class SupabaseCheckpointSaver extends BaseCheckpointSaver {
     }
 
     try {
-      const supabase = await createClient();
+      const supabase = await getSupabaseClient();
 
       // If no checkpoint_id provided, get the latest
       let query = supabase
@@ -62,7 +100,7 @@ export class SupabaseCheckpointSaver extends BaseCheckpointSaver {
       const checkpoint: Checkpoint = data.state as Checkpoint;
       const metadata: CheckpointMetadata = data.metadata as CheckpointMetadata;
 
-      const pendingWrites = (writes || []).map((write): [string, string, unknown] => [
+      const pendingWrites = (writes || []).map((write: any): [string, string, unknown] => [
         write.idx?.toString() || '0',
         write.channel,
         write.value,
@@ -110,7 +148,7 @@ export class SupabaseCheckpointSaver extends BaseCheckpointSaver {
     }
 
     try {
-      const supabase = await createClient();
+      const supabase = await getSupabaseClient();
 
       let query = supabase
         .from('agent_checkpoints')
@@ -159,7 +197,7 @@ export class SupabaseCheckpointSaver extends BaseCheckpointSaver {
         const checkpoint: Checkpoint = data.state as Checkpoint;
         const metadata: CheckpointMetadata = data.metadata as CheckpointMetadata;
 
-        const pendingWrites = (writes || []).map((write): [string, string, unknown] => [
+        const pendingWrites = (writes || []).map((write: any): [string, string, unknown] => [
           write.idx?.toString() || '0',
           write.channel,
           write.value,
@@ -209,7 +247,7 @@ export class SupabaseCheckpointSaver extends BaseCheckpointSaver {
     }
 
     try {
-      const supabase = await createClient();
+      const supabase = await getSupabaseClient();
 
       // Get parent_id from config
       const parentId = config.configurable?.checkpoint_id as string | undefined;
@@ -264,7 +302,7 @@ export class SupabaseCheckpointSaver extends BaseCheckpointSaver {
     }
 
     try {
-      const supabase = await createClient();
+      const supabase = await getSupabaseClient();
 
       // Filter out writes with null/undefined values and prepare records
       const writeRecords = writes
@@ -301,7 +339,7 @@ export class SupabaseCheckpointSaver extends BaseCheckpointSaver {
    */
   async deleteThread(threadId: string): Promise<void> {
     try {
-      const supabase = await createClient();
+      const supabase = await getSupabaseClient();
 
       // Delete checkpoint writes first (foreign key constraint)
       await supabase

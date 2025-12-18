@@ -17,6 +17,13 @@ export interface AgentRun {
   progress: {
     currentNode?: string;
     timestamp?: string;
+    waitToken?: {
+      tokenId: string;
+      toolName: string;
+      toolCallId: string;
+      reason: string;
+      createdAt: string;
+    } | null;
   } | null;
   search_results: unknown | null;
   email_draft: {
@@ -32,12 +39,23 @@ export interface AgentRun {
     status: "pending" | "in_progress" | "completed" | "failed";
     createdAt?: string;
     completedAt?: string;
+    errorMessage?: string;
   }>;
   response_content: string | null;
   error_message: string | null;
   input_tokens: number;
   output_tokens: number;
   total_tokens: number;
+  tool_outputs?: Array<{
+    kind?: 'tool_call' | 'tool_result';
+    toolName: string;
+    toolCallId: string;
+    input?: Record<string, unknown>;
+    output?: unknown;
+    success?: boolean;
+    error?: string;
+    timestamp: string;
+  }>;
   model_name: string;
   started_at: string | null;
   completed_at: string | null;

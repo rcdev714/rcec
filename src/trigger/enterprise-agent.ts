@@ -1,4 +1,4 @@
-import { task, logger, metadata } from "@trigger.dev/sdk/v3";
+import { task, logger, metadata } from "@trigger.dev/sdk";
 import { BaseMessage } from "@langchain/core/messages";
 
 // Import agent components - these will be executed in the background
@@ -109,11 +109,10 @@ export const enterpriseAgentTask = task({
       messages.push(new HumanMessage(message));
 
       // Import and build the graph
-      const { buildEnterpriseAgentGraph } = await import("@/lib/agents/enterprise-agent/graph");
-      // const { SupabaseCheckpointSaver } = await import("@/lib/agents/enterprise-agent/checkpointer");
+      const { buildEnterpriseAgentGraphWithCheckpointer } = await import("@/lib/agents/enterprise-agent/graph");
       
       // Build graph with checkpointing enabled
-      const graph = buildEnterpriseAgentGraph();
+      const graph = buildEnterpriseAgentGraphWithCheckpointer();
 
       logger.info("Graph built, starting execution", { threadId });
 
@@ -129,11 +128,12 @@ export const enterpriseAgentTask = task({
       
       // Track ALL tool invocations and results for visibility
       const toolOutputsHistory: Array<{
+        kind: 'tool_call' | 'tool_result';
         toolName: string;
         toolCallId?: string;
         input: Record<string, unknown>;
-        output: unknown;
-        success: boolean;
+        output?: unknown;
+        success?: boolean;
         timestamp: string;
         errorMessage?: string;
       }> = [];
@@ -145,6 +145,81 @@ export const enterpriseAgentTask = task({
           .from("agent_runs")
           .update(updates)
           .eq("id", runId);
+      };
+
+      /**
+       * Persist todos in a normalized relational table for durable conversation reloads.
+       * This complements agent_runs.todos (jsonb) by storing each todo as its own row.
+       */
+      const normalizeTodoStatus = (value: unknown): "pending" | "in_progress" | "completed" | "failed" => {
+        const v = typeof value === "string" ? value : "";
+        if (v === "pending" || v === "in_progress" || v === "completed" || v === "failed") return v;
+        return "pending";
+      };
+
+      const toIsoOrNull = (value: unknown): string | null => {
+        if (!value) return null;
+        if (typeof value === "string") {
+          const d = new Date(value);
+          return Number.isNaN(d.getTime()) ? null : d.toISOString();
+        }
+        if (value instanceof Date) {
+          return Number.isNaN(value.getTime()) ? null : value.toISOString();
+        }
+        return null;
+      };
+
+      const upsertConversationTodos = async (todosList: unknown[]) => {
+        if (!Array.isArray(todosList) || todosList.length === 0) return;
+        try {
+          const rows = todosList
+            .map((t: any, idx: number) => {
+              const todoId = String(t?.id ?? idx);
+              const description = String(t?.description ?? "");
+              if (!description.trim()) return null;
+
+              const createdAtIso = toIsoOrNull(t?.createdAt) || new Date().toISOString();
+              const completedAtIso = toIsoOrNull(t?.completedAt);
+              const errorMessage =
+                typeof t?.errorMessage === "string" && t.errorMessage.trim().length > 0
+                  ? t.errorMessage.trim()
+                  : null;
+
+              return {
+                run_id: runId,
+                conversation_id: conversationId,
+                todo_id: todoId,
+                description,
+                status: normalizeTodoStatus(t?.status),
+                sort_order: idx,
+                created_at: createdAtIso,
+                completed_at: completedAtIso,
+                error_message: errorMessage,
+                updated_at: new Date().toISOString(),
+              };
+            })
+            .filter(Boolean);
+
+          if (rows.length === 0) return;
+
+          const { error } = await supabase
+            .from("conversation_todos")
+            .upsert(rows as any, { onConflict: "run_id,todo_id" });
+
+          if (error) {
+            logger.warn("Failed to upsert conversation_todos", {
+              runId,
+              conversationId,
+              error: error.message,
+            });
+          }
+        } catch (e) {
+          logger.warn("Failed to sync todos to conversation_todos", {
+            runId,
+            conversationId,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
       };
 
       // Stream the graph execution
@@ -159,6 +234,7 @@ export const enterpriseAgentTask = task({
           modelName,
           thinkingLevel,
           startTime: new Date(),
+          runId,
           // Initialize userContext with userId - required for offerings tools in background
           userContext: {
             userId,
@@ -170,12 +246,12 @@ export const enterpriseAgentTask = task({
         },
         {
           configurable: { 
+            // CRITICAL: Must use threadId (stable per conversation), not runId (unique per run),
+            // otherwise checkpointing can't restore prior state.
             thread_id: threadId,
             checkpoint_ns: "",
           },
           // Enable checkpointing for state persistence
-          // Note: Uncomment when ready to enable full checkpointing
-          // checkpointer,
           streamMode: "updates" as const,
           recursionLimit: 100,
         }
@@ -218,16 +294,49 @@ export const enterpriseAgentTask = task({
                     argsKeys: Object.keys(tc.args || {}),
                   })),
                 });
+
+                // Persist pending tool calls
+                let hasNewCalls = false;
+                for (const tc of toolCalls) {
+                  // We don't track tool_call IDs in processedToolCallIds because that set tracks results
+                  // But we should verify we haven't already added this specific tool call event
+                  const toolCallId = tc.id || `${tc.name}-${Date.now()}`;
+                  
+                  // Check if we already have a tool_call event with this ID
+                  const exists = toolOutputsHistory.some(e => e.kind === 'tool_call' && e.toolCallId === toolCallId);
+                  if (!exists) {
+                    toolOutputsHistory.push({
+                      kind: 'tool_call',
+                      toolName: tc.name,
+                      toolCallId: toolCallId,
+                      input: tc.args || {},
+                      timestamp: new Date().toISOString(),
+                    });
+                    hasNewCalls = true;
+                  }
+                }
+                
+                if (hasNewCalls) {
+                  await updateRunStatus({ tool_outputs: toolOutputsHistory });
+                }
               }
             }
           }
         }
 
-        // Track todos
-        if ((nodeName === "plan_todos" || nodeName === "update_todos") && nodeOutput.todo) {
+        // Track todos - now updated automatically in process_tool_results
+        if (nodeOutput.todo && Array.isArray(nodeOutput.todo)) {
           todos = nodeOutput.todo as unknown[];
           await updateRunStatus({ todos });
+          await upsertConversationTodos(todos);
           metadata.set("todos", JSON.stringify(todos));
+          logger.info("Todos updated", { 
+            nodeName,
+            todoCount: todos.length,
+            completed: todos.filter((t: any) => t.status === 'completed').length,
+            inProgress: todos.filter((t: any) => t.status === 'in_progress').length,
+            failed: todos.filter((t: any) => t.status === 'failed').length,
+          });
         }
 
         // Track ALL tool outputs for visibility
@@ -247,6 +356,7 @@ export const enterpriseAgentTask = task({
               
               // Add to history
               toolOutputsHistory.push({
+                kind: 'tool_result',
                 toolName: output.toolName,
                 toolCallId,
                 input: output.input || {},
@@ -346,6 +456,7 @@ export const enterpriseAgentTask = task({
         total_tokens: totalTokens,
         current_node: "completed",
       });
+      await upsertConversationTodos(todos);
 
       logger.info("Tool outputs summary", {
         totalToolCalls: toolOutputsHistory.length,
