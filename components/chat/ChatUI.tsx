@@ -40,7 +40,7 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
   const [copiedInline, setCopiedInline] = useState<string | null>(null);
   
   // Settings State
-  const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash");
+  const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-pro");
   const [thinkingLevel, setThinkingLevel] = useState<'high' | 'low'>('high');
   const [agentSettings, setAgentSettings] = useState<AgentSettings>(DEFAULT_AGENT_SETTINGS);
   const [settingsOpen, setSettingsOpen] = useState(false);

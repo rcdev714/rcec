@@ -31,7 +31,7 @@ export interface AgentSettings {
  * Default settings for the agent
  */
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
-  modelName: 'gemini-2.5-flash',
+  modelName: 'gemini-2.5-pro',
   thinkingLevel: 'high',
   temperature: 0.2, // Default low temp for factual tasks
   toolPolicy: {
