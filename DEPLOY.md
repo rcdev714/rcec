@@ -100,3 +100,53 @@ Now, every `git push` to main will:
 -   **"Cookies outside request scope"**: This is fixed by our recent changes to `contact-tools.ts` and `nodes.ts` which detect the background environment and use the Service Role client.
 -   **Missing Environment Variables**: Ensure `SUPABASE_SERVICE_ROLE_KEY` is set in **BOTH** Netlify and Trigger.dev dashboards.
 
+### Fix rápido: 401 `disabled_client` al iniciar sesión con Google (Supabase OAuth)
+
+Este error **no se arregla cambiando claves en Next.js** (en este repo Google login se hace con `supabase.auth.signInWithOAuth({ provider: 'google' })`).
+Normalmente significa que el **OAuth Client de Google está deshabilitado** o mal configurado, y Supabase solo te lo “rebota”.
+
+#### 1) Crear un nuevo OAuth Client en Google Cloud
+
+En **Google Cloud Console → APIs & Services → Credentials → Create credentials → OAuth client ID**:
+
+- **Application type**: Web application
+- **Authorized JavaScript origins** (⚠️ solo ORIGEN, sin path y sin `/` al final):
+  - ✅ `http://localhost:3000`
+  - ✅ `https://<tu-dominio-prod>`
+  - ❌ `http://localhost:3000/auth/callback/`
+  - ❌ `https://<tu-dominio-prod>/auth/callback/`
+- **Authorized redirect URIs** (CRÍTICO: es el callback de Supabase, no el de Next.js):
+  - `https://<tu-supabase-project-ref>.supabase.co/auth/v1/callback`
+  - (opcional si usas Supabase local) `http://localhost:54321/auth/v1/callback`
+
+Guarda y copia el **Client ID** y **Client Secret** nuevos.
+
+#### 2) Pegar credenciales nuevas en Supabase
+
+En **Supabase Dashboard → Authentication → Providers → Google**:
+
+- Pega el **Client ID** nuevo
+- Pega el **Client Secret** nuevo
+- Guarda cambios
+
+> Tip: si recién creaste el client, a veces tarda 1–5 min en “propagar”.
+
+#### 3) Verificar redirects permitidos en Supabase (para este repo)
+
+Este proyecto redirige a:
+
+- `http://localhost:3000/auth/callback` (dev)
+- `https://<tu-dominio-prod>/auth/callback` (prod)
+
+Entonces en **Supabase Dashboard → Authentication → URL Configuration** revisa:
+
+- **Site URL**: `https://<tu-dominio-prod>`
+- **Additional Redirect URLs**:
+  - `http://localhost:3000/auth/callback`
+  - `https://<tu-dominio-prod>/auth/callback`
+
+#### 4) Probar y limpiar sesión
+
+- Cierra sesión (o borra cookies/localStorage) y reintenta “Continuar con Google”.
+- Si vuelve a fallar, revisa el mensaje en `/auth/error` (ahora mostramos el error cuando el proveedor devuelve `error`).
+

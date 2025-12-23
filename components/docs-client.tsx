@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Home, Menu, X, Rocket, Database, Brain, Package, Filter, FileText, CreditCard, LayoutDashboard, Settings } from "lucide-react";
+import { Home, Menu, X, Rocket, Database, Brain, Package, Filter, FileText, CreditCard, Settings } from "lucide-react";
 import Link from 'next/link';
 
 interface Section {
@@ -29,21 +29,19 @@ export default function DocsPageClient() {
         <div className="prose prose-lg max-w-none">
           <h1 className="text-3xl font-semibold tracking-tight text-gray-900 !mb-3">Documentación de Camella</h1>
           <p className="text-lg !mt-0 text-gray-500">
-                  Plataforma integral para encontrar y analizar empresas ecuatorianas con inteligencia artificial.
-                  Todo lo que necesitas saber para maximizar tu experiencia.
+            Plataforma para buscar y analizar empresas ecuatorianas con inteligencia artificial.
                 </p>
           
           <h2 id="overview-intro" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">¿Qué es Camella?</h2>
           <p className="!mt-4">
-                  Camella es una plataforma B2B especializada en el mercado ecuatoriano que combina una base de datos
-                  completa de empresas con un Motor de Búsqueda Empresarial para potenciar estrategias comerciales
-                  y de venta. Diseñada para vendedores, consultores y empresas que necesitan encontrar prospectos
-                  ideales en el mercado ecuatoriano.
+            Camella es un motor de búsqueda empresarial que combina una base de datos de más de 300,000 empresas ecuatorianas 
+            con un asistente de IA conversacional. Diseñado para vendedores, consultores y empresas que necesitan encontrar 
+            prospectos y analizar el mercado ecuatoriano.
                 </p>
           <ul className="!mt-6 !space-y-3">
-            <li><strong>Búsqueda Inteligente:</strong> Encuentra empresas perfectas con IA avanzada.</li>
-            <li><strong>Datos Completos:</strong> Información financiera y de contacto verificada.</li>
-            <li><strong>Resultados Rápidos:</strong> Respuestas en segundos, no en horas.</li>
+            <li><strong>Motor de Búsqueda IA:</strong> Conversa con un asistente que busca empresas, analiza datos financieros y genera emails personalizados.</li>
+            <li><strong>Base de Datos:</strong> Acceso a información financiera, ubicación, tamaño y más de empresas ecuatorianas.</li>
+            <li><strong>Catálogo de Servicios:</strong> Crea y comparte tus servicios para que la IA los use como contexto en sus respuestas.</li>
           </ul>
         </div>
       )
@@ -53,60 +51,81 @@ export default function DocsPageClient() {
       name: "Primeros Pasos", 
       icon: Rocket,
       subsections: [
-        { id: "g-start-guide", title: "Guía Paso a Paso" },
-        { id: "g-start-nav", title: "1. Navega al Motor de Búsqueda Empresarial" },
-        { id: "g-start-convo", title: "2. Tu Primera Conversación" },
-        { id: "g-start-explore", title: "3. Explora Más Funciones" }
+        { id: "g-start-chat", title: "1. Usa el Motor de Búsqueda" },
+        { id: "g-start-examples", title: "2. Ejemplos de Consultas" },
+        { id: "g-start-companies", title: "3. Explora la Base de Datos" }
       ],
       content: (
         <div className="prose prose-lg max-w-none">
-          <h1 className="text-3xl font-semibold tracking-tight text-gray-900 !mb-3">Primeros Pasos en Camella</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-gray-900 !mb-3">Primeros Pasos</h1>
           <p className="text-lg !mt-0 text-gray-500">
-            Descubre el poder de nuestro Motor de Búsqueda Empresarial, el corazón de Camella que transforma cómo encuentras empresas. Comienza tu viaje en menos de 5 minutos.
+            Comienza a usar Camella en menos de 5 minutos.
           </p>
           
-          <h2 id="g-start-guide" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Tu Guía Paso a Paso</h2>
-
-          <h3 id="g-start-nav" className="!mt-8 !mb-3 text-lg font-semibold tracking-tight">1. Navega al Motor de Búsqueda Empresarial</h3>
+          <h2 id="g-start-chat" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">1. Usa el Motor de Búsqueda</h2>
           <p className="!mt-4">
-            Ve al menú lateral y haz clic en &quot;Agente&quot; para abrir el Motor de Búsqueda Empresarial. El plan gratuito te ofrece límites generosos para empezar:
+            Ve a <strong>Agente</strong> en el menú lateral para abrir el Motor de Búsqueda Empresarial. 
+            Puedes hacer preguntas en lenguaje natural sobre empresas ecuatorianas.
           </p>
+
+          <h2 id="g-start-examples" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">2. Ejemplos de Consultas</h2>
             <ul className="!mt-6 !space-y-3">
-              <li>10 Mensajes IA/mes</li>
-              <li>100 Búsquedas/mes</li>
-              <li>Lectura de datos ilimitada</li>
+            <li>&quot;Encuentra empresas de tecnología en Quito con más de 50 empleados&quot;</li>
+            <li>&quot;Muéstrame las empresas con mayores ingresos en Guayas&quot;</li>
+            <li>&quot;Analiza los estados financieros de Corporación Favorita&quot;</li>
+            <li>&quot;Redacta un email para ofrecer mis servicios de consultoría a empresas manufactureras&quot;</li>
+            <li>&quot;Encuentra contactos de directivos en empresas de retail&quot;</li>
             </ul>
 
-            <h3 id="g-start-convo" className="!mt-8 !mb-3 text-lg font-semibold tracking-tight">2. Tu Primera Conversación</h3>
+          <h2 id="g-start-companies" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">3. Explora la Base de Datos</h2>
             <p className="!mt-4">
-              Prueba el Motor de Búsqueda Empresarial preguntando por empresas en tu sector o ubicación. Aquí tienes algunos ejemplos:
-            </p>
+            También puedes buscar empresas manualmente en <strong>Empresas</strong> usando filtros avanzados por ubicación, 
+            tamaño, ingresos y más. Cada empresa tiene un perfil completo con historial financiero.
+          </p>
+        </div>
+      )
+    },
+    {
+      id: "ai-assistant",
+      name: "Motor de Búsqueda IA",
+      icon: Brain,
+      subsections: [
+        { id: "ai-capabilities", title: "Capacidades" },
+        { id: "ai-examples", title: "Ejemplos de Uso" }
+      ],
+      content: (
+        <div className="prose prose-lg max-w-none">
+          <h1 className="text-3xl font-semibold tracking-tight text-gray-900 !mb-3">Motor de Búsqueda Empresarial</h1>
+          <p className="text-lg !mt-0 text-gray-500">
+            Un asistente conversacional que busca empresas, analiza datos y genera contenido comercial.
+          </p>
+          
+          <h2 id="ai-capabilities" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Capacidades</h2>
             <ul className="!mt-6 !space-y-3">
-                <li>&quot;Empresas con mayores ingresos en Pichincha&quot;</li>
-                <li>&quot;Redacta un correo para ofrecer mis servicios de marketing&quot;</li>
-                <li>&quot;Encuentra empresas en Guayas con más de 50 empleados&quot;</li>
+            <li><strong>Búsqueda de Empresas:</strong> Encuentra empresas por ubicación, sector, tamaño, ingresos y más.</li>
+            <li><strong>Análisis Financiero:</strong> Obtén estados financieros completos, ratios y historial multi-año.</li>
+            <li><strong>Búsqueda de Contactos:</strong> Encuentra directivos y representantes legales de empresas.</li>
+            <li><strong>Generación de Emails:</strong> Redacta emails comerciales personalizados usando tus servicios como contexto.</li>
+            <li><strong>Búsqueda Web:</strong> Busca noticias recientes e información adicional sobre empresas.</li>
                         </ul>
 
-            <h3 id="g-start-explore" className="!mt-8 !mb-3 text-lg font-semibold tracking-tight">3. Explora Más Funciones</h3>
-            <p className="!mt-4">
-              Una vez familiarizado con el IA, explora el dashboard para visualizar datos y la sección de empresas para búsquedas manuales y filtrado avanzado.
-            </p>
-            
-            <div className="not-prose mt-8">
-              <div className="bg-gray-600 rounded-lg p-8 text-white text-center">
-                <h3 className="text-2xl font-semibold">¿Listo para Más Potencia?</h3>
-                <p className="mt-2 text-gray-200 max-w-2xl mx-auto">
-                  El Plan Gratuito es perfecto para empezar. Cuando necesites más capacidades, considera actualizar a Pro para desbloquear todo el potencial.
-                </p>
-                <div className="mt-6">
-                  <Link href="/pricing" className="px-6 py-3 bg-white text-gray-900 font-semibold rounded-lg hover:bg-gray-50 transition-colors shadow-lg">
-                        Ver Planes
-                  </Link>
+          <h2 id="ai-examples" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Ejemplos de Uso</h2>
+          <div className="!mt-6 space-y-4">
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <p className="font-medium text-gray-900 mb-2">Búsqueda Simple</p>
+              <p className="text-sm text-gray-600">&quot;Empresas de manufactura en Pichincha&quot;</p>
                 </div>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <p className="font-medium text-gray-900 mb-2">Análisis Financiero</p>
+              <p className="text-sm text-gray-600">&quot;Analiza la salud financiera de Corporación Favorita&quot;</p>
               </div>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <p className="font-medium text-gray-900 mb-2">Generación de Email</p>
+              <p className="text-sm text-gray-600">&quot;Redacta un email ofreciendo mi servicio de consultoría a empresas de retail en Quito&quot;</p>
             </div>
           </div>
-        ),
+        </div>
+      )
     },
     {
       id: "company-database",
@@ -114,33 +133,28 @@ export default function DocsPageClient() {
       icon: Database,
       subsections: [
         { id: "db-info", title: "Información Disponible" },
-        { id: "db-contact", title: "Contacto Directo" }
+        { id: "db-filters", title: "Filtros y Búsqueda" },
+        { id: "db-profiles", title: "Perfiles de Empresa" }
       ],
       content: (
         <div className="prose prose-lg max-w-none">
             <h1 className="text-3xl font-semibold tracking-tight text-gray-900 !mb-3">Base de Datos Empresarial</h1>
           <p className="text-lg !mt-0 text-gray-500">
-            Información completa y actualizada de más de 300,000 empresas ecuatorianas.
+            Más de 300,000 empresas ecuatorianas con información financiera y empresarial completa.
             </p>
 
           <h2 id="db-info" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Información Disponible</h2>
-          <p className="!mt-4">
-              Nuestra base de datos incluye información completa y verificada de empresas ecuatorianas,
-              actualizada regularmente con fuentes oficiales.
-            </p>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
             <div>
               <h3 className="!mt-8 !mb-3 text-lg font-semibold tracking-tight">Datos Básicos</h3>
               <ul className="!mt-6 !space-y-3">
                 <li>RUC (Registro Único de Contribuyentes)</li>
                 <li>Nombre legal y comercial</li>
-                <li>Ubicación completa (provincia, cantón, ciudad)</li>
+                <li>Ubicación (provincia, cantón, ciudad)</li>
                 <li>Actividad principal (CIIU)</li>
                 <li>Estado y tipo de empresa</li>
                 </ul>
               </div>
-
                         <div>
               <h3 className="!mt-8 !mb-3 text-lg font-semibold tracking-tight">Datos Financieros</h3>
               <ul className="!mt-6 !space-y-3">
@@ -148,574 +162,85 @@ export default function DocsPageClient() {
                 <li>Activos totales y patrimonio</li>
                 <li>Utilidades (antes y después de impuestos)</li>
                 <li>Número de empleados</li>
-                <li>Ratios financeiros calculados</li>
+                <li>Ratios financieros (ROE, ROA, liquidez)</li>
                     </ul>
                   </div>
                 </div>
 
-          <h2 id="db-contact" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Contacto Directo con Decision Makers</h2>
+          <h2 id="db-filters" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Filtros y Búsqueda</h2>
           <p className="!mt-4">
-            <strong>La característica más poderosa:</strong> Conecta directamente con los ejecutivos que toman las decisiones en cada empresa. Proporcionamos perfiles de LinkedIn de directivos y gerentes, emails y teléfonos para que puedas contactarlos fácilmente.
+            En la sección <strong>Empresas</strong> puedes filtrar por:
           </p>
-        </div>
-      )
-    },
-    {
-      id: "ai-assistant",
-      name: "Asistente IA",
-      icon: Brain,
-      subsections: [
-        { id: "ai-capabilities", title: "Capacidades Clave" },
-        { id: "ai-examples", title: "Ejemplos de Uso" }
-      ],
-      content: (
-        <div className="prose prose-lg max-w-none">
-            <h1 className="text-3xl font-semibold tracking-tight text-gray-900 !mb-3">Motor de Búsqueda Empresarial</h1>
-          <p className="text-lg !mt-0 text-gray-500">
-            El corazón de Camella: una interfaz conversacional para explorar datos complejos de forma sencilla.
-          </p>
-          
-          <h2 id="ai-capabilities" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Capacidades Clave</h2>
           <ul className="!mt-6 !space-y-3">
-            <li><strong>Búsqueda Semántica:</strong> Entiende la intención de tus preguntas, no solo palabras clave.</li>
-            <li><strong>Filtrado Avanzado:</strong> Combina múltiples criterios en una sola consulta en lenguaje natural.</li>
-            <li><strong>Generación de Contenido:</strong> Redacta correos, crea resúmenes y más.</li>
+            <li><strong>Ubicación:</strong> Provincia</li>
+            <li><strong>Tamaño:</strong> Rango de empleados</li>
+            <li><strong>Financiero:</strong> Ingresos, activos, patrimonio, utilidades</li>
+            <li><strong>Búsqueda:</strong> RUC, nombre legal o comercial</li>
+            <li><strong>Ordenamiento:</strong> Por ingresos, empleados, completitud de datos</li>
           </ul>
 
-          <h2 id="ai-examples" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Ejemplos de Uso</h2>
+          <h2 id="db-profiles" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Perfiles de Empresa</h2>
+          <p className="!mt-4">
+            Cada empresa tiene un perfil completo que incluye:
+          </p>
           <ul className="!mt-6 !space-y-3">
-            <li>&quot;Encuentra empresas de software en Quito con más de 50 empleados.&quot;</li>
-            <li>&quot;¿Cuáles son las 10 empresas con mayores ingresos en Guayas?&quot;</li>
-            <li>&quot;Redacta un correo para presentar mis servicios de consultoría a [nombre de empresa].&quot;</li>
+            <li>Información general y ubicación</li>
+            <li>Historial financiero multi-año (2020-2024)</li>
+            <li>Gráficos de evolución de ingresos, activos y empleados</li>
+            <li>Ratios financieros calculados</li>
                   </ul>
         </div>
       )
     },
     {
       id: "services-management",
-      name: "Gestión de Servicios",
+      name: "Catálogo de Servicios",
       icon: Package,
       subsections: [
-        { id: "services-why", title: "¿Por Qué Gestionar Servicios?"},
-        { id: "services-canvas", title: "Canvas de Servicios" },
-        { id: "services-creation", title: "Proceso de Creación" },
-        { id: "services-fields", title: "Campos Disponibles" },
+        { id: "services-why", title: "¿Para qué sirve?"},
+        { id: "services-creation", title: "Crear un Servicio" },
+        { id: "services-sharing", title: "Compartir Servicios" },
       ],
       content: (
-        <div className="space-y-8">
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Servicios</p>
-            <h1 className="text-3xl font-semibold tracking-tight text-gray-900 !mb-2">Gestión de Servicios</h1>
-            <p className="text-lg !mt-2 text-gray-500">
-              Crea perfiles detallados de tus productos/servicios y encuentra prospectos ideales automáticamente.
-            </p>
-          </div>
+        <div className="prose prose-lg max-w-none">
+          <h1 className="text-3xl font-semibold tracking-tight text-gray-900 !mb-3">Catálogo de Servicios</h1>
+          <p className="text-lg !mt-0 text-gray-500">
+            Crea y gestiona tus servicios para que la IA los use como contexto en sus respuestas.
+          </p>
 
-          <div className="bg-white border border-gray-200 rounded-lg p-8">
-            <div className="space-y-6">
-              <div>
-                <h2 id="services-why" className="!mt-0 !mb-4 text-xl font-semibold tracking-tight">¿Por Qué Gestionar Servicios?</h2>
-                <p className="!mt-4 text-lg text-gray-600 mb-6">
-                  Los servicios te permiten organizar tu oferta comercial y definir exactamente qué tipo de empresas
-                  son tus clientes ideales. El sistema utiliza esta información para sugerirte prospectos relevantes.
-                </p>
-              </div>
-
-              <div id="services-canvas" className="bg-gray-50 rounded-xl p-8 border border-gray-200 mb-8">
-                <h3 className="text-2xl font-semibold text-gray-900 mb-6">Tu Canvas de Servicios: Plataforma Completa Lista para Usar</h3>
-                <p className="text-lg text-gray-700 mb-6">
-                  Camella te proporciona un <strong>canvas completo y personalizable</strong> donde puedes configurar
-                  y vender cualquier tipo de servicio o producto que ofrezcas a empresas ecuatorianas.
-                  Es como tener tu propia tienda online integrada con una base de datos de 300,000+ empresas.
-                </p>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                        <span className="text-gray-600 font-semibold text-xl">S</span>
-                      </div>
-                      <h4 className="font-semibold text-gray-900">Tienda Personal</h4>
-                    </div>
-                    <p className="text-sm text-gray-600">Tu propia vitrina digital para mostrar servicios con diseño profesional</p>
-                  </div>
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                        <span className="text-gray-600 font-semibold text-xl">P</span>
-                      </div>
-                      <h4 className="font-semibold text-gray-900">Pagos Integrados</h4>
-                    </div>
-                    <p className="text-sm text-gray-600">Sistema de pagos seguro con Stripe para procesar transacciones automáticamente</p>
-                  </div>
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                        <span className="text-gray-600 font-semibold text-xl">T</span>
-                      </div>
-                      <h4 className="font-semibold text-gray-900">Targeting Automático</h4>
-                    </div>
-                    <p className="text-sm text-gray-600">La plataforma encuentra automáticamente empresas ideales para tus servicios</p>
-                  </div>
-                </div>
-
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h4 className="font-semibold text-gray-900 mb-4">Lo que Incluye tu Canvas</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <div className="flex items-start space-x-3">
-                        <div className="w-2 h-2 bg-gray-500 rounded-full mt-2 flex-shrink-0"></div>
-                        <div>
-                          <h5 className="font-medium text-gray-900">Página de Producto</h5>
-                          <p className="text-sm text-gray-600">Presentación profesional con imágenes, videos y descripciones</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start space-x-3">
-                        <div className="w-2 h-2 bg-gray-500 rounded-full mt-2 flex-shrink-0"></div>
-                        <div>
-                          <h5 className="font-medium text-gray-900">Sistema de Precios</h5>
-                          <p className="text-sm text-gray-600">Múltiples planes, descuentos y opciones de pago flexibles</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start space-x-3">
-                        <div className="w-2 h-2 bg-gray-500 rounded-full mt-2 flex-shrink-0"></div>
-                        <div>
-                          <h5 className="font-medium text-gray-900">Formulario de Contacto</h5>
-                          <p className="text-sm text-gray-600">Captura leads automáticamente con formularios integrados</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex items-start space-x-3">
-                        <div className="w-2 h-2 bg-gray-500 rounded-full mt-2 flex-shrink-0"></div>
-                        <div>
-                          <h5 className="font-medium text-gray-900">Analytics Integrados</h5>
-                          <p className="text-sm text-gray-600">Métricas de rendimiento y conversiones en tiempo real</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start space-x-3">
-                        <div className="w-2 h-2 bg-gray-500 rounded-full mt-2 flex-shrink-0"></div>
-                        <div>
-                          <h5 className="font-medium text-gray-900">Gestión de Clientes</h5>
-                          <p className="text-sm text-gray-600">CRM integrado para seguimiento de prospectos y clientes</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start space-x-3">
-                        <div className="w-2 h-2 bg-gray-500 rounded-full mt-2 flex-shrink-0"></div>
-                        <div>
-                          <h5 className="font-medium text-gray-900">Automatización</h5>
-                          <p className="text-sm text-gray-600">Emails automáticos, recordatorios y seguimiento personalizado</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  <h3 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-2">Información Básica</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-white0 rounded-full mt-3 flex-shrink-0"></div>
-                      <div>
-                        <h4 className="font-medium text-gray-900">Nombre del Servicio</h4>
-                        <p className="text-sm text-gray-600">Identifica claramente tu oferta</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-white0 rounded-full mt-3 flex-shrink-0"></div>
-                      <div>
-                        <h4 className="font-medium text-gray-900">Descripción Detallada</h4>
-                        <p className="text-sm text-gray-600">Explica qué ofreces y sus beneficios</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-white0 rounded-full mt-3 flex-shrink-0"></div>
-                      <div>
-                        <h4 className="font-medium text-gray-900">Industria Objetivo</h4>
-                        <p className="text-sm text-gray-600">Sector específico al que te diriges</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-2">Modelos de Precio</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-white0 rounded-full mt-3 flex-shrink-0"></div>
-                      <div>
-                        <h4 className="font-medium text-gray-900">Pago Único</h4>
-                        <p className="text-sm text-gray-600">Productos o servicios con precio fijo</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-white0 rounded-full mt-3 flex-shrink-0"></div>
-                      <div>
-                        <h4 className="font-medium text-gray-900">Suscripción</h4>
-                        <p className="text-sm text-gray-600">Servicios recurrentes con múltiples planes</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-white0 rounded-full mt-3 flex-shrink-0"></div>
-                      <div>
-                        <h4 className="font-medium text-gray-900">Planes Múltiples</h4>
-                        <p className="text-sm text-gray-600">Opciones Básico, Pro, Empresarial, etc.</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div id="services-creation" className="bg-white border border-gray-200 rounded-lg p-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-6">Proceso de Creación</h2>
-            <div className="space-y-6">
-              <div className="flex items-start space-x-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-white border border-gray-300 rounded-full flex items-center justify-center">
-                  <span className="text-gray-600 font-semibold">1</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-medium text-gray-900">Crear Servicio</h3>
-                  <p className="text-gray-600 mt-1">Ve a &quot;Servicios&quot; &rarr; &quot;Añadir Servicio&quot; y completa la información básica</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-white border border-gray-300 rounded-full flex items-center justify-center">
-                  <span className="text-gray-600 font-semibold">2</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-medium text-gray-900">Definir Precios</h3>
-                  <p className="text-gray-600 mt-1">Configura tus planes de precios y modelo de pago (único o suscripción)</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-white border border-gray-300 rounded-full flex items-center justify-center">
-                  <span className="text-gray-600 font-semibold">3</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-medium text-gray-900">Añadir Enlaces</h3>
-                  <p className="text-gray-600 mt-1">Incluye sitio web, redes sociales y documentación para completar el perfil</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-white border border-gray-300 rounded-full flex items-center justify-center">
-                  <span className="text-gray-600 font-semibold">4</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-medium text-gray-900">Definir Targeting</h3>
-                  <p className="text-gray-600 mt-1">Especifica qué industrias y criterios hacen que una empresa sea un prospecto ideal</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div id="services-fields" className="bg-white border border-gray-200 rounded-lg p-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-6">Configuración Completa del Canvas</h2>
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">Campos Disponibles para tu Servicio</h3>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <h4 className="font-medium text-gray-900 mb-2">📝 Información Principal</h4>
-                      <ul className="text-sm text-gray-600 space-y-1">
-                        <li>• <strong>Nombre del Servicio:</strong> Identificación clara</li>
-                        <li>• <strong>Descripción:</strong> Detalles completos del servicio</li>
-                        <li>• <strong>Industria:</strong> Sector al que pertenece</li>
-                        <li>• <strong>Tipo de Pago:</strong> Único o suscripción</li>
+          <h2 id="services-why" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">¿Para qué sirve?</h2>
+          <p className="!mt-4">
+            Cuando creas servicios en tu catálogo, el Motor de Búsqueda IA los usa automáticamente como contexto. 
+            Esto permite que la IA:
+          </p>
+          <ul className="!mt-6 !space-y-3">
+            <li>Redacte emails personalizados mencionando tus servicios específicos</li>
+            <li>Sugiera empresas relevantes según las industrias objetivo de tus servicios</li>
+            <li>Genere propuestas comerciales contextualizadas</li>
                       </ul>
-                    </div>
 
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <h4 className="font-medium text-gray-900 mb-2">💰 Configuración de Precios</h4>
-                      <ul className="text-sm text-gray-600 space-y-1">
-                        <li>• <strong>Pago Único:</strong> Precio fijo por servicio</li>
-                        <li>• <strong>Suscripción:</strong> Múltiples planes (mensual, anual)</li>
-                        <li>• <strong>Planes Múltiples:</strong> Básico, Pro, Empresarial</li>
-                        <li>• <strong>Precios Dinámicos:</strong> Según características</li>
+          <h2 id="services-creation" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Crear un Servicio</h2>
+          <p className="!mt-4">
+            Ve a <strong>Servicios</strong> → <strong>Crear producto</strong> y completa:
+          </p>
+          <ul className="!mt-6 !space-y-3">
+            <li><strong>Nombre y descripción:</strong> Qué ofreces</li>
+            <li><strong>Precios:</strong> Pago único o planes de suscripción</li>
+            <li><strong>Industrias objetivo:</strong> Sectores a los que te diriges</li>
+            <li><strong>Enlaces:</strong> Sitio web, redes sociales, documentación</li>
+            <li><strong>Contacto público:</strong> Información para compartir (opcional)</li>
                       </ul>
-                    </div>
-                  </div>
 
-                  <div className="space-y-4">
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <h4 className="font-medium text-gray-900 mb-2">Targeting Inteligente</h4>
-                      <ul className="text-sm text-gray-600 space-y-1">
-                        <li>• <strong>Industrias Objetivo:</strong> Sectores específicos</li>
-                        <li>• <strong>RUC Específicos:</strong> Empresas concretas</li>
-                        <li>• <strong>Criterios Automáticos:</strong> Tamaño, ingresos, etc.</li>
-                      </ul>
-                    </div>
-
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <h4 className="font-medium text-gray-900 mb-2">Enlaces y Redes</h4>
-                      <ul className="text-sm text-gray-600 space-y-1">
-                        <li>• <strong>Sitio Web:</strong> Página principal del servicio</li>
-                        <li>• <strong>Redes Sociales:</strong> Facebook, LinkedIn, Instagram</li>
-                        <li>• <strong>Documentación:</strong> PDFs, presentaciones, casos de éxito</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-                <h4 className="font-medium text-gray-900 mb-3">Ejemplos Completos de Servicios que Puedes Crear</h4>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <h5 className="font-medium text-gray-900 mb-3">Consultoría Empresarial</h5>
-                    <div className="space-y-2">
-                      <div className="bg-gray-50 rounded p-2">
-                        <p className="text-xs font-medium text-gray-900">Targeting Automático</p>
-                        <p className="text-xs text-gray-600">Empresas con más de 50 empleados, ingresos superiores a $500K</p>
-                      </div>
-                      <div className="bg-gray-100 rounded p-2">
-                        <p className="text-xs font-medium text-gray-900">Modelo de Precios</p>
-                        <p className="text-xs text-gray-600">$500/mes por consultoría estratégica</p>
-                      </div>
-                      <div className="bg-gray-50 rounded p-2">
-                        <p className="text-xs font-medium text-gray-900">Materiales Incluidos</p>
-                        <p className="text-xs text-gray-600">Sitio web, LinkedIn, portafolio PDF</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <h5 className="font-medium text-gray-900 mb-3">Software SaaS</h5>
-                    <div className="space-y-2">
-                      <div className="bg-gray-50 rounded p-2">
-                        <p className="text-xs font-medium text-gray-900">Targeting por Industria</p>
-                        <p className="text-xs text-gray-600">Manufactura, comercio, servicios</p>
-                      </div>
-                      <div className="bg-gray-100 rounded p-2">
-                        <p className="text-xs font-medium text-gray-900">Planes Escalables</p>
-                        <p className="text-xs text-gray-600">Básico $99/mes, Pro $299/mes, Enterprise $599/mes</p>
-                      </div>
-                      <div className="bg-gray-50 rounded p-2">
-                        <p className="text-xs font-medium text-gray-900">Recursos Digitales</p>
-                        <p className="text-xs text-gray-600">Demo interactivo, documentación API, tutoriales</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <h5 className="font-medium text-gray-900 mb-3">Capacitación y Cursos</h5>
-                    <div className="space-y-2">
-                      <div className="bg-gray-50 rounded p-2">
-                        <p className="text-xs font-medium text-gray-900">Targeting por Crecimiento</p>
-                        <p className="text-xs text-gray-600">Startups fundadas post-2015, empresas en expansión</p>
-                      </div>
-                      <div className="bg-gray-100 rounded p-2">
-                        <p className="text-xs font-medium text-gray-900">Pago Único</p>
-                        <p className="text-xs text-gray-600">$1,500 por curso completo de liderazgo empresarial</p>
-                      </div>
-                      <div className="bg-gray-50 rounded p-2">
-                        <p className="text-xs font-medium text-gray-900">Contenido Multimedia</p>
-                        <p className="text-xs text-gray-600">Videos, PDFs, quizzes, certificados digitales</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <h5 className="font-medium text-gray-900 mb-3">Productos y Servicios Físicos</h5>
-                    <div className="space-y-2">
-                      <div className="bg-gray-50 rounded p-2">
-                        <p className="text-xs font-medium text-gray-900">Targeting por Sector</p>
-                        <p className="text-xs text-gray-600">Comercios, restaurantes, servicios profesionales</p>
-                      </div>
-                      <div className="bg-gray-100 rounded p-2">
-                        <p className="text-xs font-medium text-gray-900">Precios Variables</p>
-                        <p className="text-xs text-gray-600">Desde $50 hasta $5,000 según producto/servicio</p>
-                      </div>
-                      <div className="bg-gray-50 rounded p-2">
-                        <p className="text-xs font-medium text-gray-900">Catálogos Digitales</p>
-                        <p className="text-xs text-gray-600">Fotos, especificaciones, casos de uso, testimonios</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <h5 className="font-medium text-gray-900 mb-3">Servicios Técnicos</h5>
-                    <div className="space-y-2">
-                      <div className="bg-gray-50 rounded p-2">
-                        <p className="text-xs font-medium text-gray-900">Targeting Técnico</p>
-                        <p className="text-xs text-gray-600">Empresas con sistemas legacy, startups tech</p>
-                      </div>
-                      <div className="bg-gray-100 rounded p-2">
-                        <p className="text-xs font-medium text-gray-900">Proyecto + Soporte</p>
-                        <p className="text-xs text-gray-600">$2,000 implementación + $300/mes soporte</p>
-                      </div>
-                      <div className="bg-gray-50 rounded p-2">
-                        <p className="text-xs font-medium text-gray-900">Documentación Técnica</p>
-                        <p className="text-xs text-gray-600">Manuales, diagramas, guías de mantenimiento</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <h5 className="font-medium text-gray-900 mb-3">Consultoría de Datos</h5>
-                    <div className="space-y-2">
-                      <div className="bg-gray-50 rounded p-2">
-                        <p className="text-xs font-medium text-gray-900">Targeting por Datos</p>
-                        <p className="text-xs text-gray-600">Empresas con más de $1M en ingresos, múltiples sucursales</p>
-                      </div>
-                      <div className="bg-gray-100 rounded p-2">
-                        <p className="text-xs font-medium text-gray-900">Suscripción Analytics</p>
-                        <p className="text-xs text-gray-600">$800/mes por dashboards y reportes personalizados</p>
-                      </div>
-                      <div className="bg-gray-50 rounded p-2">
-                        <p className="text-xs font-medium text-gray-900">Recursos Analíticos</p>
-                        <p className="text-xs text-gray-600">Datasets, modelos, presentaciones ejecutivas</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white border border-gray-200 rounded-lg p-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-6">Gestión Avanzada</h2>
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Editar y Actualizar Servicios</h3>
-                <p className="text-gray-600 mb-4">
-                  Una vez creado tu servicio, puedes editarlo completamente en cualquier momento:
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-white0 rounded-full mt-3 flex-shrink-0"></div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">Modificar Precios</h4>
-                      <p className="text-sm text-gray-600">Actualiza planes y precios sin perder configuraciones</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-white0 rounded-full mt-3 flex-shrink-0"></div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">Cambiar Targeting</h4>
-                      <p className="text-sm text-gray-600">Ajusta criterios de empresas objetivo</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-white0 rounded-full mt-3 flex-shrink-0"></div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">Actualizar Contenido</h4>
-                      <p className="text-sm text-gray-600">Modifica descripciones, enlaces y documentación</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-white0 rounded-full mt-3 flex-shrink-0"></div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">Duplicar Servicios</h4>
-                      <p className="text-sm text-gray-600">Crea variaciones basadas en servicios existentes</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Analytics de Servicios</h3>
-                <p className="text-gray-600 mb-4">
-                  Monitorea el rendimiento de tus servicios con métricas detalladas:
-                </p>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div className="text-center">
-                      <div className="font-medium text-gray-900">Vistas</div>
-                      <div className="text-gray-600">Cuántas empresas han visto tu servicio</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="font-medium text-gray-900">Matches</div>
-                      <div className="text-gray-600">Empresas que cumplen tus criterios</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="font-medium text-gray-900">Engagement</div>
-                      <div className="text-gray-600">Interacciones con tu contenido</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white border border-gray-200 rounded-lg p-8">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Ejemplos de Servicios</h3>
-              <div className="space-y-4">
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <h4 className="font-medium text-gray-900">Consultoría Empresarial</h4>
-                  <p className="text-sm text-gray-600">Para empresas con más de 50 empleados en cualquier sector</p>
-                </div>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <h4 className="font-medium text-gray-900">Software de Facturación</h4>
-                  <p className="text-sm text-gray-600">Para comercios y empresas de servicios con ingresos mayor a $100K</p>
-                </div>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <h4 className="font-medium text-gray-900">Capacitación Online</h4>
-                  <p className="text-sm text-gray-600">Para empresas tecnológicas fundadas después de 2015</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white border border-gray-200 rounded-lg p-8">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Beneficios de Gestionar Servicios</h3>
-              <div className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-gray-500 rounded-full mt-3 flex-shrink-0"></div>
-                  <div>
-                    <h4 className="font-medium text-gray-900">Prospectos Calificados</h4>
-                    <p className="text-sm text-gray-600 mt-1">Encuentra empresas que realmente necesitan tus servicios</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-gray-500 rounded-full mt-3 flex-shrink-0"></div>
-                  <div>
-                    <h4 className="font-medium text-gray-900">Mejor Organización</h4>
-                    <p className="text-sm text-gray-600 mt-1">Mantén tu oferta comercial estructurada y clara</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-gray-500 rounded-full mt-3 flex-shrink-0"></div>
-                  <div>
-                    <h4 className="font-medium text-gray-900">Análisis de Mercado</h4>
-                    <p className="text-sm text-gray-600 mt-1">Identifica oportunidades en sectores específicos</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-gray-500 rounded-full mt-3 flex-shrink-0"></div>
-                  <div>
-                    <h4 className="font-medium text-gray-900">Seguimiento de Ventas</h4>
-                    <p className="text-sm text-gray-600 mt-1">Monitorea el progreso de tus prospectos</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0 w-6 h-6 bg-white border border-gray-300 rounded-full flex items-center justify-center">
-                <span className="text-gray-600 font-semibold text-sm">•</span>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Consejos para Servicios Efectivos</h3>
-                <ul className="mt-2 space-y-1 text-sm text-gray-700">
-                  <li>• Sé específico en tu descripción para atraer al público correcto</li>
-                  <li>• Define claramente tus precios y evita confusiones</li>
-                  <li>• Incluye enlaces a casos de éxito o testimonios</li>
-                  <li>• Actualiza regularmente tus servicios según el feedback</li>
-                  <li>• Usa criterios de targeting precisos para mejores resultados</li>
+          <h2 id="services-sharing" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Compartir Servicios</h2>
+          <p className="!mt-4">
+            Puedes hacer tus servicios públicos para compartirlos con empresas:
+          </p>
+          <ul className="!mt-6 !space-y-3">
+            <li>Activa el enlace público desde la página de edición</li>
+            <li>Se genera una URL única que puedes compartir</li>
+            <li>Incluye información de contacto pública (empresa, nombre, email, teléfono)</li>
+            <li>Puedes desactivar el enlace en cualquier momento</li>
                 </ul>
-              </div>
-            </div>
-          </div>
         </div>
       )
     },
@@ -728,54 +253,54 @@ export default function DocsPageClient() {
       ],
       content: (
         <div className="prose prose-lg max-w-none">
-          <h1 className="text-3xl font-semibold tracking-tight text-gray-900 !mb-3">Búsqueda y Filtros Avanzados</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-gray-900 !mb-3">Búsqueda y Filtros</h1>
           <p className="text-lg !mt-0 text-gray-500">
-            Control granular para tus búsquedas. Encuentra exactamente lo que necesitas con nuestro sistema de filtros.
+            Filtra empresas por múltiples criterios para encontrar exactamente lo que necesitas.
           </p>
 
           <h2 id="filters-available" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Filtros Disponibles</h2>
-          <p className="!mt-4">Combina decenas de filtros para segmentar el mercado ecuatoriano con precisión:</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
               <div>
-                <h3 className="!mt-8 !mb-3 text-lg font-semibold tracking-tight">Filtros Principales</h3>
+              <h3 className="!mt-8 !mb-3 text-lg font-semibold tracking-tight">Básicos</h3>
                 <ul className="!mt-6 !space-y-3">
-                  <li><strong>RUC:</strong> Busca por el Registro Único de Contribuyentes.</li>
-                  <li><strong>Nombre Legal o Comercial:</strong> Encuentra empresas por su nombre.</li>
-                  <li><strong>Ubicación:</strong> Filtra por Provincia.</li>
-                  <li><strong>Año de Fundación:</strong> Segmenta por la antiguedad de la empresa.</li>
-                  <li><strong>Palabras Clave:</strong> Busca en el nombre o actividad comercial.</li>
+                <li><strong>RUC:</strong> Búsqueda exacta por RUC</li>
+                <li><strong>Nombre:</strong> Nombre legal o comercial</li>
+                <li><strong>Provincia:</strong> Ubicación geográfica</li>
+                <li><strong>Año:</strong> Año fiscal de los datos</li>
                 </ul>
               </div>
               <div>
-                <h3 className="!mt-8 !mb-3 text-lg font-semibold tracking-tight">Filtros Financieros</h3>
+              <h3 className="!mt-8 !mb-3 text-lg font-semibold tracking-tight">Financieros</h3>
                 <ul className="!mt-6 !space-y-3">
-                  <li><strong>Ingresos por Ventas:</strong> Define un rango de ingresos.</li>
-                  <li><strong>Número de Empleados:</strong> Filtra por tamaño de la empresa.</li>
-                  <li><strong>Activos:</strong> Establece un rango para los activos totales.</li>
-                  <li><strong>Patrimonio:</strong> Filtra por el patrimonio de la empresa.</li>
-                  <li><strong>Utilidad (antes de imp. y neta):</strong> Busca por rangos de utilidad.</li>
+                <li><strong>Empleados:</strong> Rango mínimo y máximo</li>
+                <li><strong>Ingresos:</strong> Rango de ingresos por ventas</li>
+                <li><strong>Activos:</strong> Rango de activos totales</li>
+                <li><strong>Patrimonio:</strong> Rango de patrimonio</li>
+                <li><strong>Utilidades:</strong> Antes y después de impuestos</li>
                 </ul>
               </div>
             </div>
             <p className="!mt-6">
-              Además, puedes ordenar los resultados por criterios como completitud de datos, ingresos, número de empleados y más, en orden ascendente o descendente. También puedes requerir que las empresas tengan datos de ingresos o empleados para refinar aún más tu búsqueda.
+            También puedes ordenar resultados por ingresos, empleados o completitud de datos, y requerir que las empresas 
+            tengan datos de ingresos o empleados para refinar tu búsqueda.
             </p>
           </div>
       )
     },
     {
       id: "export",
-      name: "Exportación de Datos",
+      name: "Exportación",
       icon: FileText,
       subsections: [],
       content: (
         <div className="prose prose-lg max-w-none">
           <h1 className="text-3xl font-semibold tracking-tight text-gray-900 !mb-3">Exportación de Datos</h1>
           <p className="text-lg !mt-0 text-gray-500">
-            Lleva los datos contigo. Exporta tus listas de empresas a formato Excel para un análisis más profundo.
+            Exporta tus búsquedas a Excel para análisis externo.
           </p>
           <p className="!mt-6">
-            Después de cualquier búsqueda, haz clic en el botón &quot;Exportar&quot; para descargar los resultados. El número de exportaciones y la cantidad de empresas por exportación dependen de tu plan de suscripción.
+            Después de buscar empresas en la sección <strong>Empresas</strong> o usando el Motor de Búsqueda IA, 
+            puedes exportar los resultados a un archivo Excel. Los límites de exportación dependen de tu plan de suscripción.
           </p>
         </div>
       )
@@ -792,45 +317,9 @@ export default function DocsPageClient() {
             Elige el plan que mejor se adapte a tus necesidades.
           </p>
           <p className="!mt-6">
-            Ofrecemos desde un plan gratuito para que puedas probar la plataforma hasta planes empresariales con acceso ilimitado y características avanzadas. Puedes comparar todos los planes y gestionar tu suscripción en la sección de <Link href="/pricing">Precios</Link>.
+            Ofrecemos desde un plan gratuito para probar la plataforma hasta planes empresariales con acceso ilimitado. 
+            Puedes comparar todos los planes y gestionar tu suscripción en la sección de <Link href="/pricing" className="text-blue-600 hover:underline">Precios</Link>.
           </p>
-        </div>
-      )
-    },
-    {
-      id: "dashboard",
-      name: "Dashboard",
-      icon: LayoutDashboard,
-      subsections: [
-        { id: "dash-plan", title: "Tu Plan" },
-        { id: "dash-analytics", title: "Análisis de Uso" },
-        { id: "dash-subscription", title: "Suscripción" },
-      ],
-      content: (
-        <div className="prose prose-lg max-w-none">
-          <h1 className="text-3xl font-semibold tracking-tight text-gray-900 !mb-3">Dashboard</h1>
-          <p className="text-lg !mt-0 text-gray-500">
-            Tu centro de control para monitorear el uso de la plataforma, gestionar tu suscripción y acceder rápidamente a las herramientas principales.
-          </p>
-          
-          <h2 id="dash-plan" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Tu Plan Actual</h2>
-          <p className="!mt-4">
-            Visualiza rápidamente los límites de tu plan actual, incluyendo el número de conversaciones con IA, búsquedas de empresas y exportaciones de datos disponibles por mes. Un seguimiento claro de tu consumo te ayuda a maximizar los recursos de tu suscripción.
-          </p>
-
-          <h2 id="dash-analytics" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Análisis de Uso</h2>
-          <p className="!mt-4">
-            Obtén estadísticas sobre tu actividad en la plataforma. Esta sección te permite entender cómo estás utilizando Camella, qué búsquedas has realizado y cuál es tu historial de interacciones. Es una herramienta clave para optimizar tu estrategia de prospección.
-          </p>
-
-          <h2 id="dash-subscription" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Estado de tu Suscripción</h2>
-          <p className="!mt-4">
-            Gestiona todos los aspectos de tu suscripción a Camella.
-          </p>
-          <ul className="!mt-6 !space-y-3">
-            <li><strong>Portal de Facturación:</strong> Accede al portal seguro de Stripe para actualizar tu método de pago, ver facturas y gestionar tu suscripción. (Disponible solo para planes de pago).</li>
-            <li><strong>Cambiar Plan:</strong> Explora otros planes y actualiza tu suscripción para acceder a más funcionalidades.</li>
-          </ul>
         </div>
       )
     },
@@ -841,21 +330,21 @@ export default function DocsPageClient() {
       subsections: [
         { id: "settings-personal", title: "Información Personal" },
         { id: "settings-company", title: "Información de Empresa" },
-        { id: "settings-billing", title: "Gestión de Pagos" },
+        { id: "settings-billing", title: "Suscripción" },
       ],
       content: (
         <div className="prose prose-lg max-w-none">
-          <h1 className="text-3xl font-semibold tracking-tight text-gray-900 !mb-3">Configuración de la Cuenta</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-gray-900 !mb-3">Configuración</h1>
           <p className="text-lg !mt-0 text-gray-500">
-            Personaliza tu perfil, gestiona la información de tu empresa y administra tu suscripción y facturación.
+            Gestiona tu perfil, información de empresa y suscripción.
           </p>
           
           <h2 id="settings-personal" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Información Personal</h2>
           <p className="!mt-4">
-            Actualiza tus datos personales para mantener tu perfil al día. Puedes editar los siguientes campos:
+            Actualiza tus datos personales:
           </p>
           <ul className="!mt-6 !space-y-3">
-            <li>Nombre y Apellido</li>
+            <li>Nombre y apellido</li>
             <li>Teléfono de contacto</li>
             <li>Cargo o posición en tu empresa</li>
           </ul>
@@ -863,27 +352,22 @@ export default function DocsPageClient() {
 
           <h2 id="settings-company" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Información de Empresa</h2>
           <p className="!mt-4">
-            Proporciona detalles sobre la empresa que representas. Esta información nos ayuda a personalizar tu experiencia.
+            Proporciona detalles sobre la empresa que representas:
           </p>
           <ul className="!mt-6 !space-y-3">
-            <li>Nombre de la Empresa</li>
-            <li>RUC de la Empresa (13 dígitos)</li>
+            <li>Nombre de la empresa</li>
+            <li>RUC de la empresa (13 dígitos)</li>
           </ul>
 
-          <h2 id="settings-billing" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Gestión de Pagos y Suscripción</h2>
+          <h2 id="settings-billing" className="!mt-12 !mb-4 text-xl font-semibold tracking-tight">Suscripción</h2>
           <p className="!mt-4">
-            Controla todos los aspectos de tu suscripción a Camella.
+            Gestiona tu suscripción a Camella:
           </p>
           <ul className="!mt-6 !space-y-3">
-            <li><strong>Portal de Facturación:</strong> Accede al portal seguro de Stripe para actualizar tu método de pago, ver facturas y gestionar tu suscripción. (Disponible solo para planes de pago).</li>
-            <li><strong>Cambiar Plan:</strong> Explora otros planes y actualiza tu suscripción para acceder a más funcionalidades.</li>
+            <li><strong>Estado del Plan:</strong> Visualiza tu plan actual y límites de uso</li>
+            <li><strong>Portal de Facturación:</strong> Accede al portal seguro de Stripe para actualizar tu método de pago y ver facturas (disponible solo para planes de pago)</li>
+            <li><strong>Cambiar Plan:</strong> Explora otros planes y actualiza tu suscripción desde <Link href="/pricing" className="text-blue-600 hover:underline">Precios</Link></li>
           </ul>
-          <p className="!mt-6 text-sm text-gray-600">
-            Integración con Stripe: utilizamos la versión de API configurada en <code>STRIPE_API_VERSION</code> (o la versión por defecto de tu cuenta si no está definida). Consulta la documentación oficial para más detalles:
-            {' '}<a className="text-blue-600 hover:underline" href="https://docs.stripe.com/api/checkout/sessions" target="_blank" rel="noreferrer">Checkout Sessions</a>,{' '}
-            <a className="text-blue-600 hover:underline" href="https://docs.stripe.com/api/customer_portal/sessions" target="_blank" rel="noreferrer">Billing Portal Sessions</a>,{' '}
-            <a className="text-blue-600 hover:underline" href="https://docs.stripe.com/webhooks" target="_blank" rel="noreferrer">Webhooks</a>.
-          </p>
         </div>
       )
     }
@@ -894,7 +378,6 @@ export default function DocsPageClient() {
       let currentSection = "";
       let currentSubSection = "";
 
-      // Determine active section
       for (const section of sectionsData) {
         const element = document.getElementById(section.id);
         if (element && element.offsetTop <= window.scrollY + 100) {
@@ -903,7 +386,6 @@ export default function DocsPageClient() {
       }
       setActiveSection(currentSection || "overview");
 
-      // Determine active sub-section within the current active section
       const activeSectionData = sectionsData.find(s => s.id === currentSection);
       if (activeSectionData) {
         for (const sub of activeSectionData.subsections) {
@@ -917,13 +399,12 @@ export default function DocsPageClient() {
     };
 
     window.addEventListener("scroll", handleScroll);
-    handleScroll(); // Initial check
+    handleScroll();
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
     };
   }, [sectionsData]);
-
 
   const handleNavClick = (id: string) => {
     setActiveSection(id);
