@@ -464,7 +464,7 @@ export default function DocsPageClient() {
       )}
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex lg:flex-shrink-0 fixed top-0 h-screen w-72">
+      <aside id="docs-sidebar" className="hidden lg:flex lg:flex-shrink-0 fixed top-0 h-screen w-72">
         <div className="flex flex-col w-72 border-r border-gray-200 bg-white">
           <div className="flex items-center h-16 flex-shrink-0 px-6 border-b">
             <Link href="/docs" className="flex items-center space-x-2">
@@ -493,7 +493,7 @@ export default function DocsPageClient() {
       </aside>
 
       {/* Main Content */}
-      <main className="lg:pl-72 w-full pt-16 lg:pt-0">
+      <main id="docs-content" className="lg:pl-72 w-full pt-16 lg:pt-0">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 xl:pl-0 xl:pr-16">
             {sectionsData.map((section) => (
                 <section key={section.id} id={section.id} className="scroll-mt-24 pt-8">

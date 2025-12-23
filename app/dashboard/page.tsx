@@ -30,7 +30,7 @@ export default function DashboardPage() {
         <PricingUpsell />
 
         {/* Modern Tab Switcher */}
-        <div className="bg-white border border-gray-200 rounded-lg p-1 flex items-center shadow-sm w-fit mx-auto">
+        <div id="dashboard-tab-switcher" className="bg-white border border-gray-200 rounded-lg p-1 flex items-center shadow-sm w-fit mx-auto">
           <button
             onClick={() => setActiveTab('analytics')}
             className={`relative px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${
@@ -96,7 +96,7 @@ export default function DashboardPage() {
               <PlanAndSubscriptionCard />
               
               {/* Quick Actions */}
-              <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
+              <div id="dashboard-quick-actions" className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
                 <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Accesos Rápidos</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <QuickLink href="/chat" icon={<Infinity size={18} />} label="Agente" />

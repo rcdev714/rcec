@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Sidebar from "@/components/sidebar";
 import LoadingSpinner from "@/components/loading-spinner";
-import Onboarding from "@/components/onboarding";
+import TourManager from "@/components/tour/tour-manager";
 import TermsAndConditionsModal from "@/components/terms-and-conditions-modal";
 import { usePathname } from "next/navigation";
 import { shouldRenderAppShell } from "@/lib/routes";
@@ -41,8 +41,8 @@ export default function ClientLayout({
       >
         <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>
       </main>
-      {/* Onboarding modal - shows for authenticated users on first visit */}
-      <Onboarding />
+      {/* Onboarding Tour - replaces old modal */}
+      <TourManager />
       <TermsAndConditionsModal />
     </div>
   );

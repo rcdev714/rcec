@@ -769,7 +769,7 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
                     <p className="text-sm font-medium text-gray-800">Ideas para empezar</p>
                     <span className="text-xs text-gray-400">Selecciona una</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
+                  <div id="chat-suggestions" className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
                     {suggestions.map((s, i) => (
                       <motion.button
                         key={i}
@@ -791,6 +791,7 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.35, duration: 0.4 }}
                   className="w-full max-w-3xl mt-4 px-4 md:px-0"
+                  id="chat-input-bar-wrapper"
                 >
                   <ChatInputBar
                     input={input}

@@ -156,7 +156,7 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
       </Dialog>
 
       {/* Sidebar with filters (Desktop) */}
-      <div className="hidden lg:block w-72 flex-shrink-0">
+      <div id="companies-filters" className="hidden lg:block w-72 flex-shrink-0">
         <div className="sticky top-8">
           <CompanyFilter
             initialFilters={initialFilters}
@@ -178,7 +178,7 @@ export function CompaniesUI({ companies, totalCount, page, totalPages }: Compani
             </div>
 
             {/* Desktop Table View */}
-            <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl overflow-hidden shadow-lg shadow-gray-900/5">
+            <div id="companies-table" className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl overflow-hidden shadow-lg shadow-gray-900/5">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gradient-to-r from-gray-50 via-gray-50/50 to-gray-50 border-b border-gray-200/60">
