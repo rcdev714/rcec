@@ -258,10 +258,15 @@ export default function AnalyticsChartsCard() {
                     <YAxis hide />
                     <Tooltip 
                       contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
-                      formatter={(value: number) => [
-                        chart.isTokens ? formatTokenCount(value) : value.toLocaleString(),
-                        chart.isTokens ? 'Tokens' : chart.title.includes('Prompts') ? 'Prompts' : 'Búsquedas'
-                      ]}
+                      formatter={(value: number | undefined) => {
+                        if (value === undefined || value === null) {
+                          return ['0', chart.isTokens ? 'Tokens' : chart.title.includes('Prompts') ? 'Prompts' : 'Búsquedas'];
+                        }
+                        return [
+                          chart.isTokens ? formatTokenCount(value) : value.toLocaleString(),
+                          chart.isTokens ? 'Tokens' : chart.title.includes('Prompts') ? 'Prompts' : 'Búsquedas'
+                        ];
+                      }}
                     />
                     <Area
                       type="linear"

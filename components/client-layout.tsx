@@ -19,6 +19,7 @@ export default function ClientLayout({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const shouldRenderSidebar = shouldRenderAppShell(pathname);
+  const isLandingPage = pathname === '/';
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -41,8 +42,8 @@ export default function ClientLayout({
       >
         <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>
       </main>
-      {/* Onboarding Tour - replaces old modal */}
-      <TourManager />
+      {/* Onboarding Tour - only show on app pages, not landing page */}
+      {!isLandingPage && <TourManager />}
       <TermsAndConditionsModal />
     </div>
   );

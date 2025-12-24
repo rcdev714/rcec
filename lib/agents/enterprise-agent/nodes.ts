@@ -88,8 +88,9 @@ function getGeminiModel(modelName: string = "gemini-2.5-flash", options?: { temp
   }
   
   // Use temperature from options or default based on model
+  // Gemini 3 models: use 1.0 per documentation (changing below 1.0 may cause issues)
   const isGemini3 = modelName.startsWith('gemini-3');
-  const defaultTemp = isGemini3 ? 0.1 : 0.2;
+  const defaultTemp = isGemini3 ? 1.0 : 0.2;
   const temperature = options?.temperature ?? defaultTemp;
 
   const cacheKey = `${modelName}-${temperature}`;

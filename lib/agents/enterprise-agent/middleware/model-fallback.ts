@@ -228,11 +228,13 @@ export function getGeminiModelInstance(config: ModelConfig): ChatGoogleGenerativ
     }
     
     const isGemini3 = config.name.startsWith('gemini-3');
+    // Gemini 3 models: use 1.0 per documentation (changing below 1.0 may cause issues)
+    const defaultTemp = isGemini3 ? 1.0 : 0.2;
     
     const model = new ChatGoogleGenerativeAI({
       apiKey,
       model: config.name,
-      temperature: config.temperature ?? 0.2,
+      temperature: config.temperature ?? defaultTemp,
       maxOutputTokens: 8192,
       ...(config.apiVersion && { apiVersion: config.apiVersion }),
       ...(isGemini3 && !config.apiVersion && { apiVersion: 'v1beta' }),

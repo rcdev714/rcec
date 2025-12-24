@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import ConversationSidebar from "@/components/conversation-sidebar";
 import ConversationManager from "@/lib/conversation-manager";
 import { useAgentRun, type AgentRun } from "@/lib/hooks/use-agent-run";
-import { AgentSettings, DEFAULT_AGENT_SETTINGS, mergeAgentSettings } from "@/lib/types/agent-settings";
+import { AgentSettings, DEFAULT_AGENT_SETTINGS, getDefaultTemperatureForModel, mergeAgentSettings } from "@/lib/types/agent-settings";
 import { ChatSettingsPanel } from "./ChatSettingsPanel";
 import { ChatInputBar } from "./ChatInputBar";
 import { ChatMessageList, Message } from "./ChatMessageList";
@@ -107,7 +107,26 @@ export function ChatUI({ initialConversationId, initialMessages = [], appSidebar
   // Update settings when model/thinking changes from UI
   const handleModelChange = (model: string) => {
     setSelectedModel(model);
-    setAgentSettings(prev => ({ ...prev, modelName: model }));
+    setAgentSettings(prev => {
+      const nextIsGemini3 = model.startsWith('gemini-3');
+      if (nextIsGemini3) {
+        // Gemini 3 models: force temperature 1.0 (per documentation)
+        return { ...prev, modelName: model, temperature: 1.0 };
+      }
+
+      // For non-Gemini 3 models:
+      // If current temperature matches the previous model's recommended default, treat it as "auto/default"
+      // and reset to the new model's recommended default. Otherwise, preserve user-custom temperature.
+      const prevDefault = getDefaultTemperatureForModel(prev.modelName);
+      const wasDefaultLike = prev.temperature === prevDefault;
+      const nextDefault = getDefaultTemperatureForModel(model);
+
+      return {
+        ...prev,
+        modelName: model,
+        temperature: wasDefaultLike ? nextDefault : prev.temperature,
+      };
+    });
   };
 
   const handleThinkingChange = (level: 'high' | 'low') => {

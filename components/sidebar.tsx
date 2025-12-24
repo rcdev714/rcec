@@ -115,12 +115,12 @@ const Sidebar = ({ isCollapsed, toggleSidebar, isAdmin: _isAdmin = false }: Side
       <div className="flex items-center justify-between h-16 px-4 relative border-b border-gray-50/50">
         <div className={cn("flex items-center gap-3 transition-opacity duration-200", isCollapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100")}>
           <Image src="/logo.svg" alt="Camella Logo" width={28} height={28} className="flex-shrink-0" />
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold text-gray-900 tracking-tight">Camella</span>
+          <div className="flex flex-col min-w-0 overflow-hidden hidden md:flex">
+            <span className="text-sm font-semibold text-gray-900 tracking-tight truncate">Camella</span>
             {subscriptionStatus && translatePlan(subscriptionStatus.plan) && (
               <Badge
                 variant="secondary"
-                className="text-[10px] px-1.5 py-0 h-4 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-100 font-normal w-fit"
+                className="text-[10px] px-1.5 py-0 h-4 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-100 font-normal w-fit truncate"
               >
                 {translatePlan(subscriptionStatus.plan)}
               </Badge>

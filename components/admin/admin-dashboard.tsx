@@ -17,6 +17,7 @@ import UserSubscriptionMetrics from '@/components/admin/user-subscription-metric
 import SystemHealthMonitor from '@/components/admin/system-health-monitor'
 import UsageAnalytics from '@/components/admin/usage-analytics'
 import RecentActivity from '@/components/admin/recent-activity'
+import UsersOverTimeChart from '@/components/admin/users-over-time-chart'
 import { cn } from '@/lib/utils'
 
 interface DashboardStats {
@@ -165,6 +166,9 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Users Over Time Chart */}
+      <UsersOverTimeChart />
 
       {/* Detailed Monitoring Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

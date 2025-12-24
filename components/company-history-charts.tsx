@@ -164,10 +164,13 @@ export default function CompanyHistoryCharts({ history }: CompanyHistoryChartsPr
                     <YAxis hide />
                     <Tooltip 
                       contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
-                      formatter={(value: number) => [
-                        chart.isCurrency ? formatCompactCurrency(value) : value.toLocaleString(),
-                        chart.title
-                      ]}
+                      formatter={(value: number | undefined) => {
+                        if (value === undefined || value === null) return ['—', chart.title];
+                        return [
+                          chart.isCurrency ? formatCompactCurrency(value) : value.toLocaleString(),
+                          chart.title
+                        ];
+                      }}
                     />
                     <Area
                       type="linear"
@@ -217,11 +220,15 @@ export default function CompanyHistoryCharts({ history }: CompanyHistoryChartsPr
                 <YAxis hide />
                 <Tooltip 
                   contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
-                  formatter={(value: number, name: string) => {
+                  formatter={(value: number | undefined, name: string | undefined) => {
+                    if (value === undefined || value === null) {
+                      const item = unifiedColors.find(c => c.name === name);
+                      return ['—', item?.label || name || ''];
+                    }
                     const item = unifiedColors.find(c => c.name === name);
                     return [
                       name === 'empleados' ? value.toLocaleString() : formatCompactCurrency(value),
-                      item?.label || name
+                      item?.label || name || ''
                     ];
                   }}
                 />

@@ -83,11 +83,12 @@ function getGeminiModel(modelName: string = "gemini-2.5-flash"): ChatGoogleGener
   if (!geminiModels[modelName]) {
     const apiKey = process.env.GOOGLE_API_KEY || '';
     
-    // Gemini 3 models: use stable v1 API and temperature=1.0
+    // Gemini 3 models: use stable v1 API and temperature=1.0 (per documentation)
+    // Changing temperature below 1.0 may lead to unexpected behavior, looping, or degraded performance
     const isGemini3 = modelName.startsWith('gemini-3');
     const apiVersion = isGemini3 ? 'v1' : undefined;
-    // Lower temperatures for stricter instruction-following
-    const temperature = isGemini3 ? 0.7 : 0.3;
+    // Gemini 3: use 1.0, others: lower temperatures for stricter instruction-following
+    const temperature = isGemini3 ? 1.0 : 0.3;
     
     geminiModels[modelName] = new ChatGoogleGenerativeAI({
       apiKey,

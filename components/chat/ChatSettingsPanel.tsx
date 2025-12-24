@@ -1,11 +1,11 @@
 import React from 'react';
-import { AgentSettings, DEFAULT_AGENT_SETTINGS } from '@/lib/types/agent-settings';
+import { AgentSettings, DEFAULT_AGENT_SETTINGS, getDefaultTemperatureForModel } from '@/lib/types/agent-settings';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Info, Settings2, RotateCcw, ShieldCheck } from "lucide-react";
+import { Info, Settings2, RotateCcw, ShieldCheck, AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -66,6 +66,10 @@ export function ChatSettingsPanel({
     onSettingsChange(DEFAULT_AGENT_SETTINGS);
   };
 
+  const isGemini3 = settings.modelName.startsWith('gemini-3');
+  const recommendedTemp = getDefaultTemperatureForModel(settings.modelName);
+  const tempWarning = isGemini3 && settings.temperature !== recommendedTemp;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[400px] sm:w-[540px] p-0 flex flex-col bg-slate-50/50">
@@ -105,7 +109,11 @@ export function ChatSettingsPanel({
                             <Info className="w-3.5 h-3.5 text-muted-foreground" />
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p className="max-w-xs">Controla la aleatoriedad. Valores bajos (0.1) son más precisos y deterministas. Valores altos (0.8) son más creativos pero menos factuales.</p>
+                            <p className="max-w-xs">
+                              {isGemini3 
+                                ? "Para modelos Gemini 3, se recomienda mantener la temperatura en 1.0. Cambiar a valores menores puede causar comportamiento inesperado o degradación del rendimiento."
+                                : "Controla la aleatoriedad. Valores bajos (0.1) son más precisos y deterministas. Valores altos (0.8) son más creativos pero menos factuales."}
+                            </p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -122,7 +130,9 @@ export function ChatSettingsPanel({
                     value={[settings.temperature]}
                     onValueChange={(value: number[]) => {
                       const [val] = value;
-                      onSettingsChange({ ...settings, temperature: val ?? settings.temperature });
+                      // Auto-adjust to 1.0 if Gemini 3 and user tries to set lower
+                      const finalTemp = isGemini3 && val < 1.0 ? 1.0 : val;
+                      onSettingsChange({ ...settings, temperature: finalTemp ?? settings.temperature });
                     }}
                     className="[&_[role=slider]]:h-4 [&_[role=slider]]:w-4"
                   />
@@ -130,6 +140,15 @@ export function ChatSettingsPanel({
                     <span>Preciso</span>
                     <span>Creativo</span>
                   </div>
+                  {tempWarning && (
+                    <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="font-medium mb-0.5">Recomendación para Gemini 3</p>
+                        <p className="text-amber-700">La temperatura debe ser 1.0 para evitar comportamiento inesperado. Se ajustará automáticamente.</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
