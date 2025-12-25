@@ -56,23 +56,23 @@ export function ChatInputBar({
                 variant="ghost"
                 size="sm"
                 onClick={onSettingsClick}
-                className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl border border-transparent hover:border-gray-200 hover:bg-gray-50 text-gray-500 flex-shrink-0"
+                className="h-9 w-9 rounded-xl border border-transparent hover:border-gray-200 hover:bg-gray-50 text-gray-500 flex-shrink-0"
                 title="Configuración del agente"
               >
-                <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <Settings className="w-4 h-4" />
               </Button>
             </div>
             
             <button
               type="submit"
               disabled={isSubmitting || isSending || !input.trim()}
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center text-sm transition-colors flex-shrink-0"
+              className="w-9 h-9 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center text-sm transition-colors flex-shrink-0"
               title="Enviar mensaje"
             >
               {isSending ? (
-                <LoaderCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                <LoaderCircle className="w-4 h-4 animate-spin" />
               ) : (
-                <ArrowUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <ArrowUp className="w-4 h-4" />
               )}
             </button>
           </div>

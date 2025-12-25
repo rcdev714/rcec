@@ -66,7 +66,7 @@ export function ChatSettingsPanel({
     onSettingsChange(DEFAULT_AGENT_SETTINGS);
   };
 
-  const isGemini3 = settings.modelName.startsWith('gemini-3');
+  const isGemini3 = settings.modelName?.startsWith('gemini-3') ?? false;
   const recommendedTemp = getDefaultTemperatureForModel(settings.modelName);
   const tempWarning = isGemini3 && settings.temperature !== recommendedTemp;
 

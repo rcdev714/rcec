@@ -150,7 +150,7 @@ export function ChatMessageList({
               )}
               <div
                 className={cn(
-                  "max-w-[calc(100%-3rem)] sm:max-w-[85%] md:max-w-[75%] lg:max-w-[70%] rounded-xl sm:rounded-2xl relative group min-w-0",
+                  "max-w-[calc(100%_-_3rem)] sm:max-w-[85%] md:max-w-[75%] lg:max-w-[70%] rounded-xl sm:rounded-2xl relative group min-w-0",
                   msg.role === "user"
                     ? "bg-white text-gray-900 border border-gray-200 px-2 py-2 sm:px-3 sm:py-2.5 md:px-4 md:py-3 shadow-sm"
                     : "bg-white text-gray-800 border border-gray-100 px-2 py-2 sm:px-3 sm:py-2.5 md:px-4 md:py-3 shadow-sm rounded-bl-sm"
